@@ -4,16 +4,25 @@ import akka.actor.{Actor, ActorRef, Props}
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos._
+import adaptivecep.publishers.Publisher
 
 trait Node extends Actor {
 
   val name: String = self.path.name
-
-  val query: Query
+  val requirements: Set[Requirement]
   val publishers: Map[String, ActorRef]
   val frequencyMonitorFactory: MonitorFactory
   val latencyMonitorFactory: MonitorFactory
 
+  def createWindow(windowType: String, size: Int): Window ={
+    windowType match {
+      case "SI" => SlidingInstances(size)
+      case "TI" => TumblingInstances(size)
+      case "ST" => SlidingTime(size)
+      case "TT" => TumblingTime(size)
+    }
+  }
+/*
   def createChildNode(
       id: Int,
       query: Query
@@ -99,6 +108,6 @@ trait Node extends Actor {
           None)),
         s"$name-$id-disjunction")
 
-  }
+  }*/
 
 }

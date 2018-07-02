@@ -1,6 +1,6 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
 import com.espertech.esper.client._
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
@@ -8,9 +8,15 @@ import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
+import akka.remote.RemoteScope
 
 case class SequenceNode(
-    query: SequenceQuery,
+    //query: SequenceQuery,
+    requirements: Set[Requirement],
+    publisherName1: String,
+    publisherName2: String,
+    queryLength1: Int,
+    queryLength2: Int,
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
@@ -20,12 +26,18 @@ case class SequenceNode(
 
   override val esperServiceProviderUri: String = name
 
-  val queryPublishers: Array[ActorRef] = Array(publishers(query.s1.publisherName), publishers(query.s2.publisherName))
+  val queryPublishers: Array[ActorRef] = Array(publishers(publisherName1), publishers(publisherName2))
+  //val queryPublishers: Array[ActorRef] = Array(publishers(query.s1.publisherName), publishers(query.s2.publisherName))
 
   queryPublishers.foreach(_ ! Subscribe)
 
   var subscription1Acknowledged: Boolean = false
   var subscription2Acknowledged: Boolean = false
+
+  def moveTo(a: ActorRef): Unit = {
+    a ! Parent(parentNode)
+    parentNode ! ChildUpdate(self, a)
+  }
 
   override def receive: Receive = {
     case DependenciesRequest =>
@@ -52,6 +64,14 @@ case class SequenceNode(
       case Event5(e1, e2, e3, e4, e5) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
     }
+    case Parent(p1) => {
+      parentNode = p1
+      println("parent received sequence", self.path)
+    }
+    case Move(a) => {
+      moveTo(a)
+    }
+    case KillMe => sender() ! PoisonPill
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
@@ -60,10 +80,12 @@ case class SequenceNode(
   override def postStop(): Unit = {
     destroyServiceProvider()
   }
-
+  addEventType("sq1", createArrayOfNames(queryLength1), createArrayOfClasses(queryLength1))
+  addEventType("sq2", createArrayOfNames(queryLength2), createArrayOfClasses(queryLength2))
+/*
   addEventType("sq1", SequenceNode.createArrayOfNames(query.s1), SequenceNode.createArrayOfClasses(query.s1))
   addEventType("sq2", SequenceNode.createArrayOfNames(query.s2), SequenceNode.createArrayOfClasses(query.s2))
-
+*/
   val epStatement: EPStatement = createEpStatement("select * from pattern [every (sq1=sq1 -> sq2=sq2)]")
 
   val updateListener: UpdateListener = (newEventBeans: Array[EventBean], _) => newEventBeans.foreach(eventBean => {
@@ -102,6 +124,25 @@ object SequenceNode {
       case _: NStream3[_, _, _] => Array(clazz, clazz, clazz)
       case _: NStream4[_, _, _, _] => Array(clazz, clazz, clazz, clazz)
       case _: NStream5[_, _, _, _, _] => Array(clazz, clazz, clazz, clazz, clazz)
+    }
+  }
+
+  def createArrayOfNames(length: Int): Array[String] = length match {
+    case 1 => Array("e1")
+    case 2 => Array("e1", "e2")
+    case 3 => Array("e1", "e2", "e3")
+    case 4 => Array("e1", "e2", "e3", "e4")
+    case 5 => Array("e1", "e2", "e3", "e4", "e5")
+  }
+
+  def createArrayOfClasses(length: Int): Array[Class[_]] = {
+    val clazz: Class[_] = classOf[AnyRef]
+    length match {
+      case 1 => Array(clazz)
+      case 2 => Array(clazz, clazz)
+      case 3 => Array(clazz, clazz, clazz)
+      case 4 => Array(clazz, clazz, clazz, clazz)
+      case 5 => Array(clazz, clazz, clazz, clazz, clazz)
     }
   }
 

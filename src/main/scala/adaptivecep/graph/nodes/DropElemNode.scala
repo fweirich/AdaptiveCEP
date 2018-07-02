@@ -1,20 +1,22 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
+import akka.remote.RemoteScope
 
 case class DropElemNode(
-    query: DropElemQuery,
+    requirements: Set[Requirement],
+    elemToBeDropped: Int,//query: DropElemQuery,
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
     createdCallback: Option[() => Any],
     eventCallback: Option[(Event) => Any])
   extends UnaryNode {
-
+/*
   val elemToBeDropped: Int = query match {
     case DropElem1Of2(_, _) => 1
     case DropElem1Of3(_, _) => 1
@@ -36,6 +38,14 @@ case class DropElemNode(
     case DropElem5Of5(_, _) => 5
     case DropElem5Of6(_, _) => 5
     case DropElem6Of6(_, _) => 6
+  }
+*/
+  def moveTo(a: ActorRef): Unit = {
+    a ! Parent(parentNode)
+    a ! Child1(childNode)
+    childNode ! Parent(a)
+    parentNode ! ChildUpdate(self, a)
+    childNode ! KillMe
   }
 
   def handleEvent2(e1: Any, e2: Any): Unit = elemToBeDropped match {
@@ -73,6 +83,7 @@ case class DropElemNode(
     case 6 => emitEvent(Event5(e1, e2, e3, e4, e5))
   }
 
+
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode))
@@ -86,6 +97,23 @@ case class DropElemNode(
       case Event5(e1, e2, e3, e4, e5) => handleEvent5(e1, e2, e3, e4, e5)
       case Event6(e1, e2, e3, e4, e5, e6) => handleEvent6(e1, e2, e3, e4, e5, e6)
     }
+    case Parent(p1) => {
+      parentNode = p1
+      println("parent received drop", self.path)
+    }
+    case Child1(c) => {
+      childNode = c
+      nodeData = UnaryNodeData(name, requirements, context, childNode)
+      println("child received", self.path)
+    }
+    case ChildUpdate(_, a) => {
+      childNode = a
+      nodeData = UnaryNodeData(name, requirements, context, childNode)
+    }
+    case Move(a) => {
+      moveTo(a)
+    }
+    case KillMe => sender() ! PoisonPill
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

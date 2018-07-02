@@ -14,16 +14,16 @@ trait AverageFrequencyMonitor {
 
   var currentOutput: Option[Int] = None
 
-  def onCreated(name: String, query: Query, context: ActorContext): Unit = {
-    val requirements: Set[FrequencyRequirement] = query.requirements.collect{ case fr: FrequencyRequirement => fr }
-    val callbackNodeData: NodeData = NodeData(name, query, context)
+  def onCreated(name: String, requirements: Set[Requirement], context: ActorContext): Unit = {
+    val frequencyRequirements: Set[FrequencyRequirement] = requirements.collect{ case fr: FrequencyRequirement => fr }
+    val callbackNodeData: NodeData = NodeData(name, requirements, context)
     currentOutput = Some(0)
-    if (requirements.nonEmpty) {
+    if (frequencyRequirements.nonEmpty) {
       context.system.scheduler.schedule(
         initialDelay = FiniteDuration(interval, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
-          requirements.foreach(requirement => {
+          frequencyRequirements.foreach(requirement => {
             require(requirement.seconds <= interval)
             // `divisor`, e.g., if `interval` == 30, and `requirement.seconds` == 10, then `divisor` == 3
             val divisor: Int = interval / requirement.seconds
@@ -54,21 +54,21 @@ trait AverageFrequencyMonitor {
 
 case class AverageFrequencyLeafNodeMonitor(interval: Int, logging: Boolean) extends AverageFrequencyMonitor with LeafNodeMonitor {
 
-  override def onCreated(nodeData: LeafNodeData): Unit = onCreated(nodeData.name, nodeData.query, nodeData.context)
+  override def onCreated(nodeData: LeafNodeData): Unit = onCreated(nodeData.name, nodeData.requirements, nodeData.context)
   override def onEventEmit(event: Event, nodeData: LeafNodeData): Unit = onEventEmit(event)
 
 }
 
 case class AverageFrequencyUnaryNodeMonitor(interval: Int, logging: Boolean) extends AverageFrequencyMonitor with UnaryNodeMonitor {
 
-  override def onCreated(nodeData: UnaryNodeData): Unit = onCreated(nodeData.name, nodeData.query, nodeData.context)
+  override def onCreated(nodeData: UnaryNodeData): Unit = onCreated(nodeData.name, nodeData.requirements, nodeData.context)
   override def onEventEmit(event: Event, nodeData: UnaryNodeData): Unit = onEventEmit(event)
 
 }
 
 case class AverageFrequencyBinaryNodeMonitor(interval: Int, logging: Boolean) extends AverageFrequencyMonitor with BinaryNodeMonitor {
 
-  override def onCreated(nodeData: BinaryNodeData): Unit = onCreated(nodeData.name, nodeData.query, nodeData.context)
+  override def onCreated(nodeData: BinaryNodeData): Unit = onCreated(nodeData.name, nodeData.requirements, nodeData.context)
   override def onEventEmit(event: Event, nodeData: BinaryNodeData): Unit = onEventEmit(event)
 
 }

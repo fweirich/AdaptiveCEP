@@ -1,6 +1,6 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
 import com.espertech.esper.client._
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
@@ -8,9 +8,16 @@ import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.qos._
 import JoinNode._
+import akka.remote.RemoteScope
 
 case class SelfJoinNode(
-    query: SelfJoinQuery,
+    //query: SelfJoinQuery,
+    requirements: Set[Requirement],
+    windowType1: String,
+    windowSize1: Int,
+    windowType2: String,
+    windowSize2: Int,
+    queryLength: Int,
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
@@ -19,6 +26,19 @@ case class SelfJoinNode(
   extends UnaryNode with EsperEngine {
 
   override val esperServiceProviderUri: String = name
+
+  /*
+  override val publishers = null
+  override val createdCallback: Option[() => Any] = null
+  override val eventCallback: Option[Event => Any] = null
+*/
+  def moveTo(a: ActorRef): Unit = {
+    a ! Parent(parentNode)
+    a ! Child1(childNode)
+    childNode ! Parent(a)
+    parentNode ! ChildUpdate(self, a)
+    childNode ! KillMe
+  }
 
   override def receive: Receive = {
     case DependenciesRequest =>
@@ -33,6 +53,23 @@ case class SelfJoinNode(
       case Event5(e1, e2, e3, e4, e5) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
     }
+    case Parent(p1) => {
+      parentNode = p1
+      println("parent received selfjoin", self.path)
+    }
+    case Child1(c) => {
+      childNode = c
+      nodeData = UnaryNodeData(name, requirements, context, childNode)
+      println("child received", self.path)
+    }
+    case Move(a) => {
+      moveTo(a)
+    }
+    case ChildUpdate(_, a) => {
+      childNode = a
+      nodeData = UnaryNodeData(name, requirements, context, childNode)
+    }
+    case KillMe => sender() ! PoisonPill
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
@@ -42,12 +79,14 @@ case class SelfJoinNode(
     destroyServiceProvider()
   }
 
-  addEventType("sq", createArrayOfNames(query.sq), createArrayOfClasses(query.sq))
+  addEventType("sq", createArrayOfNames(queryLength), createArrayOfClasses(queryLength))
+
+  //addEventType("sq", createArrayOfNames(query.sq), createArrayOfClasses(query.sq))
 
   val epStatement: EPStatement = createEpStatement(
     s"select * from " +
-    s"sq.${createWindowEplString(query.w1)} as lhs, " +
-    s"sq.${createWindowEplString(query.w2)} as rhs")
+    s"sq.${createWindowEplString(createWindow(windowType1, windowSize1))} as lhs, " +
+    s"sq.${createWindowEplString(createWindow(windowType1, windowSize1))} as rhs")
 
   val updateListener: UpdateListener = (newEventBeans: Array[EventBean], _) => newEventBeans.foreach(eventBean => {
     val values: Array[Any] =

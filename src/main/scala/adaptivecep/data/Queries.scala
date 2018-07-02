@@ -1,6 +1,8 @@
 package adaptivecep.data
 
+import java.io.Serializable
 import java.time.Duration
+
 import akka.actor.ActorContext
 import adaptivecep.data.Events._
 
@@ -27,7 +29,7 @@ object Queries {
   case object Smaller      extends Operator
   case object SmallerEqual extends Operator
 
-  case class NodeData(name: String, query: Query, context: ActorContext)
+  case class NodeData(name: String, requirements: Set[Requirement], context: ActorContext)
 
   sealed trait Requirement
   case class LatencyRequirement   (operator: Operator, duration: Duration,           callback: NodeData => Any) extends Requirement

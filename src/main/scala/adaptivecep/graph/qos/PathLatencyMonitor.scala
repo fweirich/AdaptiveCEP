@@ -30,7 +30,7 @@ trait PathLatencyMonitor {
 case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNodeMonitor {
 
   override def onCreated(nodeData: LeafNodeData): Unit = {
-    if (nodeData.query.requirements.collect{ case lr: LatencyRequirement => lr }.nonEmpty)
+    if (nodeData.requirements.collect{ case lr: LatencyRequirement => lr }.nonEmpty)
       println("PROBLEM:\tLatency requirements for leaf nodes are ignored, as leaf node latency is always considered 0.")
   }
 
@@ -38,6 +38,7 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
     case ChildLatencyRequest(requestTime) =>
       data.context.parent ! ChildLatencyResponse(data.context.self, requestTime)
       data.context.parent ! PathLatency(data.context.self, Duration.ZERO)
+    case _ =>
   }
 
 }
@@ -55,9 +56,9 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
     runnable = () => nodeData.childNode ! ChildLatencyRequest(clock.instant))
 
   override def onMessageReceive(message: Any, nodeData: UnaryNodeData): Unit = {
-    val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.query, nodeData.context)
+    val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.requirements, nodeData.context)
     val latencyRequirements: Set[LatencyRequirement] =
-      nodeData.query.requirements.collect { case lr: LatencyRequirement => lr }
+      nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
       case ChildLatencyRequest(time) =>
         nodeData.context.parent ! ChildLatencyResponse(nodeData.context.self, time)
@@ -110,9 +111,9 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
     })
 
   override def onMessageReceive(message: Any, nodeData: BinaryNodeData): Unit = {
-    val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.query, nodeData.context)
+    val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.requirements, nodeData.context)
     val latencyRequirements: Set[LatencyRequirement] =
-      nodeData.query.requirements.collect { case lr: LatencyRequirement => lr }
+      nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
       case ChildLatencyRequest(time) =>
         nodeData.context.parent ! ChildLatencyResponse(nodeData.context.self, time)
@@ -169,11 +170,11 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
             latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency1, lr)) lr.callback(callbackNodeData))
           } else {
             nodeData.context.parent ! PathLatency(nodeData.context.self, pathLatency2)
-            if (logging && nodeData.query.requirements.collect { case lr: LatencyRequirement => lr }.nonEmpty)
+            if (logging && nodeData.requirements.collect { case lr: LatencyRequirement => lr }.nonEmpty)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency2. " +
                 s"(Calculated every $interval seconds.)")
-            nodeData.query.requirements.collect { case lr: LatencyRequirement => lr }.foreach(lr =>
+            nodeData.requirements.collect { case lr: LatencyRequirement => lr }.foreach(lr =>
               if (isRequirementNotMet(pathLatency2, lr)) lr.callback(callbackNodeData))
           }
           childNode1Latency = None
@@ -181,6 +182,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
           childNode1PathLatency = None
           childNode2PathLatency = None
         }
+      case _ =>
     }
   }
 

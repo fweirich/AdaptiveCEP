@@ -1,13 +1,16 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
+import akka.remote.RemoteScope
 
 case class DisjunctionNode(
-    query: DisjunctionQuery,
+    //query: DisjunctionQuery,
+    requirements: Set[Requirement],
+    query1: Int,
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
@@ -17,6 +20,7 @@ case class DisjunctionNode(
 
   var childNode1Created: Boolean = false
   var childNode2Created: Boolean = false
+
 
   def fillArray(desiredLength: Int, array: Array[Either[Any, Any]]): Array[Either[Any, Any]] = {
     require(array.length <= desiredLength)
@@ -33,7 +37,27 @@ case class DisjunctionNode(
       }
     }).toArray
   }
-
+  def handleEvent(array: Array[Either[Any, Any]]): Unit = query1 match {
+    case 1 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(1, array)
+      emitEvent(Event1(filledArray(0)))
+    case 2 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(2, array)
+      emitEvent(Event2(filledArray(0), filledArray(1)))
+    case 3 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(3, array)
+      emitEvent(Event3(filledArray(0), filledArray(1), filledArray(2)))
+    case 4 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(4, array)
+      emitEvent(Event4(filledArray(0), filledArray(1), filledArray(2), filledArray(3)))
+    case 5 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(5, array)
+      emitEvent(Event5(filledArray(0), filledArray(1), filledArray(2), filledArray(3), filledArray(4)))
+    case 6 =>
+      val filledArray: Array[Either[Any, Any]] = fillArray(6, array)
+      emitEvent(Event6(filledArray(0), filledArray(1), filledArray(2), filledArray(3), filledArray(4), filledArray(5)))
+  }
+/*
   def handleEvent(array: Array[Either[Any, Any]]): Unit = query match {
     case _: Query1[_] =>
       val filledArray: Array[Either[Any, Any]] = fillArray(1, array)
@@ -53,6 +77,15 @@ case class DisjunctionNode(
     case _: Query6[_, _, _, _, _, _] =>
       val filledArray: Array[Either[Any, Any]] = fillArray(6, array)
       emitEvent(Event6(filledArray(0), filledArray(1), filledArray(2), filledArray(3), filledArray(4), filledArray(5)))
+  }
+*/
+  def moveTo(a: ActorRef): Unit = {
+    a ! Parent(parentNode)
+    a ! Child2(childNode1, childNode2)
+    childNode1 ! Parent(a)
+    childNode2 ! Parent(a)
+    parentNode ! ChildUpdate(self, a)
+    childNode1 ! KillMe
   }
 
   override def receive: Receive = {
@@ -80,6 +113,25 @@ case class DisjunctionNode(
       case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5), Right(e6)))
     }
+    case Parent(p1) => {
+      parentNode = p1
+      println("parent received disjunction", self.path)
+    }
+    case Child2(c1, c2) => {
+      childNode1 = c1
+      childNode2 = c2
+      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2)
+      println("child received", self.path)
+    }
+    case Move(a) => {
+      moveTo(a)
+    }
+    case ChildUpdate(old, a) => {
+      if(childNode1.eq(old)){childNode1 = a}
+      if(childNode2.eq(old)){childNode2 = a}
+      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2)
+    }
+    case KillMe => sender() ! PoisonPill
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
