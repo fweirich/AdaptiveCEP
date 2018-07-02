@@ -1,14 +1,13 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
-import com.espertech.esper.client._
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.nodes.traits.EsperEngine._
+import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
-import akka.remote.RemoteScope
+import akka.actor.{ActorRef, PoisonPill}
+import com.espertech.esper.client._
 
 case class SequenceNode(
     //query: SequenceQuery,
@@ -33,6 +32,7 @@ case class SequenceNode(
 
   var subscription1Acknowledged: Boolean = false
   var subscription2Acknowledged: Boolean = false
+  var parentReceived: Boolean = false
 
   def moveTo(a: ActorRef): Unit = {
     a ! Parent(parentNode)
@@ -44,10 +44,10 @@ case class SequenceNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription if sender() == queryPublishers(0) =>
       subscription1Acknowledged = true
-      if (subscription2Acknowledged) emitCreated()
+      if (subscription2Acknowledged && parentReceived) emitCreated()
     case AcknowledgeSubscription if sender() == queryPublishers(1) =>
       subscription2Acknowledged = true
-      if (subscription1Acknowledged) emitCreated()
+      if (subscription1Acknowledged && parentReceived) emitCreated()
     case event: Event if sender() == queryPublishers(0) => event match {
       case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
       case Event2(e1, e2) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2)))
@@ -66,7 +66,9 @@ case class SequenceNode(
     }
     case Parent(p1) => {
       parentNode = p1
-      println("parent received sequence", self.path)
+      parentReceived = true
+      nodeData = LeafNodeData(name, requirements, context, parentNode)
+      if (subscription1Acknowledged && subscription2Acknowledged) emitCreated()
     }
     case Move(a) => {
       moveTo(a)

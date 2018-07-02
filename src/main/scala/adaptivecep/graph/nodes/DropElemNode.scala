@@ -40,6 +40,9 @@ case class DropElemNode(
     case DropElem6Of6(_, _) => 6
   }
 */
+  var parentReceived: Boolean = false
+  var childCreated: Boolean = false
+
   def moveTo(a: ActorRef): Unit = {
     a ! Parent(parentNode)
     a ! Child1(childNode)
@@ -88,7 +91,8 @@ case class DropElemNode(
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode))
     case Created if sender() == childNode =>
-      emitCreated()
+      childCreated = true
+      if(parentReceived) emitCreated()
     case event: Event if sender() == childNode => event match {
       case Event1(_) => sys.error("Panic! Control flow should never reach this point!")
       case Event2(e1, e2) => handleEvent2(e1, e2)
@@ -99,16 +103,17 @@ case class DropElemNode(
     }
     case Parent(p1) => {
       parentNode = p1
-      println("parent received drop", self.path)
+      parentReceived = true
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
+      if(childCreated) emitCreated()
     }
     case Child1(c) => {
       childNode = c
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
-      println("child received", self.path)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case ChildUpdate(_, a) => {
       childNode = a
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case Move(a) => {
       moveTo(a)

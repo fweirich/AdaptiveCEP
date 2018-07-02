@@ -1,14 +1,13 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
-import com.espertech.esper.client._
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.graph.nodes.traits._
+import adaptivecep.graph.nodes.JoinNode._
 import adaptivecep.graph.nodes.traits.EsperEngine._
+import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
-import JoinNode._
-import akka.remote.RemoteScope
+import akka.actor.{ActorRef, PoisonPill}
+import com.espertech.esper.client._
 
 case class SelfJoinNode(
     //query: SelfJoinQuery,
@@ -27,11 +26,9 @@ case class SelfJoinNode(
 
   override val esperServiceProviderUri: String = name
 
-  /*
-  override val publishers = null
-  override val createdCallback: Option[() => Any] = null
-  override val eventCallback: Option[Event => Any] = null
-*/
+  var parentReceived: Boolean = false
+  var childCreated: Boolean = false
+
   def moveTo(a: ActorRef): Unit = {
     a ! Parent(parentNode)
     a ! Child1(childNode)
@@ -44,7 +41,8 @@ case class SelfJoinNode(
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode))
     case Created if sender() == childNode =>
-      emitCreated()
+      childCreated = true
+      if (parentReceived) emitCreated()
     case event: Event if sender() == childNode => event match {
       case Event1(e1) => sendEvent("sq", Array(toAnyRef(e1)))
       case Event2(e1, e2) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2)))
@@ -55,19 +53,20 @@ case class SelfJoinNode(
     }
     case Parent(p1) => {
       parentNode = p1
-      println("parent received selfjoin", self.path)
+      parentReceived = true
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
+      if(childCreated) emitCreated()
     }
     case Child1(c) => {
       childNode = c
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
-      println("child received", self.path)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case Move(a) => {
       moveTo(a)
     }
     case ChildUpdate(_, a) => {
       childNode = a
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case KillMe => sender() ! PoisonPill
     case unhandledMessage =>

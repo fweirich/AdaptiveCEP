@@ -1,14 +1,13 @@
 package adaptivecep.graph.nodes
 
-import akka.actor.{ActorRef, Address, Deploy, PoisonPill, Props}
-import com.espertech.esper.client._
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.graph.nodes.traits._
+import adaptivecep.graph.nodes.JoinNode._
 import adaptivecep.graph.nodes.traits.EsperEngine._
+import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
-import JoinNode._
-import akka.remote.RemoteScope
+import akka.actor.{ActorRef, PoisonPill}
+import com.espertech.esper.client._
 
 case class JoinNode(
     //query: JoinQuery,
@@ -30,6 +29,7 @@ case class JoinNode(
 
   var childNode1Created: Boolean = false
   var childNode2Created: Boolean = false
+  var parentReceived: Boolean = false
 
   def moveTo(a: ActorRef): Unit = {
     a ! Parent(parentNode)
@@ -45,10 +45,10 @@ case class JoinNode(
       sender ! DependenciesResponse(Seq(childNode1, childNode2))
     case Created if sender() == childNode1 =>
       childNode1Created = true
-      if (childNode2Created) emitCreated()
+      if (childNode2Created && parentReceived) emitCreated()
     case Created if sender() == childNode2 =>
       childNode2Created = true
-      if (childNode1Created) emitCreated()
+      if (childNode1Created && parentReceived) emitCreated()
     case event: Event if sender() == childNode1 => event match {
       case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
       case Event2(e1, e2) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2)))
@@ -67,18 +67,19 @@ case class JoinNode(
     }
     case Parent(p1) => {
       parentNode = p1
-      println("parent received join", self.path)
+      parentReceived = true
+      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
+      if(childNode1Created && childNode2Created) emitCreated()
     }
     case Child2(c1, c2) => {
       childNode1 = c1
       childNode2 = c2
-      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2)
-      println("child received join", self.path)
+      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
     case ChildUpdate(old, a) => {
       if(childNode1.eq(old)){childNode1 = a}
       if(childNode2.eq(old)){childNode2 = a}
-      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2)
+      nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
     case Move(a) => {
       moveTo(a)
@@ -116,9 +117,7 @@ case class JoinNode(
     }
     emitEvent(event)
   })
-
   epStatement.addListener(updateListener)
-
 }
 
 object JoinNode {

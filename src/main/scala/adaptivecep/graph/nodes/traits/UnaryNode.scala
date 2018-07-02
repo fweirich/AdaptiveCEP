@@ -21,7 +21,7 @@ trait UnaryNode extends Node {
 
   val frequencyMonitor: UnaryNodeMonitor = frequencyMonitorFactory.createUnaryNodeMonitor
   val latencyMonitor: UnaryNodeMonitor = latencyMonitorFactory.createUnaryNodeMonitor
-  var nodeData: UnaryNodeData = UnaryNodeData(name, requirements, context, childNode)
+  var nodeData: UnaryNodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
 
   def emitCreated(): Unit = {
     if (createdCallback.isDefined) createdCallback.get.apply() else parentNode ! Created

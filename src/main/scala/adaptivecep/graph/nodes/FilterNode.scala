@@ -24,28 +24,32 @@ case class FilterNode(
     parentNode ! ChildUpdate(self, a)
     childNode ! KillMe
   }
+  var parentReceived: Boolean = false
+  var childCreated: Boolean = false
 
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode))
     case Created if sender() == childNode =>
-      emitCreated()
+      childCreated = true
+      if(parentReceived) emitCreated()
     case event: Event if sender() == childNode => {
       if (cond(event)) emitEvent(event)
       println("gotEvent", cond(event))
     }
     case Parent(p1) => {
       parentNode = p1
-      println("parent received filter", self.path)
+      parentReceived = true
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
+      if(childCreated) emitCreated()
     }
     case Child1(c) => {
       childNode = c
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
-      println("child received", self.path)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case ChildUpdate(_, a) => {
       childNode = a
-      nodeData = UnaryNodeData(name, requirements, context, childNode)
+      nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case Move(actorRef) => {
       moveTo(actorRef)

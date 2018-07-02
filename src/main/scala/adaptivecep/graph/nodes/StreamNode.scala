@@ -19,7 +19,8 @@ case class StreamNode(
   extends LeafNode {
 
   val publisher: ActorRef = publishers(publisherName)
-  //val publisher: ActorRef = publishers(query.publisherName)
+  var subscriptionAcknowledged: Boolean = false
+  var parentReceived: Boolean = false
 
   publisher ! Subscribe
   println("subscribing to publisher", publisher.path)
@@ -33,13 +34,16 @@ case class StreamNode(
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription if sender() == publisher =>
-      emitCreated()
-    case event: Event if sender() == publisher =>
-      emitEvent(event)
+      subscriptionAcknowledged = true
+      if(parentReceived) emitCreated()
     case Parent(p1) => {
       parentNode = p1
-      println("parent received stream", self.path)
+      parentReceived = true
+      nodeData = LeafNodeData(name, requirements, context, parentNode)
+      if (subscriptionAcknowledged) emitCreated()
     }
+    case event: Event if sender() == publisher =>
+      emitEvent(event)
     case Move(a) => {
       moveTo(a)
     }

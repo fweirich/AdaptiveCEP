@@ -37,12 +37,12 @@ object AppRunner extends App {
         slidingWindow(2.seconds))
       .where(_ < _)
       .dropElem1(
-        latency < timespan(1.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
+        latency < timespan(1.milliseconds) otherwise { nodeData => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
       .selfJoin(
         tumblingWindow(1.instances),
         tumblingWindow(1.instances),
-        frequency > ratio( 3.instances,  5.seconds) otherwise { (nodeData) => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },
-        frequency < ratio(12.instances, 15.seconds) otherwise { (nodeData) => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
+        frequency > ratio( 3.instances,  5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },
+        frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
       .and(stream[Float]("C"))
       .or(stream[String]("D"))
 
@@ -64,8 +64,8 @@ object AppRunner extends App {
     PathLatencyMonitorFactory(interval =  5, logging = true) )), "Placement")
 
   test ! InitializeQuery
-  Thread.sleep(10000)
-  test ! "Move"
+  //Thread.sleep(10000)
+  //test ! "Move"
 
   /*
   val graph: ActorRef = GraphFactory.create(

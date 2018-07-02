@@ -324,8 +324,8 @@ case class PlacementActor (actorSystem: ActorSystem,
     val child = initialize(query, publishers,
       frequencyMonitorFactory,
       latencyMonitorFactory, None, address)
-    child ! Parent(parent)
     parent ! Child1(child)
+    child ! Parent(parent)
     connections += parent -> ConnectionData(props, address, Some(Child1(child)))
     connections(child).parent = Some(parent)
     parent
@@ -345,9 +345,9 @@ case class PlacementActor (actorSystem: ActorSystem,
     val child2 = initialize(query2, publishers,
       frequencyMonitorFactory,
       latencyMonitorFactory, None, address)
+    parent ! Child2(child1, child2)
     child1 ! Parent(parent)
     child2 ! Parent(parent)
-    parent ! Child2(child1, child2)
     connections += parent -> ConnectionData(props, address, Some(Child2(child1, child2)))
     connections(child1).parent = Some(parent)
     connections(child2).parent = Some(parent)
