@@ -81,7 +81,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
         if (childNodeLatency.isDefined) {
           val pathLatency: Duration = childNodeLatency.get.plus(childNodePathLatency.get)
           nodeData.parent ! PathLatency(nodeData.context.self, pathLatency)
-          if (logging /*&& latencyRequirements.nonEmpty*/)
+          if (logging && latencyRequirements.nonEmpty)
             println(
               s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency. " +
               s"(Calculated every $interval seconds.)")
@@ -121,10 +121,8 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
       case ChildLatencyResponse(childNode, requestTime) =>
         childNode match {
           case nodeData.childNode1 =>
-            println("blub1")
             childNode1Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
           case nodeData.childNode2 =>
-            println("blub2")
             childNode2Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
         }
         if (childNode1Latency.isDefined &&
@@ -135,7 +133,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
           val pathLatency2 = childNode2Latency.get.plus(childNode2PathLatency.get)
           if (pathLatency1.compareTo(pathLatency2) >= 0) {
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency1)
-            if (logging /*&& latencyRequirements.nonEmpty*/)
+            if (logging && latencyRequirements.nonEmpty)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency1. " +
                 s"(Calculated every $interval seconds.)")
