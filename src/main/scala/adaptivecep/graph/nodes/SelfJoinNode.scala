@@ -42,7 +42,7 @@ case class SelfJoinNode(
       sender ! DependenciesResponse(Seq(childNode))
     case Created if sender() == childNode =>
       childCreated = true
-      if (parentReceived) emitCreated()
+      //if (parentReceived && !created) emitCreated()
     case event: Event if sender() == childNode => event match {
       case Event1(e1) => sendEvent("sq", Array(toAnyRef(e1)))
       case Event2(e1, e2) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2)))
@@ -51,11 +51,12 @@ case class SelfJoinNode(
       case Event5(e1, e2, e3, e4, e5) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
     }
+    case CentralizedCreated => emitCreated()
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
-      if(childCreated) emitCreated()
+      //if(childCreated && !created) emitCreated()
     }
     case Child1(c) => {
       childNode = c
@@ -69,6 +70,8 @@ case class SelfJoinNode(
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case KillMe => sender() ! PoisonPill
+    case Controller(c) => controller = c
+    case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

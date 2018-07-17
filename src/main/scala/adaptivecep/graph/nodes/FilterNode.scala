@@ -32,16 +32,16 @@ case class FilterNode(
       sender ! DependenciesResponse(Seq(childNode))
     case Created if sender() == childNode =>
       childCreated = true
-      if(parentReceived) emitCreated()
+      //if (parentReceived && !created) emitCreated()
     case event: Event if sender() == childNode => {
       if (cond(event)) emitEvent(event)
-      println("gotEvent", cond(event))
     }
+    case CentralizedCreated => emitCreated()
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
-      if(childCreated) emitCreated()
+      //if (childCreated && !created) emitCreated()
     }
     case Child1(c) => {
       childNode = c
@@ -55,9 +55,10 @@ case class FilterNode(
       moveTo(actorRef)
     }
     case KillMe => sender() ! PoisonPill
+    case Controller(c) => controller = c
+    case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
   }
-
 }

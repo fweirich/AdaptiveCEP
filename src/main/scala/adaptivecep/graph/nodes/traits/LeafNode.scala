@@ -1,10 +1,14 @@
 package adaptivecep.graph.nodes.traits
 
+import java.util.concurrent.TimeUnit
+
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Query1
 import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
 import akka.actor.ActorRef
+
+import scala.concurrent.duration.FiniteDuration
 
 trait LeafNode extends Node {
 
@@ -13,14 +17,18 @@ trait LeafNode extends Node {
 
   var parentNode: ActorRef = self
 
+  val interval = 5
+
   val query: Query1[Int] = stream[Int]("A")
 
-  val frequencyMonitor: LeafNodeMonitor = frequencyMonitorFactory.createLeafNodeMonitor
-  val latencyMonitor: LeafNodeMonitor = latencyMonitorFactory.createLeafNodeMonitor
+  var frequencyMonitor: LeafNodeMonitor = frequencyMonitorFactory.createLeafNodeMonitor
+  var latencyMonitor: LeafNodeMonitor = latencyMonitorFactory.createLeafNodeMonitor
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
   def emitCreated(): Unit = {
-    if (createdCallback.isDefined) createdCallback.get.apply() else parentNode ! Created
+    frequencyMonitor = frequencyMonitorFactory.createLeafNodeMonitor
+    latencyMonitor = latencyMonitorFactory.createLeafNodeMonitor
+    if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)
   }

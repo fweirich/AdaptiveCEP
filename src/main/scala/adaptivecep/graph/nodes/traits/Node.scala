@@ -1,10 +1,8 @@
 package adaptivecep.graph.nodes.traits
 
-import akka.actor.{Actor, ActorRef, Props}
 import adaptivecep.data.Queries._
-import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos._
-import adaptivecep.publishers.Publisher
+import akka.actor.{Actor, ActorRef}
 
 trait Node extends Actor {
 
@@ -13,6 +11,8 @@ trait Node extends Actor {
   val publishers: Map[String, ActorRef]
   val frequencyMonitorFactory: MonitorFactory
   val latencyMonitorFactory: MonitorFactory
+  var controller: ActorRef = self
+  var created = false
 
   def createWindow(windowType: String, size: Int): Window ={
     windowType match {
@@ -22,6 +22,8 @@ trait Node extends Actor {
       case "TT" => TumblingTime(size)
     }
   }
+
+
 /*
   def createChildNode(
       id: Int,

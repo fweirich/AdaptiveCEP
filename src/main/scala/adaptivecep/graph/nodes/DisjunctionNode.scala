@@ -94,10 +94,10 @@ case class DisjunctionNode(
       sender ! DependenciesResponse(Seq(childNode1, childNode2))
     case Created if sender() == childNode1 =>
       childNode1Created = true
-      if (childNode2Created && parentReceived) emitCreated()
+      //if (childNode2Created && parentReceived && !created) emitCreated()
     case Created if sender() == childNode2 =>
       childNode2Created = true
-      if (childNode1Created && parentReceived) emitCreated()
+      //if (childNode1Created && parentReceived && !created) emitCreated()
     case event: Event if sender() == childNode1 => event match {
       case Event1(e1) => handleEvent(Array(Left(e1)))
       case Event2(e1, e2) => handleEvent(Array(Left(e1), Left(e2)))
@@ -114,11 +114,12 @@ case class DisjunctionNode(
       case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5), Right(e6)))
     }
+    case CentralizedCreated => emitCreated()
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
-      if(childNode1Created && childNode2Created) emitCreated()
+      //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case Child2(c1, c2) => {
       childNode1 = c1
@@ -134,6 +135,8 @@ case class DisjunctionNode(
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
     case KillMe => sender() ! PoisonPill
+    case Controller(c) => controller = c
+    case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

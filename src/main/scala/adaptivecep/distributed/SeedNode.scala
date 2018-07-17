@@ -20,6 +20,6 @@ object SeedNode{
 
       val seed: ActorSystem = ActorSystem.create("ClusterSystem", config)
 
-      seed.actorOf(Props[SimpleClusterListener], name = "clusterListener")
+      seed.actorOf(Props[HostActor], name = "Host")
   }
 }

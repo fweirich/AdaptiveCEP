@@ -44,10 +44,10 @@ case class SequenceNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription if sender() == queryPublishers(0) =>
       subscription1Acknowledged = true
-      if (subscription2Acknowledged && parentReceived) emitCreated()
+      //if (subscription2Acknowledged && parentReceived && !created) emitCreated()
     case AcknowledgeSubscription if sender() == queryPublishers(1) =>
       subscription2Acknowledged = true
-      if (subscription1Acknowledged && parentReceived) emitCreated()
+      //if (subscription1Acknowledged && parentReceived && !created) emitCreated()
     case event: Event if sender() == queryPublishers(0) => event match {
       case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
       case Event2(e1, e2) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2)))
@@ -64,16 +64,19 @@ case class SequenceNode(
       case Event5(e1, e2, e3, e4, e5) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
     }
+    case CentralizedCreated => emitCreated()
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
       nodeData = LeafNodeData(name, requirements, context, parentNode)
-      if (subscription1Acknowledged && subscription2Acknowledged) emitCreated()
+      //if (subscription1Acknowledged && subscription2Acknowledged) emitCreated()
     }
     case Move(a) => {
       moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
+    case Controller(c) => controller = c
+    case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

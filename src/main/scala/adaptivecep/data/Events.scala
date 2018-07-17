@@ -1,12 +1,26 @@
 package adaptivecep.data
 
-import akka.actor.{ActorRef, Address}
+import java.time.Instant
+
+import akka.actor.ActorRef
+
+import scala.concurrent.duration.Duration
 
 object Events {
 
   case object Created
 
+  case object Ping
+  case object Start
+
+  case object CentralizedCreated
+
   case object InitializeQuery
+
+  case object AllHosts
+  case class Hosts(h: Set[ActorRef])
+
+  case class Controller(controller: ActorRef)
 
   sealed trait Child
   case class Child1(c1: ActorRef)               extends Child
@@ -19,6 +33,13 @@ object Events {
   case class Move(a: ActorRef)
 
   case object KillMe
+
+  case object RequirementsNotMet
+
+  case class LatencyRequest(instant: Instant)
+  case class LatencyResponse(instant: Instant)
+  case object HostPropsRequest
+  case class HostPropsResponse(latencies: Map[ActorRef, Duration])
 
   case object DependenciesRequest
   case class DependenciesResponse(dependencies: Seq[ActorRef])

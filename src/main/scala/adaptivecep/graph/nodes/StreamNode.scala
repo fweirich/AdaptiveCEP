@@ -35,19 +35,22 @@ case class StreamNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription if sender() == publisher =>
       subscriptionAcknowledged = true
-      if(parentReceived) emitCreated()
+      //if(parentReceived && !created) emitCreated()
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
       nodeData = LeafNodeData(name, requirements, context, parentNode)
-      if (subscriptionAcknowledged) emitCreated()
+      //if (subscriptionAcknowledged && !created) emitCreated()
     }
     case event: Event if sender() == publisher =>
       emitEvent(event)
+    case CentralizedCreated => emitCreated()
     case Move(a) => {
       moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
+    case Controller(c) => controller = c
+    case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

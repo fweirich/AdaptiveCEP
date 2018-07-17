@@ -41,13 +41,13 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
         data.parent ! PathLatency(data.context.self, Duration.ZERO)
     }
   }
-
 }
 
 case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with UnaryNodeMonitor {
 
   val clock: Clock = Clock.systemDefaultZone
+  var met: Boolean = true
   var childNodeLatency: Option[Duration] = None
   var childNodePathLatency: Option[Duration] = None
 
@@ -72,7 +72,12 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
             println(
               s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency. " +
               s"(Calculated every $interval seconds.)")
-          latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency, lr)) lr.callback(callbackNodeData))
+          latencyRequirements.foreach(
+            lr =>{
+              if (isRequirementNotMet(pathLatency, lr)) {
+                lr.callback(callbackNodeData)
+              }
+            })
           childNodeLatency = None
           childNodePathLatency = None
         }
@@ -85,10 +90,18 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
             println(
               s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency. " +
               s"(Calculated every $interval seconds.)")
-          latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency, lr)) lr.callback(callbackNodeData))
+          met = true
+          latencyRequirements.foreach(
+            lr =>
+              if (isRequirementNotMet(pathLatency, lr)){
+                lr.callback(callbackNodeData)
+                met = false
+              }
+            )
           childNodeLatency = None
           childNodePathLatency = None
         }
+      case _ =>
     }
   }
 
@@ -97,6 +110,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
 case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with BinaryNodeMonitor {
 
+  var met: Boolean = true
   val clock: Clock = Clock.systemDefaultZone
   var childNode1Latency: Option[Duration] = None
   var childNode2Latency: Option[Duration] = None
@@ -124,6 +138,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
             childNode1Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
           case nodeData.childNode2 =>
             childNode2Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
+          case _ =>
         }
         if (childNode1Latency.isDefined &&
           childNode2Latency.isDefined &&
@@ -169,22 +184,35 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency1. " +
                 s"(Calculated every $interval seconds.)")
-            latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency1, lr)) lr.callback(callbackNodeData))
+            met = true
+            latencyRequirements.foreach(lr =>
+              if (isRequirementNotMet(pathLatency1, lr)){
+                lr.callback(callbackNodeData)
+                met = false
+              }
+            )
           } else {
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency2)
             if (logging && nodeData.requirements.collect { case lr: LatencyRequirement => lr }.nonEmpty)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency2. " +
                 s"(Calculated every $interval seconds.)")
+            met = true
             nodeData.requirements.collect { case lr: LatencyRequirement => lr }.foreach(lr =>
-              if (isRequirementNotMet(pathLatency2, lr)) lr.callback(callbackNodeData))
+              if (isRequirementNotMet(pathLatency2, lr)){
+                lr.callback(callbackNodeData)
+                met = false
+              }
+            )
           }
           childNode1Latency = None
           childNode2Latency = None
           childNode1PathLatency = None
           childNode2PathLatency = None
         }
+      case dummy => println(dummy)
     }
+
   }
 
 }
