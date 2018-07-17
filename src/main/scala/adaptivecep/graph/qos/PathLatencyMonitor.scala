@@ -48,13 +48,18 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
 
   val clock: Clock = Clock.systemDefaultZone
   var met: Boolean = true
+  var childNode: ActorRef = null
   var childNodeLatency: Option[Duration] = None
   var childNodePathLatency: Option[Duration] = None
 
-  override def onCreated(nodeData: UnaryNodeData): Unit = nodeData.context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(interval, TimeUnit.SECONDS),
-    runnable = () => nodeData.childNode ! ChildLatencyRequest(clock.instant))
+
+  override def onCreated(nodeData: UnaryNodeData): Unit = {
+    childNode = nodeData.childNode
+    nodeData.context.system.scheduler.schedule(
+      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+      interval = FiniteDuration(interval, TimeUnit.SECONDS),
+      runnable = () => childNode ! ChildLatencyRequest(clock.instant))
+  }
 
   override def onMessageReceive(message: Any, nodeData: UnaryNodeData): Unit = {
     val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.requirements, nodeData.context)
@@ -112,18 +117,24 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
 
   var met: Boolean = true
   val clock: Clock = Clock.systemDefaultZone
+  var childNode1: ActorRef = _
+  var childNode2: ActorRef = _
   var childNode1Latency: Option[Duration] = None
   var childNode2Latency: Option[Duration] = None
   var childNode1PathLatency: Option[Duration] = None
   var childNode2PathLatency: Option[Duration] = None
 
-  override def onCreated(nodeData: BinaryNodeData): Unit = nodeData.context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(interval, TimeUnit.SECONDS),
-    runnable = () => {
-      nodeData.childNode1 ! ChildLatencyRequest(clock.instant)
-      nodeData.childNode2 ! ChildLatencyRequest(clock.instant)
-    })
+  override def onCreated(nodeData: BinaryNodeData): Unit = {
+    childNode1 = nodeData.childNode1
+    childNode2 = nodeData.childNode2
+    nodeData.context.system.scheduler.schedule(
+      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+      interval = FiniteDuration(interval, TimeUnit.SECONDS),
+      runnable = () => {
+        childNode1 ! ChildLatencyRequest(clock.instant)
+        childNode2 ! ChildLatencyRequest(clock.instant)
+      })
+  }
 
   override def onMessageReceive(message: Any, nodeData: BinaryNodeData): Unit = {
     val callbackNodeData: NodeData = NodeData(nodeData.name, nodeData.requirements, nodeData.context)

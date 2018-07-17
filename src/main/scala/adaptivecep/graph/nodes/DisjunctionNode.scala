@@ -114,7 +114,11 @@ case class DisjunctionNode(
       case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5), Right(e6)))
     }
-    case CentralizedCreated => emitCreated()
+    case CentralizedCreated =>
+      if(!created){
+        created = true
+        emitCreated()
+    }
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
@@ -122,6 +126,7 @@ case class DisjunctionNode(
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case Child2(c1, c2) => {
+      emitCreated()
       childNode1 = c1
       childNode2 = c2
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
@@ -130,6 +135,7 @@ case class DisjunctionNode(
       moveTo(a)
     }
     case ChildUpdate(old, a) => {
+      emitCreated()
       if(childNode1.eq(old)){childNode1 = a}
       if(childNode2.eq(old)){childNode2 = a}
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)

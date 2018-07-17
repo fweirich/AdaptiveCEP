@@ -36,7 +36,11 @@ case class FilterNode(
     case event: Event if sender() == childNode => {
       if (cond(event)) emitEvent(event)
     }
-    case CentralizedCreated => emitCreated()
+    case CentralizedCreated =>
+      if(!created){
+        created = true
+        emitCreated()
+      }
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
@@ -44,10 +48,12 @@ case class FilterNode(
       //if (childCreated && !created) emitCreated()
     }
     case Child1(c) => {
+      emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case ChildUpdate(_, a) => {
+      emitCreated()
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }

@@ -65,7 +65,7 @@ case class PlacementActor (actorSystem: ActorSystem,
 
   }
   override def postStop(): Unit ={
-    hosts.keys.foreach(_ ! PoisonPill)
+    propsActors.keys.foreach(key => propsActors(key) ! PoisonPill)
     cluster.unsubscribe(self)
   }
 
@@ -106,8 +106,8 @@ case class PlacementActor (actorSystem: ActorSystem,
     if(host != NoHost && operator.props != null){
       val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
       if(moved) {
-        host.asInstanceOf[NodeHost].actorRef ! PoisonPill
-        println("killing old actor")
+        propsActors(operator.props) ! PoisonPill
+        println("killing old actor", propsActors(operator.props))
       }
       if (moved || previousPlacement.isEmpty){
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(host.asInstanceOf[NodeHost].actorRef.path.address))))
@@ -145,8 +145,10 @@ case class PlacementActor (actorSystem: ActorSystem,
     case Ping =>
       hosts += sender -> NodeHost(sender())
     case RequirementsNotMet =>
-      println("Recalculating Placement")
-      run()
+      propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
+        println("Recalculating Placement", sender())
+        run()
+      })
     case Hosts(hostss) => {
       //here = NodeHost(sender())
       var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]

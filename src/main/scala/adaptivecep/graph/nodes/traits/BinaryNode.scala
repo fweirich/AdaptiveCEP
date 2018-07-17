@@ -40,8 +40,8 @@ trait BinaryNode extends Node {
     })}
 
   def emitCreated(): Unit = {
-    frequencyMonitor = frequencyMonitorFactory.createBinaryNodeMonitor
-    latencyMonitor = latencyMonitorFactory.createBinaryNodeMonitor
+    latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1 = childNode1
+    latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2 = childNode2
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)

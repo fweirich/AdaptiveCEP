@@ -101,7 +101,11 @@ case class DropElemNode(
       case Event5(e1, e2, e3, e4, e5) => handleEvent5(e1, e2, e3, e4, e5)
       case Event6(e1, e2, e3, e4, e5, e6) => handleEvent6(e1, e2, e3, e4, e5, e6)
     }
-    case CentralizedCreated => emitCreated()
+    case CentralizedCreated =>
+      if(!created){
+        created = true
+        emitCreated()
+      }
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
@@ -109,10 +113,12 @@ case class DropElemNode(
       //if(childCreated && !created) emitCreated()
     }
     case Child1(c) => {
+      emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
     case ChildUpdate(_, a) => {
+      emitCreated()
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }

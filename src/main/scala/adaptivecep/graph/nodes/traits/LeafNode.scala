@@ -8,8 +8,6 @@ import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
 import akka.actor.ActorRef
 
-import scala.concurrent.duration.FiniteDuration
-
 trait LeafNode extends Node {
 
   val createdCallback: Option[() => Any]
@@ -26,8 +24,6 @@ trait LeafNode extends Node {
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
   def emitCreated(): Unit = {
-    frequencyMonitor = frequencyMonitorFactory.createLeafNodeMonitor
-    latencyMonitor = latencyMonitorFactory.createLeafNodeMonitor
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)

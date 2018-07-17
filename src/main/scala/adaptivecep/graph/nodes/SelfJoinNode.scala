@@ -51,7 +51,11 @@ case class SelfJoinNode(
       case Event5(e1, e2, e3, e4, e5) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
       case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
     }
-    case CentralizedCreated => emitCreated()
+    case CentralizedCreated =>
+      if(!created){
+        created = true
+        emitCreated()
+      }
     case Parent(p1) => {
       parentNode = p1
       parentReceived = true
@@ -59,6 +63,7 @@ case class SelfJoinNode(
       //if(childCreated && !created) emitCreated()
     }
     case Child1(c) => {
+      emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
@@ -66,6 +71,7 @@ case class SelfJoinNode(
       moveTo(a)
     }
     case ChildUpdate(_, a) => {
+      emitCreated()
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }

@@ -44,7 +44,11 @@ case class StreamNode(
     }
     case event: Event if sender() == publisher =>
       emitEvent(event)
-    case CentralizedCreated => emitCreated()
+    case CentralizedCreated =>
+      if(!created){
+        created = true
+        emitCreated()
+      }
     case Move(a) => {
       moveTo(a)
     }
