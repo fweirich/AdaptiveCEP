@@ -1,11 +1,11 @@
-package adaptivecep.distributed
+package adaptivecep.distributed.fixed
 
 import java.io.File
 
 import akka.actor.{ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
 
-object SeedNode{
+object HostSystemFixed{
 
   def main(args: Array[String]): Unit = {
     if (args.isEmpty)
@@ -15,11 +15,9 @@ object SeedNode{
   }
 
   def startup(args: Seq[String]): Unit = {
-      val file = new File(args.head)
+      val file = new File(/*"fixedHosts/" + */args.head + ".conf")
       val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
 
-      val seed: ActorSystem = ActorSystem.create("ClusterSystem", config)
-
-      seed.actorOf(Props[HostActor], name = "Host")
+      ActorSystem.create("ClusterSystem", config)
   }
 }

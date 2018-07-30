@@ -1,9 +1,10 @@
-package adaptivecep.distributed
+package adaptivecep.distributed.random
 
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Events._
-import adaptivecep.data.Queries._
+import adaptivecep.distributed._
+import adaptivecep.data.Queries.{Operator => _, _}
 import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, PoisonPill, Props}
@@ -11,9 +12,9 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.remote.RemoteScope
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
 
@@ -44,7 +45,7 @@ case class PlacementActor (actorSystem: ActorSystem,
 
   var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps]
   var consumers: Seq[Operator] = Seq.empty[Operator]
-  var hosts: Map[ActorRef, Host] = Map((here.actorRef) -> here)
+  var hostMap: Map[ActorRef, Host] = Map((here.actorRef) -> here)
 
   val interval = 5
 
@@ -62,8 +63,8 @@ case class PlacementActor (actorSystem: ActorSystem,
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
-
   }
+
   override def postStop(): Unit ={
     propsActors.keys.foreach(key => propsActors(key) ! PoisonPill)
     cluster.unsubscribe(self)
@@ -124,13 +125,13 @@ case class PlacementActor (actorSystem: ActorSystem,
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
-          hosts.foreach{
+          hostMap.foreach{
             host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
             //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
           }
         })
       initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, Some(eventCallback), consumer = true)
-      context.system.actorSelection(self.path.address + "/user/Host") ! AllHosts
+      context.system.actorSelection(self.path.address + "/user/Host-14") ! AllHosts
     }
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
@@ -142,20 +143,21 @@ case class PlacementActor (actorSystem: ActorSystem,
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
       checkAndRestoreActor(member.address)
-    case Ping =>
-      hosts += sender -> NodeHost(sender())
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
         println("Recalculating Placement", sender())
         run()
       })
-    case Hosts(hostss) => {
+    case Start =>
+      println("PLACEMENT ACTOR: starting")
+      run()
+    case Hosts(hostss) =>
       //here = NodeHost(sender())
       var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
       hostss.foreach(host => {
-        if(!hosts.contains(host)) {
+        if(!hostMap.contains(host)) {
           val nodeHost = NodeHost(host)
-          hosts += host -> nodeHost
+          hostMap += host -> nodeHost
           latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
         }
       })
@@ -163,23 +165,18 @@ case class PlacementActor (actorSystem: ActorSystem,
         hostProps += NoHost -> HostProps(latencyStub, Seq.empty[(Host, Double)])
       }
       hostProps(NoHost).latency ++ latencyStub
-
-    }
-    case Start =>
-      println("PLACEMENT ACTOR: starting")
-      run()
     case HostPropsResponse(latencies) => {
       //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
       //println(hosts)
       //println(latencies)
       var test = Seq.empty[(Host, Duration)]
-      latencies.foreach(tuple => if (hosts.contains(tuple._1)) {
-        if(hosts.contains(tuple._1)) {
-          test = test :+ (hosts(tuple._1), tuple._2)
+      latencies.foreach(tuple => if (hostMap.contains(tuple._1)) {
+        if(hostMap.contains(tuple._1)) {
+          test = test :+ (hostMap(tuple._1), tuple._2)
         }
       })
-      if (hosts.contains(sender())) {
-        hostProps += hosts(sender()) -> HostProps(test, Seq.empty[(Host, Double)])
+      if (hostMap.contains(sender())) {
+        hostProps += hostMap(sender()) -> HostProps(test, Seq.empty[(Host, Double)])
       }
     }
   }
@@ -533,6 +530,7 @@ case class PlacementActor (actorSystem: ActorSystem,
     connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, disjunctionQuery.sq1, disjunctionQuery.sq2, props, consumer)
     props
   }
+
 
   private def initializeConjunctionNode(publishers: Map[String, ActorRef],
                                         frequencyMonitorFactory: MonitorFactory,

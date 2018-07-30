@@ -1,9 +1,11 @@
-package adaptivecep.distributed
+package adaptivecep.distributed.random
 
 import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
+import adaptivecep.distributed.fixed.PlacementActorFixed
+import adaptivecep.distributed.{ActiveOperator, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._

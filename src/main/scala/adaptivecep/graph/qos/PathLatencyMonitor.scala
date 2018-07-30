@@ -2,9 +2,10 @@ package adaptivecep.graph.qos
 
 import java.time._
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Cancellable}
 import adaptivecep.data.Queries._
 
 case class ChildLatencyRequest(time: Instant)
@@ -47,7 +48,9 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with UnaryNodeMonitor {
 
   val clock: Clock = Clock.systemDefaultZone
+  var scheduledTask: Cancellable = null
   var met: Boolean = true
+  var latency: Option[Duration] = None
   var childNode: ActorRef = null
   var childNodeLatency: Option[Duration] = None
   var childNodePathLatency: Option[Duration] = None
@@ -55,10 +58,12 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
 
   override def onCreated(nodeData: UnaryNodeData): Unit = {
     childNode = nodeData.childNode
-    nodeData.context.system.scheduler.schedule(
-      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-      interval = FiniteDuration(interval, TimeUnit.SECONDS),
-      runnable = () => childNode ! ChildLatencyRequest(clock.instant))
+    if(scheduledTask == null) {
+      scheduledTask = nodeData.context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        runnable = () => childNode ! ChildLatencyRequest(clock.instant))
+    }
   }
 
   override def onMessageReceive(message: Any, nodeData: UnaryNodeData): Unit = {
@@ -72,6 +77,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
         childNodeLatency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
         if (childNodePathLatency.isDefined) {
           val pathLatency: Duration = childNodeLatency.get.plus(childNodePathLatency.get)
+          latency = Some(pathLatency)
           nodeData.parent ! PathLatency(nodeData.context.self, pathLatency)
           if (logging && latencyRequirements.nonEmpty)
             println(
@@ -90,6 +96,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
         childNodePathLatency = Some(duration)
         if (childNodeLatency.isDefined) {
           val pathLatency: Duration = childNodeLatency.get.plus(childNodePathLatency.get)
+          latency = Some(pathLatency)
           nodeData.parent ! PathLatency(nodeData.context.self, pathLatency)
           if (logging && latencyRequirements.nonEmpty)
             println(
@@ -116,6 +123,8 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with BinaryNodeMonitor {
 
   var met: Boolean = true
+  var latency: Option[Duration] = None
+  var scheduledTask: Cancellable = null
   val clock: Clock = Clock.systemDefaultZone
   var childNode1: ActorRef = _
   var childNode2: ActorRef = _
@@ -127,13 +136,15 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   override def onCreated(nodeData: BinaryNodeData): Unit = {
     childNode1 = nodeData.childNode1
     childNode2 = nodeData.childNode2
-    nodeData.context.system.scheduler.schedule(
-      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-      interval = FiniteDuration(interval, TimeUnit.SECONDS),
-      runnable = () => {
-        childNode1 ! ChildLatencyRequest(clock.instant)
-        childNode2 ! ChildLatencyRequest(clock.instant)
-      })
+    if(scheduledTask == null) {
+      scheduledTask = nodeData.context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        runnable = () => {
+          childNode1 ! ChildLatencyRequest(clock.instant)
+          childNode2 ! ChildLatencyRequest(clock.instant)
+        })
+    }
   }
 
   override def onMessageReceive(message: Any, nodeData: BinaryNodeData): Unit = {
@@ -158,6 +169,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
           val pathLatency1 = childNode1Latency.get.plus(childNode1PathLatency.get)
           val pathLatency2 = childNode2Latency.get.plus(childNode2PathLatency.get)
           if (pathLatency1.compareTo(pathLatency2) >= 0) {
+            latency = Some(pathLatency1)
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency1)
             if (logging && latencyRequirements.nonEmpty)
               println(
@@ -165,6 +177,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
                 s"(Calculated every $interval seconds.)")
             latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency1, lr)) lr.callback(callbackNodeData))
           } else {
+            latency = Some(pathLatency2)
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency2)
             if (logging && latencyRequirements.nonEmpty)
               println(
@@ -190,6 +203,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
           val pathLatency1 = childNode1Latency.get.plus(childNode1PathLatency.get)
           val pathLatency2 = childNode2Latency.get.plus(childNode2PathLatency.get)
           if (pathLatency1.compareTo(pathLatency2) >= 0) {
+            latency = Some(pathLatency1)
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency1)
             if (logging && latencyRequirements.nonEmpty)
               println(
@@ -203,6 +217,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               }
             )
           } else {
+            latency = Some(pathLatency2)
             nodeData.parent ! PathLatency(nodeData.context.self, pathLatency2)
             if (logging && nodeData.requirements.collect { case lr: LatencyRequirement => lr }.nonEmpty)
               println(
@@ -221,7 +236,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
           childNode1PathLatency = None
           childNode2PathLatency = None
         }
-      case dummy => println(dummy)
+      case _ =>
     }
 
   }

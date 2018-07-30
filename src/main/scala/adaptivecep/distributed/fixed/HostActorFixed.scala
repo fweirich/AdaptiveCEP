@@ -1,4 +1,4 @@
-package adaptivecep.distributed
+package adaptivecep.distributed.fixed
 
 import java.time._
 import java.util.concurrent.TimeUnit
@@ -9,17 +9,17 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
-class HostActor extends Actor with ActorLogging {
+class HostActorFixed extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
   val interval = 5
-  var otherHosts: Set[ActorRef] = Set.empty[ActorRef]
+  var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
 
-  // subscribe to cluster changes, re-subscribe when restart 
+  // subscribe to cluster changes, re-subscribe when restart
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
@@ -30,7 +30,7 @@ class HostActor extends Actor with ActorLogging {
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
-      otherHosts.foreach{ _ ! LatencyRequest(clock.instant)}
+      neighbors.foreach{ _ ! LatencyRequest(clock.instant)}
       //println(latencies)
     })
 
@@ -39,7 +39,7 @@ class HostActor extends Actor with ActorLogging {
   def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
-      context.system.actorSelection(member.address.toString + "/user/Host") ! LatencyRequest(clock.instant())
+      //context.system.actorSelection(member.address.toString + "/user/Host") ! LatencyRequest(clock.instant())
     case UnreachableMember(member) =>
       log.info("Member detected as unreachable: {}", member)
     case MemberRemoved(member, previousStatus) =>
@@ -48,17 +48,18 @@ class HostActor extends Actor with ActorLogging {
     case LatencyRequest(time) =>
       if(sender() != self){
         sender() ! LatencyResponse(time)
-        otherHosts += sender()
-        /*println(otherHosts)*/
+        //otherHosts += sender()
+        //println(otherHosts)
       }
     case LatencyResponse(requestTime) =>
       if(sender() != self) {
         latencies += sender() -> FiniteDuration(Duration.between(requestTime, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
-        otherHosts += sender()
+        //neighbors += sender()
       }
+    case Neighbors(n)=> neighbors = n
     case AllHosts => {
-      context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(otherHosts)
-      println("sending Hosts", sender(), Hosts(otherHosts + self))
+      context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
+      println("sending Hosts", sender(), Hosts(neighbors + self))
     }
     case Ping => sender() ! Ping
     case HostPropsRequest => sender() ! HostPropsResponse(latencies)

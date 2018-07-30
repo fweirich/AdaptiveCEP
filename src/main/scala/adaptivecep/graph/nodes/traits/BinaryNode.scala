@@ -6,10 +6,10 @@ import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Cancellable}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 trait BinaryNode extends Node {
 
@@ -28,20 +28,36 @@ trait BinaryNode extends Node {
   var frequencyMonitor: BinaryNodeMonitor = frequencyMonitorFactory.createBinaryNodeMonitor
   var latencyMonitor: BinaryNodeMonitor = latencyMonitorFactory.createBinaryNodeMonitor
   var nodeData: BinaryNodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
+  var scheduledTask: Cancellable = _
 
-  override def preStart(): Unit = {context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(interval, TimeUnit.SECONDS),
-    runnable = () => {
-      if(!latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].met){
-        controller ! RequirementsNotMet
-        println(latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].met)
+  private val monitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
+
+  override def preStart(): Unit = {
+    if(scheduledTask == null){
+      scheduledTask = context.system.scheduler.schedule(
+      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+      interval = FiniteDuration(interval, TimeUnit.SECONDS),
+      runnable = () => {
+        if(!monitor.met){
+          controller ! RequirementsNotMet
+          //println(monitor.met)
+        }
+        //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
+        //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
+        if(monitor.latency.isDefined) {
+          println(monitor.latency.get.toNanos/1000000.0)
+        }
       }
-    })}
+  )}}
+
+  override def postStop(): Unit = {
+    scheduledTask.cancel()
+    monitor.scheduledTask.cancel()
+  }
 
   def emitCreated(): Unit = {
-    latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1 = childNode1
-    latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2 = childNode2
+    monitor.childNode1 = childNode1
+    monitor.childNode2 = childNode2
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)

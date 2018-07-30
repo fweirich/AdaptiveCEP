@@ -20,6 +20,8 @@ object Events {
   case object AllHosts
   case class Hosts(h: Set[ActorRef])
 
+  case class Neighbors(neighbors: Set[ActorRef])
+
   case class Controller(controller: ActorRef)
 
   sealed trait Child
