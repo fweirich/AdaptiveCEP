@@ -18,7 +18,7 @@ trait BinaryNode extends Node {
 
   val query: Query1[Int] = stream[Int]("A")
 
-  val interval = 1
+  val interval = 2
 
   var childNode1: ActorRef = self
   var childNode2: ActorRef = self
