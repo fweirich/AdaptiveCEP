@@ -64,6 +64,8 @@ trait BinaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
+    monitor.childNode1 = childNode1
+    monitor.childNode2 = childNode2
     if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
     frequencyMonitor.onEventEmit(event, nodeData)
     latencyMonitor.onEventEmit(event, nodeData)
