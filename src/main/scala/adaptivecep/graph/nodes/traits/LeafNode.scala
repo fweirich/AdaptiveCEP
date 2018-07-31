@@ -15,8 +15,6 @@ trait LeafNode extends Node {
 
   var parentNode: ActorRef = self
 
-  val interval = 5
-
   val query: Query1[Int] = stream[Int]("A")
 
   var frequencyMonitor: LeafNodeMonitor = frequencyMonitorFactory.createLeafNodeMonitor

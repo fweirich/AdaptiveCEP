@@ -211,7 +211,7 @@ object AppRunnerFixed extends App {
           frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(70.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
+        latency < timespan(50.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
 
   Thread.sleep(3000)
 
@@ -219,7 +219,7 @@ object AppRunnerFixed extends App {
     query2,
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = true),
-    PathLatencyMonitorFactory(interval =  5, logging = true), NodeHost(host16), hosts)), "Placement")
+    PathLatencyMonitorFactory(interval =  2, logging = true), NodeHost(host16), hosts)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)
