@@ -22,6 +22,7 @@ trait UnaryNode extends Node {
   var childNode: ActorRef = self
   var parentNode: ActorRef = self
   val interval = 2
+  var counter = 0
 
   var scheduledTask: Cancellable = _
 
@@ -39,9 +40,13 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!monitor.met) {
+        if(!monitor.met && counter == 4) {
           controller ! RequirementsNotMet
+          counter = 0
           //println(monitor.met)
+        }
+        else {
+          counter += 1
         }
         if(monitor.latency.isDefined) {
           println(monitor.latency.get.toNanos/1000000.0)

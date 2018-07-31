@@ -100,7 +100,7 @@ object AppRunnerFixed extends App {
   val address5 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
   val address6 = Address("akka.tcp", "ClusterSystem", "18.191.133.105", 8000)
   val address7 = Address("akka.tcp", "ClusterSystem", "18.217.84.85", 8000)
-  val address8 = Address("akka.tcp", "ClusterSystem", "18.222.27.252", 8000)
+  val address8 = Address("akka.tcp", "ClusterSystem", "18.188.128.77", 8000)
   val address9 = Address("akka.tcp", "ClusterSystem", "18.222.217.210", 8000)
   val address10 = Address("akka.tcp", "ClusterSystem", "18.191.151.114", 8000)
   val address11 = Address("akka.tcp", "ClusterSystem", "13.59.203.164", 8000)
