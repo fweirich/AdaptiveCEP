@@ -19,6 +19,7 @@ object AppRunnerFixed extends App {
   val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
+  val r = scala.util.Random
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
@@ -92,24 +93,37 @@ object AppRunnerFixed extends App {
   host15 ! Neighbors(neighborsOfHost15)
   host16 ! Neighbors(neighborsOfHost16)
   */
+  val globalIP: String = "84.153.251.8"
 
-  val address1 = Address("akka.tcp", "ClusterSystem", "84.153.250.157", 2551)
-  val address2 = Address("akka.tcp", "ClusterSystem", "84.153.250.157", 2552)
-  val address3 = Address("akka.tcp", "ClusterSystem", "84.153.250.157", 2553)
-  val address4 = Address("akka.tcp", "ClusterSystem", "84.153.250.157", 2554)
+  val address1 = Address("akka.tcp", "ClusterSystem", globalIP, 2551)
+  val address2 = Address("akka.tcp", "ClusterSystem", globalIP, 2552)
+  val address3 = Address("akka.tcp", "ClusterSystem", globalIP, 2553)
+  val address4 = Address("akka.tcp", "ClusterSystem", globalIP, 2554)
   val address5 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
-  val address6 = Address("akka.tcp", "ClusterSystem", "18.191.133.105", 8000)
-  val address7 = Address("akka.tcp", "ClusterSystem", "18.217.84.85", 8000)
-  val address8 = Address("akka.tcp", "ClusterSystem", "18.188.128.77", 8000)
-  val address9 = Address("akka.tcp", "ClusterSystem", "18.222.217.210", 8000)
-  val address10 = Address("akka.tcp", "ClusterSystem", "18.191.151.114", 8000)
-  val address11 = Address("akka.tcp", "ClusterSystem", "13.59.203.164", 8000)
-  val address12 = Address("akka.tcp", "ClusterSystem", "52.15.223.221", 8000)
-  val address13 = Address("akka.tcp", "ClusterSystem", "13.58.223.225", 8000)
-  val address14 = Address("akka.tcp", "ClusterSystem", "18.191.220.234", 8000)
-  val address15 = Address("akka.tcp", "ClusterSystem", "18.191.252.227", 8000)
-  val address16 = Address("akka.tcp", "ClusterSystem", "84.153.250.157", 8000)
-
+  val address6 = Address("akka.tcp", "ClusterSystem", "18.219.27.168", 8000)
+  val address7 = Address("akka.tcp", "ClusterSystem", "18.222.202.159", 8000)
+  val address8 = Address("akka.tcp", "ClusterSystem", "18.222.225.106", 8000)
+  val address9 = Address("akka.tcp", "ClusterSystem", "18.216.74.162", 8000)
+  val address10 = Address("akka.tcp", "ClusterSystem", "13.58.178.184", 8000)
+  val address11 = Address("akka.tcp", "ClusterSystem", "18.191.158.183", 8000)
+  val address12 = Address("akka.tcp", "ClusterSystem", "18.222.219.136", 8000)
+  val address13 = Address("akka.tcp", "ClusterSystem", "18.222.124.42", 8000)
+  val address14 = Address("akka.tcp", "ClusterSystem", "18.222.207.202", 8000)
+  val address15 = Address("akka.tcp", "ClusterSystem", "18.191.141.167", 8000)
+  val address16 = Address("akka.tcp", "ClusterSystem", globalIP, 8000)
+/*
+  val alternativeAddress5 = Address("akka.tcp", "ClusterSystem", globalIP, 8001)
+  val alternativeAddress6 = Address("akka.tcp", "ClusterSystem", globalIP, 8002)
+  val alternativeAddress7 = Address("akka.tcp", "ClusterSystem", globalIP, 8003)
+  val alternativeAddress8 = Address("akka.tcp", "ClusterSystem", globalIP, 8004)
+  val alternativeAddress9 = Address("akka.tcp", "ClusterSystem", globalIP, 8005)
+  val alternativeAddress10 = Address("akka.tcp", "ClusterSystem", globalIP, 8006)
+  val alternativeAddress11 = Address("akka.tcp", "ClusterSystem", globalIP, 8007)
+  val alternativeAddress12 = Address("akka.tcp", "ClusterSystem", globalIP, 8008)
+  val alternativeAddress13 = Address("akka.tcp", "ClusterSystem", globalIP, 8009)
+  val alternativeAddress14 = Address("akka.tcp", "ClusterSystem", globalIP, 8010)
+  val alternativeAddress15 = Address("akka.tcp", "ClusterSystem", globalIP, 8011)
+*/
   val host1: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address1))), "Host" + "-1")
   val host2: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address2))), "Host" + "-2")
   val host3: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address3))), "Host" + "-3")
@@ -126,6 +140,19 @@ object AppRunnerFixed extends App {
   val host14: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address14))), "Host" + "-14")
   val host15: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address15))), "Host" + "-15")
   val host16: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "-16")
+/*
+  val alternativeHost5: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress5))), "Host" + "-1")
+  val alternativeHost6: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress6))), "Host" + "-2")
+  val alternativeHost7: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress7))), "Host" + "-3")
+  val alternativeHost8: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress8))), "Host" + "-4")
+  val alternativeHost9: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress9))), "Host" + "-5")
+  val alternativeHost10: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress10))), "Host" + "-6")
+  val alternativeHost11: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress11))), "Host" + "-7")
+  val alternativeHost12: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress12))), "Host" + "-8")
+  val alternativeHost13: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress13))), "Host" + "-9")
+  val alternativeHost14: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress14))), "Host" + "-10")
+  val alternativeHost15: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress15))), "Host" + "-11")
+  */
 
   val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host12, host16)
   val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host16)
@@ -172,6 +199,7 @@ object AppRunnerFixed extends App {
   val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
 
   val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11, host12, host13, host14, host15, host16)
+  val delayableHosts: Seq[ActorRef] = Seq(host5, host6, host7, host8, host9, host10, host11, host12, host13, host14, host15)
 
   val publishers: Map[String, ActorRef] = Map(
     "A" -> publisherA,
@@ -211,7 +239,7 @@ object AppRunnerFixed extends App {
           frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(50.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
+        latency < timespan(65.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
 
   Thread.sleep(3000)
 
@@ -224,5 +252,26 @@ object AppRunnerFixed extends App {
   placement ! InitializeQuery
   Thread.sleep(10000)
   placement ! Start
+
+  var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
+
+  while (true){
+    Thread.sleep(20000)
+    println("delaying Hosts")
+    delayableHosts.foreach(host => host ! Delay(false))
+    var delayIds: Set[Int] = Set.empty[Int]
+
+    while (delayIds.size < 5){
+      val temp = r.nextInt(11)
+      if(!delayIds.contains(temp)){
+        delayIds += temp
+      }
+    }
+    delayIds.foreach(index =>
+      delayedHosts = delayedHosts :+ delayableHosts(index)
+    )
+    delayedHosts.foreach(host => host ! Delay(true))
+  }
+
 }
 

@@ -71,4 +71,9 @@ trait BinaryNode extends Node {
     latencyMonitor.onEventEmit(event, nodeData)
   }
 
+  def delay(b: Boolean): Unit = {
+    delay = b
+    monitor.delay = true
+  }
+
 }

@@ -40,6 +40,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
 
   val cluster = Cluster(context.system)
   var previousPlacement: Map[Operator, Host] = Map.empty[Operator, Host]
+  val r = scala.util.Random
 
   var propsOperators: Map[Props, Operator] = Map.empty[Props ,Operator]
   var propsActors: Map[Props, ActorRef] = Map.empty[Props, ActorRef]
@@ -48,6 +49,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
   var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps]
   var consumers: Seq[Operator] = Seq.empty[Operator]
   var hostMap: Map[ActorRef, Host] = Map((here.actorRef) -> here)
+  var delayedHosts: Set[Host] = Set.empty[Host]
 
   val interval = 5
 
@@ -117,6 +119,21 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
     previousPlacement = map
   }
 
+/*  def delayRandomHost(): Unit = context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+    interval = FiniteDuration(interval, TimeUnit.SECONDS),
+    runnable = () => {
+      val selected = r.nextInt(hostProps.size - 1)
+      val delayedHost = hostProps.toSeq(selected)._1
+      if(delayedHost.isInstanceOf[NodeHost])
+      delayedHost.asInstanceOf[NodeHost].actorRef ! ChangeLatency
+      previousPlacement.foreach{tuple =>
+        if(tuple._2.eq(delayedHost)){
+          propsActors(tuple._1.props) ! ChangeLatency
+        }}
+      delayedHosts += delayedHost
+    })*/
+
   def place(operator: Operator, host: Host): Unit={
     if(host != NoHost && operator.props != null){
       val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
@@ -125,7 +142,9 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         //println("killing old actor", propsActors(operator.props))
       }
       if (moved || previousPlacement.isEmpty){
-        val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(host.asInstanceOf[NodeHost].actorRef.path.address))))
+        val hostActor = host.asInstanceOf[NodeHost].actorRef
+        val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
+        hostActor ! Node(ref)
         ref ! Controller(self)
         propsActors += operator.props -> ref
         //println("placing Actor", ref)
@@ -160,7 +179,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
         //println("Recalculating Placement", sender())
-        run()
+        //run()
       })
     case Start =>
       println("PLACEMENT ACTOR: starting")

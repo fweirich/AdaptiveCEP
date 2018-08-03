@@ -16,9 +16,12 @@ object Events {
   case object CentralizedCreated
 
   case object InitializeQuery
+  case class Delay(delay: Boolean)
 
   case object AllHosts
   case class Hosts(h: Set[ActorRef])
+
+  case class Node(actorRef: ActorRef)
 
   case class Neighbors(neighbors: Set[ActorRef])
 

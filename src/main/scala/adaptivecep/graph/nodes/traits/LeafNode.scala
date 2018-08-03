@@ -21,6 +21,8 @@ trait LeafNode extends Node {
   var latencyMonitor: LeafNodeMonitor = latencyMonitorFactory.createLeafNodeMonitor
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
+  private val monitor: PathLatencyLeafNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyLeafNodeMonitor]
+
   def emitCreated(): Unit = {
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
@@ -31,6 +33,11 @@ trait LeafNode extends Node {
     if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
     frequencyMonitor.onEventEmit(event, nodeData)
     latencyMonitor.onEventEmit(event, nodeData)
+  }
+
+  def delay(b: Boolean): Unit = {
+    delay = b
+    monitor.delay = true
   }
 
 }

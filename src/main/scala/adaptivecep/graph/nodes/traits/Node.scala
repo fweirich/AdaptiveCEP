@@ -13,6 +13,7 @@ trait Node extends Actor {
   val latencyMonitorFactory: MonitorFactory
   var controller: ActorRef = self
   var created = false
+  var delay: Boolean = false
 
   def createWindow(windowType: String, size: Int): Window ={
     windowType match {

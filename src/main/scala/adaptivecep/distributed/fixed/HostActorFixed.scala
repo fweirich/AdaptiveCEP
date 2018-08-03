@@ -16,6 +16,8 @@ class HostActorFixed extends Actor with ActorLogging {
   val cluster = Cluster(context.system)
   val interval = 5
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
+  var node: ActorRef = self
+  var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
 
@@ -36,6 +38,11 @@ class HostActorFixed extends Actor with ActorLogging {
 
   startLatencyMonitoring()
 
+  def delay(delay: Boolean): Unit = {
+    node ! Delay(delay)
+    this.delay = delay
+  }
+
   def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
@@ -47,7 +54,11 @@ class HostActorFixed extends Actor with ActorLogging {
         member.address, previousStatus)
     case LatencyRequest(time) =>
       if(sender() != self){
-        sender() ! LatencyResponse(time)
+        if(delay) {
+          sender() ! LatencyResponse(time.minusMillis(40))
+        } else {
+          sender() ! LatencyResponse(time)
+        }
         //otherHosts += sender()
         //println(otherHosts)
       }
@@ -62,6 +73,11 @@ class HostActorFixed extends Actor with ActorLogging {
       println("sending Hosts", sender(), Hosts(neighbors + self))
     }
     case Ping => sender() ! Ping
+    case Delay(b) => delay(b)
+    case Node(actorRef) =>{
+      node = actorRef
+      node ! Delay(delay)
+    }
     case HostPropsRequest => sender() ! HostPropsResponse(latencies)
     case _ =>
   }

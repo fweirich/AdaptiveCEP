@@ -3,6 +3,8 @@ package adaptivecep.graph.qos
 import java.time._
 import java.util.concurrent.TimeUnit
 
+import adaptivecep.data.Events.LatencyResponse
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 import akka.actor.{ActorRef, Cancellable}
@@ -30,6 +32,8 @@ trait PathLatencyMonitor {
 
 case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNodeMonitor {
 
+  var delay: Boolean = true
+
   override def onCreated(nodeData: LeafNodeData): Unit = {
     if (nodeData.requirements.collect{ case lr: LatencyRequirement => lr }.nonEmpty)
       println("PROBLEM:\tLatency requirements for leaf nodes are ignored, as leaf node latency is always considered 0.")
@@ -38,7 +42,11 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
   override def onMessageReceive(message: Any, data: LeafNodeData): Unit = {
     message match {
       case ChildLatencyRequest(requestTime) =>
-        data.parent ! ChildLatencyResponse(data.context.self, requestTime)
+        if(delay) {
+          data.parent ! ChildLatencyResponse(data.context.self, requestTime.minusMillis(40))
+        } else {
+          data.parent ! ChildLatencyResponse(data.context.self, requestTime)
+        }
         data.parent ! PathLatency(data.context.self, Duration.ZERO)
     }
   }
@@ -50,6 +58,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
   val clock: Clock = Clock.systemDefaultZone
   var scheduledTask: Cancellable = null
   var met: Boolean = true
+  var delay: Boolean = true
   var latency: Option[Duration] = None
   var childNode: ActorRef = null
   var childNodeLatency: Option[Duration] = None
@@ -72,7 +81,11 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
       case ChildLatencyRequest(time) =>
-        nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+        if(delay) {
+          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(40))
+        } else {
+          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+        }
       case ChildLatencyResponse(_, requestTime) =>
         childNodeLatency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
         if (childNodePathLatency.isDefined) {
@@ -123,6 +136,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with BinaryNodeMonitor {
 
   var met: Boolean = true
+  var delay: Boolean = true
   var latency: Option[Duration] = None
   var scheduledTask: Cancellable = null
   val clock: Clock = Clock.systemDefaultZone
@@ -153,7 +167,11 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
       case ChildLatencyRequest(time) =>
-        nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+        if(delay) {
+          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(40))
+        } else {
+          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+        }
       case ChildLatencyResponse(childNode, requestTime) =>
         childNode match {
           case nodeData.childNode1 =>
