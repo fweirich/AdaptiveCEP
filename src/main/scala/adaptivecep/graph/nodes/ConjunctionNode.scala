@@ -93,6 +93,9 @@ case class ConjunctionNode(
     }
     case Controller(c) => controller = c
     case KillMe => sender() ! PoisonPill
+    case Delay(b) => {
+      setDelay(b)
+    }
     case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)

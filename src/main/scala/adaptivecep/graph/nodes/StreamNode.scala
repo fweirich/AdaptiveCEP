@@ -1,6 +1,6 @@
 package adaptivecep.graph.nodes
 
-import adaptivecep.data.Events._
+import adaptivecep.data.Events.{Delay, _}
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
@@ -54,6 +54,9 @@ case class StreamNode(
     }
     case KillMe => sender() ! PoisonPill
     case Controller(c) => controller = c
+    case Delay(b) => {
+      setDelay(b)
+    }
     case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)

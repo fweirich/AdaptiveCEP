@@ -72,7 +72,7 @@ trait UnaryNode extends Node {
     latencyMonitor.onEventEmit(event, nodeData)
   }
 
-  def delay(b: Boolean): Unit = {
+  def setDelay(b: Boolean): Unit = {
     delay = b
     monitor.delay = true
   }
