@@ -258,7 +258,8 @@ object AppRunnerFixed extends App {
   while (true){
     Thread.sleep(20000)
     println("delaying Hosts")
-    delayableHosts.foreach(host => host ! Delay(false))
+    delayedHosts.foreach(host => host ! Delay(false))
+    delayedHosts = Seq.empty[ActorRef]
     var delayIds: Set[Int] = Set.empty[Int]
 
     while (delayIds.size < 5){
@@ -271,6 +272,7 @@ object AppRunnerFixed extends App {
       delayedHosts = delayedHosts :+ delayableHosts(index)
     )
     println(delayIds)
+    println(delayedHosts)
     delayedHosts.foreach(host => host ! Delay(true))
   }
 
