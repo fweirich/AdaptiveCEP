@@ -262,7 +262,7 @@ object AppRunnerFixed extends App {
     var delayIds: Set[Int] = Set.empty[Int]
 
     while (delayIds.size < 5){
-      val temp = r.nextInt(11)
+      val temp = r.nextInt(delayableHosts.size)
       if(!delayIds.contains(temp)){
         delayIds += temp
       }
