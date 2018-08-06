@@ -74,7 +74,7 @@ trait UnaryNode extends Node {
 
   def setDelay(b: Boolean): Unit = {
     delay = b
-    monitor.delay = true
+    monitor.delay = b
   }
 
 }

@@ -270,6 +270,7 @@ object AppRunnerFixed extends App {
     delayIds.foreach(index =>
       delayedHosts = delayedHosts :+ delayableHosts(index)
     )
+    println(delayIds)
     delayedHosts.foreach(host => host ! Delay(true))
   }
 
