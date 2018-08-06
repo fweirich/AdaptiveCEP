@@ -74,8 +74,10 @@ class HostActorFixed extends Actor with ActorLogging {
     }
     case Ping => sender() ! Ping
     case Delay(b) =>{
-      delay(b)
-      println("delaying")
+      if(sender() != self){
+        delay(b)
+        println("delaying")
+      }
     }
     case Node(actorRef) =>{
       node = actorRef
