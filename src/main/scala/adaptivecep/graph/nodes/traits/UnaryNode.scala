@@ -40,13 +40,10 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!monitor.met && counter == 4) {
+        if(!monitor.met) {
           controller ! RequirementsNotMet
           counter = 0
           //println(monitor.met)
-        }
-        else {
-          counter += 1
         }
         if(monitor.latency.isDefined) {
           println(monitor.latency.get.toNanos/1000000.0)

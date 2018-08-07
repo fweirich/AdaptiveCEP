@@ -239,7 +239,7 @@ object AppRunnerFixed extends App {
           frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(65.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+        latency < timespan(10.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
   Thread.sleep(3000)
 
