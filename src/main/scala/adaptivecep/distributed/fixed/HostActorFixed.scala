@@ -70,13 +70,13 @@ class HostActorFixed extends Actor with ActorLogging {
     case Neighbors(n)=> neighbors = n
     case AllHosts => {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
-      println("sending Hosts", sender(), Hosts(neighbors + self))
+      //println("sending Hosts", sender(), Hosts(neighbors + self))
     }
     case Ping => sender() ! Ping
     case Delay(b) =>{
       if(sender() != self){
         delay(b)
-        println("delaying")
+        //println("delaying")
       }
     }
     case Node(actorRef) =>{

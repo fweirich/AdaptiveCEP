@@ -236,18 +236,18 @@ object AppRunnerFixed extends App {
       .join(
         sequence(
           nStream[Float]("C") -> nStream[String]("D"),
-          frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") }),
+          frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(65.milliseconds) otherwise { (nodeData) => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") })
+        latency < timespan(65.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
   Thread.sleep(3000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorFixed(actorSystem,
     query2,
     publishers, publisherOperators,
-    AverageFrequencyMonitorFactory(interval = 15, logging = true),
-    PathLatencyMonitorFactory(interval =  2, logging = true), NodeHost(host11), hosts)), "Placement")
+    AverageFrequencyMonitorFactory(interval = 15, logging = false),
+    PathLatencyMonitorFactory(interval =  2, logging = false), NodeHost(host11), hosts)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)
@@ -257,7 +257,7 @@ object AppRunnerFixed extends App {
 
   while (true){
     Thread.sleep(20000)
-    println("delaying Hosts")
+    //println("delaying Hosts")
     delayedHosts.foreach(host => host ! Delay(false))
     delayedHosts = Seq.empty[ActorRef]
     var delayIds: Set[Int] = Set.empty[Int]
