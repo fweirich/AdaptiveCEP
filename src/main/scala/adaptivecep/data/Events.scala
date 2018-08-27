@@ -2,6 +2,7 @@ package adaptivecep.data
 
 import java.time.Instant
 
+import adaptivecep.distributed.{ActiveOperator, TentativeOperator}
 import akka.actor.ActorRef
 
 import scala.concurrent.duration.Duration
@@ -10,8 +11,26 @@ object Events {
 
   case object Created
 
-  case object Ping
-  case object Start
+  sealed trait GreedyPlacementEvent
+  case class CostMessage(latency: Duration) extends GreedyPlacementEvent
+  case class BecomeActiveOperator(operator: ActiveOperator) extends GreedyPlacementEvent
+  case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef, parentHosts: Seq[ActorRef]) extends GreedyPlacementEvent
+  case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent
+  case object OperatorRequest extends GreedyPlacementEvent
+  case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends GreedyPlacementEvent
+  case object ParentRequest extends GreedyPlacementEvent
+  case class ParentResponse(parent: Option[ActorRef]) extends GreedyPlacementEvent
+  case class ChildHost1(actorRef: ActorRef) extends GreedyPlacementEvent
+  case class ChildHost2(actorRef1: ActorRef, actorRef2: ActorRef) extends GreedyPlacementEvent
+  case class ChildResponse(childNode: ActorRef) extends GreedyPlacementEvent
+  case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends GreedyPlacementEvent
+  case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  GreedyPlacementEvent
+  case object Consumer extends GreedyPlacementEvent
+  case object Start extends GreedyPlacementEvent
+  case class CostRequest(instant: Instant) extends GreedyPlacementEvent
+  case class CostResponse(instant: Instant) extends GreedyPlacementEvent
+  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
+  case object MigrationComplete extends GreedyPlacementEvent
 
   case object CentralizedCreated
 
@@ -39,7 +58,7 @@ object Events {
 
   case object KillMe
 
-  case object RequirementsNotMet
+  case object RequirementsNotMet extends GreedyPlacementEvent
 
   case class LatencyRequest(instant: Instant)
   case class LatencyResponse(instant: Instant)

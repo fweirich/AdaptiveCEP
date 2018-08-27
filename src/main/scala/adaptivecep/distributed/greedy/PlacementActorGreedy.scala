@@ -1,11 +1,10 @@
-package adaptivecep.distributed.fixed
+package adaptivecep.distributed.greedy
 
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Events._
-import adaptivecep.distributed.{ActiveOperator, Host, NoHost, NodeHost}
-import adaptivecep.distributed.Operator
 import adaptivecep.data.Queries.{Operator => _, _}
+import adaptivecep.distributed._
 import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, PoisonPill, Props}
@@ -20,7 +19,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.Random
 
-case class PlacementActorFixed (actorSystem: ActorSystem,
+case class PlacementActorGreedy (actorSystem: ActorSystem,
                            query: Query,
                            publishers: Map[String, ActorRef],
                            publisherOperators: Map[String, Operator],
@@ -116,12 +115,13 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         }
         val parent = parents(operator)
         if (parent.isDefined) {
-          actorRef ! Parent(propsActors(parent.get.props))
+          map(operator).asInstanceOf[NodeHost].actorRef ! ParentHost(map(propsOperators(parent.get.props)).asInstanceOf[NodeHost].actorRef, propsActors(parent.get.props))
+          //actorRef ! Parent(propsActors(parent.get.props))
           //println("setting Parent of", actorRef, propsActors(parent.get.props))
         }
       }
     })
-    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators)
+    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
     previousPlacement = map
   }
 
@@ -136,7 +136,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
         hostActor ! Node(ref)
-        ref ! Controller(self)
+        ref ! Controller(hostActor)
         propsActors += operator.props -> ref
         //println("placing Actor", ref)
       }
@@ -175,6 +175,9 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
       println("PLACEMENT ACTOR: starting")
       run()
     case HostPropsResponse(latencies) =>
+      //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
+      //println(hosts)
+      //println(latencies)
       var test = Seq.empty[(Host, Duration)]
       latencies.foreach(tuple =>
         if(hosts.contains(tuple._1)) {

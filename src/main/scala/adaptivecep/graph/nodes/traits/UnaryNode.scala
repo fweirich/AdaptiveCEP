@@ -43,7 +43,6 @@ trait UnaryNode extends Node {
         if(!monitor.met) {
           controller ! RequirementsNotMet
           counter = 0
-          //println(monitor.met)
         }
         if(monitor.latency.isDefined) {
           println(monitor.latency.get.toNanos/1000000.0)

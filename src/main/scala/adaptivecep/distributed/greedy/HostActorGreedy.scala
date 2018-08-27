@@ -1,17 +1,17 @@
-package adaptivecep.distributed.fixed
+package adaptivecep.distributed.greedy
 
 import java.time._
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Events._
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import adaptivecep.distributed.strategy1.GreedyPlacementCalculator
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 
-class HostActorFixed extends Actor with ActorLogging {
+class HostActorGreedy extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
   val interval = 5
@@ -20,6 +20,7 @@ class HostActorFixed extends Actor with ActorLogging {
   var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
+  var placementCalculator : GreedyPlacementCalculator = _
 
   // subscribe to cluster changes, re-subscribe when restart
   override def preStart(): Unit = {
@@ -67,7 +68,9 @@ class HostActorFixed extends Actor with ActorLogging {
         latencies += sender() -> FiniteDuration(Duration.between(requestTime, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
         //neighbors += sender()
       }
-    case Neighbors(n)=> neighbors = n
+    case Neighbors(n)=>
+      neighbors = n
+      placementCalculator = new GreedyPlacementCalculator(self, context, n)
     case AllHosts => {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
       //println("sending Hosts", sender(), Hosts(neighbors + self))
@@ -81,7 +84,9 @@ class HostActorFixed extends Actor with ActorLogging {
     case Node(actorRef) =>{
       node = actorRef
       node ! Delay(delay)
+      placementCalculator.setNode(actorRef)
     }
+    case gPE: GreedyPlacementEvent => placementCalculator.processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(latencies)
     case _ =>
   }
