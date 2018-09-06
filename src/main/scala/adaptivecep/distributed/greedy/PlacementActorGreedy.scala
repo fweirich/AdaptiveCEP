@@ -59,7 +59,7 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
       //case Event3(Left(i1), Left(i2), Left(f)) => println(s"COMPLEX EVENT:\tEvent3($i1,$i2,$f)")
       //case Event3(Right(s), _, _)              => println(s"COMPLEX EVENT:\tEvent1($s)")
       // Callback for `query2`:
-       case Event4(i1, i2, f, s)             => /*println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")*/
+       case Event4(i1, i2, f, s)             => println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")
       // This is necessary to avoid warnings about non-exhaustive `match`:
       case _                             => println("what the hell")
   }
@@ -101,6 +101,7 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
           case 1 =>
             if (children.head.props != null) {
               map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost1(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef)
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
               actorRef ! Child1(propsActors(children.head.props))
               actorRef ! CentralizedCreated
 
@@ -108,6 +109,8 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
           case 2 =>
             if (children.head.props != null && children(1).props != null) {
               map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost2(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef, map(propsOperators(children(1).props)).asInstanceOf[NodeHost].actorRef)
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children(1).props))
               actorRef ! Child2(propsActors(children.head.props), propsActors(children(1).props))
               actorRef ! CentralizedCreated
 
@@ -135,6 +138,7 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
       if (moved || previousPlacement.isEmpty){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
+        hostActor ! SetActiveOperator(operator.props)
         hostActor ! Node(ref)
         ref ! Controller(hostActor)
         propsActors += operator.props -> ref
@@ -706,11 +710,13 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
       latencyMonitorFactory, None, consumer = false)
     val child1Operator = propsOperators(child1)
     val child2Operator = propsOperators(child2)
-    var operator = ActiveOperator(here, props, Seq(child1Operator, child2Operator))
+    var operator: ActiveOperator = null
     if(consumer){
+      operator = ActiveOperator(here, props, Seq(child1Operator, child2Operator))
       consumers = consumers :+ operator
+    } else {
+      operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
     }
-    operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
     propsOperators += props -> operator
     parents += child1Operator -> Some(propsOperators(props))
     parents += child2Operator -> Some(propsOperators(props))

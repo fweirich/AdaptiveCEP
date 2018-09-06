@@ -19,6 +19,7 @@ trait BinaryNode extends Node {
   val query: Query1[Int] = stream[Int]("A")
 
   val interval = 2
+  var counter = 0
 
   var childNode1: ActorRef = self
   var childNode2: ActorRef = self
@@ -30,7 +31,7 @@ trait BinaryNode extends Node {
   var nodeData: BinaryNodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
   var scheduledTask: Cancellable = _
 
-  private val monitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
+  val monitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
 
   override def preStart(): Unit = {
     if(scheduledTask == null){
@@ -38,14 +39,18 @@ trait BinaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!monitor.met){
+        counter += 1
+        if(!monitor.met && counter > 3){
+          counter = 0
           controller ! RequirementsNotMet
+          monitor.met = true
           //println(monitor.met)
         }
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
         if(monitor.latency.isDefined) {
           println(monitor.latency.get.toNanos/1000000.0)
+          monitor.latency = None
         }
       }
   )}}
@@ -53,6 +58,7 @@ trait BinaryNode extends Node {
   override def postStop(): Unit = {
     scheduledTask.cancel()
     monitor.scheduledTask.cancel()
+    println("Shutting down....")
   }
 
   def emitCreated(): Unit = {

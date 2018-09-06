@@ -3,7 +3,7 @@ package adaptivecep.data
 import java.time.Instant
 
 import adaptivecep.distributed.{ActiveOperator, TentativeOperator}
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Props}
 
 import scala.concurrent.duration.Duration
 
@@ -14,18 +14,19 @@ object Events {
   sealed trait GreedyPlacementEvent
   case class CostMessage(latency: Duration) extends GreedyPlacementEvent
   case class BecomeActiveOperator(operator: ActiveOperator) extends GreedyPlacementEvent
-  case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef, parentHosts: Seq[ActorRef]) extends GreedyPlacementEvent
+  case class SetActiveOperator(operator: Props) extends GreedyPlacementEvent
+  case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
+                                     parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
+                                     childHost2: Option[ActorRef]) extends GreedyPlacementEvent
   case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent
   case object OperatorRequest extends GreedyPlacementEvent
   case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends GreedyPlacementEvent
-  case object ParentRequest extends GreedyPlacementEvent
   case class ParentResponse(parent: Option[ActorRef]) extends GreedyPlacementEvent
   case class ChildHost1(actorRef: ActorRef) extends GreedyPlacementEvent
   case class ChildHost2(actorRef1: ActorRef, actorRef2: ActorRef) extends GreedyPlacementEvent
   case class ChildResponse(childNode: ActorRef) extends GreedyPlacementEvent
   case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends GreedyPlacementEvent
   case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  GreedyPlacementEvent
-  case object Consumer extends GreedyPlacementEvent
   case object Start extends GreedyPlacementEvent
   case class CostRequest(instant: Instant) extends GreedyPlacementEvent
   case class CostResponse(instant: Instant) extends GreedyPlacementEvent
@@ -57,6 +58,7 @@ object Events {
   case class Move(a: ActorRef)
 
   case object KillMe
+  case object Kill
 
   case object RequirementsNotMet extends GreedyPlacementEvent
 

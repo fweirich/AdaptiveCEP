@@ -32,7 +32,7 @@ trait UnaryNode extends Node {
   var latencyMonitor: UnaryNodeMonitor = latencyMonitorFactory.createUnaryNodeMonitor
   var nodeData: UnaryNodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
 
-  private val monitor: PathLatencyUnaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyUnaryNodeMonitor]
+  val monitor: PathLatencyUnaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyUnaryNodeMonitor]
 
   override def preStart(): Unit = {
     if(scheduledTask == null){
@@ -40,18 +40,22 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!monitor.met) {
-          controller ! RequirementsNotMet
+        counter += 1
+        if(!monitor.met && counter > 3) {
           counter = 0
+          controller ! RequirementsNotMet
+          monitor.met = true
         }
         if(monitor.latency.isDefined) {
           println(monitor.latency.get.toNanos/1000000.0)
+          monitor.latency = None
         }
     })}}
 
   override def postStop(): Unit = {
     scheduledTask.cancel()
     monitor.scheduledTask.cancel()
+    println("Shutting down....")
   }
 
   def emitCreated(): Unit = {

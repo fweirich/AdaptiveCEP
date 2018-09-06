@@ -15,7 +15,7 @@ import com.typesafe.config.ConfigFactory
 
 object AppRunnerGreedy extends App {
 
-  val file = new File("application.conf")
+  val file = new File("applicationlocal.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
@@ -92,8 +92,11 @@ object AppRunnerGreedy extends App {
   host15 ! Neighbors(neighborsOfHost15)
   host16 ! Neighbors(neighborsOfHost16)
   */
-  val globalIP: String = "[2a02:908:181:7140:69c9:9a2f:55ff:458e]"
+  //val globalIP: String = "[2a02:908:181:7140:69c9:9a2f:55ff:458e]"
 
+
+  //AWS Setup
+  /*
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
   val address2 = Address("akka.tcp", "ClusterSystem", sys.env("HOST2"), 8000)
   val address3 = Address("akka.tcp", "ClusterSystem", sys.env("HOST3"), 8000)
@@ -105,6 +108,20 @@ object AppRunnerGreedy extends App {
   val address9 = Address("akka.tcp", "ClusterSystem", sys.env("HOST9"), 8000)
   val address10 = Address("akka.tcp", "ClusterSystem", sys.env("HOST10"), 8000)
   val address11 = Address("akka.tcp", "ClusterSystem", sys.env("HOST11"), 8000)
+*/
+
+  //LOCAL Setup
+  val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
+  val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
+  val address3 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2553)
+  val address4 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2554)
+  val address5 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2555)
+  val address6 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2556)
+  val address7 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2557)
+  val address8 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2558)
+  val address9 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2559)
+  val address10 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2560)
+  val address11 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2561)
   /*val address12 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:dbe6:4d20:b19e:5fcf]", 8000)
   val address13 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:a5f7:96f6:f59:7752]", 8000)
   val address14 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:fb5e:e067:3fc7:89a6]", 8000)
@@ -198,7 +215,7 @@ object AppRunnerGreedy extends App {
   val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
 
   val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11/*, host12, host13, host14, host15, host16*/)
-  val delayableHosts: Seq[ActorRef] = Seq(host2, host3, host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
+  val delayableHosts: Seq[ActorRef] = Seq(host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
 
   val publishers: Map[String, ActorRef] = Map(
     "A" -> publisherA,
@@ -238,7 +255,7 @@ object AppRunnerGreedy extends App {
           frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(10.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+        latency < timespan(20.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
   Thread.sleep(3000)
 
@@ -255,7 +272,7 @@ object AppRunnerGreedy extends App {
   var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
 
   while (true){
-    Thread.sleep(30000)
+    Thread.sleep(20000)
     //println("delaying Hosts")
     delayedHosts.foreach(host => host ! Delay(false))
     delayedHosts = Seq.empty[ActorRef]
@@ -271,7 +288,7 @@ object AppRunnerGreedy extends App {
       delayedHosts = delayedHosts :+ delayableHosts(index)
     )
     //println(delayIds)
-    //println(delayedHosts)
+    println(delayedHosts)
     delayedHosts.foreach(host => host ! Delay(true))
   }
 

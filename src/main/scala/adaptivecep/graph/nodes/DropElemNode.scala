@@ -107,12 +107,14 @@ case class DropElemNode(
         emitCreated()
       }
     case Parent(p1) => {
+      println("Parent received", p1)
       parentNode = p1
       parentReceived = true
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       //if(childCreated && !created) emitCreated()
     }
     case Child1(c) => {
+      println("Child received", c)
       emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
@@ -126,7 +128,14 @@ case class DropElemNode(
       moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
-    case Controller(c) => controller = c
+    case Kill =>
+      scheduledTask.cancel()
+      monitor.scheduledTask.cancel()
+      self ! PoisonPill
+      println("Shutting down....")
+    case Controller(c) =>
+      controller = c
+      println("Got Controller", c)
     case Delay(b) => {
       setDelay(b)
     }

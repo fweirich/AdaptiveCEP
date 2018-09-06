@@ -71,12 +71,14 @@ case class JoinNode(
         emitCreated()
       }
     case Parent(p1) => {
+      println("Parent received", p1)
       parentNode = p1
       parentReceived = true
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case Child2(c1, c2) => {
+      println("Children received", c1, c2)
       emitCreated()
       childNode1 = c1
       childNode2 = c2
@@ -92,7 +94,14 @@ case class JoinNode(
       moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
-    case Controller(c) => controller = c
+    case Kill =>
+      scheduledTask.cancel()
+      monitor.scheduledTask.cancel()
+      self ! PoisonPill
+      println("Shutting down....")
+    case Controller(c) =>
+      controller = c
+      println("Got Controller", c)
     case Delay(b) => {
       setDelay(b)
     }

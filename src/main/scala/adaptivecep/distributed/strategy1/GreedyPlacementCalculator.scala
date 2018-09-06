@@ -35,7 +35,7 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
 
   var receivedResponses: Set[ActorRef] = Set.empty
 
-  var parentNode: ActorRef = _
+  var parentNode: Option[ActorRef] = None
   var parentHosts: Seq[ActorRef] = Seq.empty[ActorRef]
 
   var costs: Map[ActorRef, (Duration, Double)] = Map.empty
@@ -45,7 +45,7 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
   sealed trait Optimizing
   case object Maximizing extends Optimizing
   case object Minimizing extends Optimizing
-
+/*
   def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(5, TimeUnit.SECONDS),
@@ -54,8 +54,9 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
     })
 
   startLatencyMonitoring()
-
+*/
   def chooseTentativeOperators() : Unit = {
+    println("CHOOSING TENTATIVE OPERATORS")
     if (children.nonEmpty){
       if(activeOperator.isDefined){
         val neighborSeq: Seq[ActorRef] = neighbors.toSeq
@@ -67,7 +68,7 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
             chosen += randomNeighbor
             val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
             tentativeHosts = tentativeHosts :+ randomNeighbor
-            randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode, parentHosts)
+            //randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts)
           }
           timeout += 1
         }
@@ -85,6 +86,7 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
   }
 
   def setup() : Unit = {
+    println("setting UP", neighbors)
     neighbors.foreach(neighbor => neighbor ! OperatorRequest)
   }
 
@@ -93,22 +95,29 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
       case m: CostMessage => processCostMessage(m, sender)
       case BecomeActiveOperator(operator) =>
         becomeActiveOperator(operator)
-      case BecomeTentativeOperator(operator, p, pHosts) =>
-        parentNode = p
+      case BecomeTentativeOperator(operator, p, pHosts, c1, c2) =>
+        parentNode = Some(p)
         parentHosts = pHosts
         becomeTentativeOperator(operator)
       case ChooseTentativeOperators(parents) =>
+        println("Choosing Tentative Operators")
         parentHosts = parents
         if(parents.isEmpty){
           consumer = true
+          println(children)
           children.toSeq.head._1 ! ChooseTentativeOperators(Seq(self))
         } else if(children.isEmpty){
           parentHosts.foreach(_ ! FinishedChoosing(Seq.empty[ActorRef]))
         } else {
           setup()
         }
-      case OperatorRequest => sender ! OperatorResponse(activeOperator, tentativeOperator)
+      case OperatorRequest =>
+        println("Got Operator Request, Sending Response to", sender)
+        sender ! OperatorResponse(activeOperator, tentativeOperator)
       case OperatorResponse(ao, to) =>
+        println("Received Operator Response:")
+        println("no. of responses ", receivedResponses)
+        println("no. of neighbors ", neighbors.size)
         if(ao.isDefined){
           operators += sender -> ao
         } else {
@@ -138,9 +147,12 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
         h1 ! ParentHost(self, node.get)
         h2 ! ParentHost(self, node.get)
       case ParentHost(p, ref) =>
-        node.get ! Parent(ref)
-        parent = Some(p)
+        if(node.isDefined){
+          node.get ! Parent(ref)
+          parent = Some(p)
+        }
       case FinishedChoosing(tChildren) =>
+        println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
         children += sender -> tChildren
         if(activeOperator.isDefined) {
           finishedChildren += 1
@@ -157,10 +169,8 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
       case Start =>
         if(children.isEmpty){
           parentHosts.foreach(p => p ! CostRequest(clock.instant()))
-        } else if(ready) {
-          broadcastMessage(Start)
         } else {
-          println("ERROR: Could not start adaptation process because previous is not finished")
+          broadcastMessage(Start)
         }
       case CostRequest(t) =>
         sender ! CostResponse(t)
@@ -171,11 +181,12 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
         }
       case StateTransferMessage(o, p) =>
         parent = Some(sender)
-        parentNode = p
+        parentNode = Some(p)
         processStateTransferMessage(o)
       case RequirementsNotMet =>
-        if(consumer){
+        if(consumer && ready){
           ready = false
+          println("RECALCULATING")
           broadcastMessage(Start)
         }
       case MigrationComplete =>
@@ -236,6 +247,9 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
 
   def setNode(actorRef: ActorRef): Unit = {
     node = Some(actorRef)
+    if(parentNode.isDefined){
+      node.get ! Parent(parentNode.get)
+    }
   }
 
   def mergeLatency(latency1: Duration, latency2: Duration): Duration ={
@@ -253,7 +267,7 @@ class GreedyPlacementCalculator (self: ActorRef, context: ActorContext, neighbor
       }
       if(tentativeOperator.isDefined){
         activate()
-        node.get ! Parent(parentNode)
+        node.get ! Parent(parentNode.get)
         parent.get ! ChildResponse(node.get)
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
         children = Map.empty[ActorRef, Seq[ActorRef]]

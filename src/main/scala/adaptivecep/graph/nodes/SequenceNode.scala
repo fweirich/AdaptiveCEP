@@ -44,9 +44,11 @@ case class SequenceNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription if sender() == queryPublishers(0) =>
       subscription1Acknowledged = true
+      println("Acknowledged Subscription 1")
       //if (subscription2Acknowledged && parentReceived && !created) emitCreated()
     case AcknowledgeSubscription if sender() == queryPublishers(1) =>
       subscription2Acknowledged = true
+      println("Acknowledged Subscription 2")
       //if (subscription1Acknowledged && parentReceived && !created) emitCreated()
     case event: Event if sender() == queryPublishers(0) => event match {
       case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
@@ -70,6 +72,7 @@ case class SequenceNode(
         emitCreated()
       }
     case Parent(p1) => {
+      println("Parent received", p1)
       parentNode = p1
       parentReceived = true
       nodeData = LeafNodeData(name, requirements, context, parentNode)
@@ -79,7 +82,12 @@ case class SequenceNode(
       moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
-    case Controller(c) => controller = c
+    case Kill =>
+      self ! PoisonPill
+      println("Shutting down....")
+    case Controller(c) =>
+      controller = c
+      println("Got Controller", c)
     case Delay(b) => {
       setDelay(b)
     }

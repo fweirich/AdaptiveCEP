@@ -23,7 +23,7 @@ trait Node extends Actor {
       case "TT" => TumblingTime(size)
     }
   }
-
+  println("AHAHAHAHAHHAHAHSHDHJKASHDNCNAKJSNDKGUIAGUYSGDY", name)
 
 /*
   def createChildNode(
