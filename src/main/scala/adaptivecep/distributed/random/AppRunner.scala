@@ -4,7 +4,7 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.distributed.fixed.PlacementActorFixed
+import adaptivecep.distributed.centralized.PlacementActorCentralized
 import adaptivecep.distributed.{ActiveOperator, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._

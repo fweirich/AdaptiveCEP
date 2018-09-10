@@ -1,4 +1,4 @@
-package adaptivecep.distributed.fixed
+package adaptivecep.distributed.centralized
 
 import java.time._
 import java.util.concurrent.TimeUnit
@@ -11,7 +11,7 @@ import akka.cluster.ClusterEvent._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 
-class HostActorFixed extends Actor with ActorLogging {
+class HostActorCentralized extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
   val interval = 5

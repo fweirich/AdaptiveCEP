@@ -1,4 +1,4 @@
-package adaptivecep.distributed.fixed
+package adaptivecep.distributed.centralized
 
 import java.util.concurrent.TimeUnit
 
@@ -20,15 +20,15 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.Random
 
-case class PlacementActorFixed (actorSystem: ActorSystem,
-                           query: Query,
-                           publishers: Map[String, ActorRef],
-                           publisherOperators: Map[String, Operator],
-                           frequencyMonitorFactory: MonitorFactory,
-                           latencyMonitorFactory: MonitorFactory,
-                           bandwidthMonitorFactory: MonitorFactory,
-                           here: NodeHost,
-                           hosts: Set[ActorRef])
+case class PlacementActorCentralized(actorSystem: ActorSystem,
+                                     query: Query,
+                                     publishers: Map[String, ActorRef],
+                                     publisherOperators: Map[String, Operator],
+                                     frequencyMonitorFactory: MonitorFactory,
+                                     latencyMonitorFactory: MonitorFactory,
+                                     bandwidthMonitorFactory: MonitorFactory,
+                                     here: NodeHost,
+                                     hosts: Set[ActorRef])
   extends Actor with ActorLogging{
 
 
