@@ -19,7 +19,8 @@ trait BinaryNode extends Node {
   val query: Query1[Int] = stream[Int]("A")
 
   val interval = 2
-  var counter = 0
+  var badCounter = 0
+  var goodCounter = 0
 
   var childNode1: ActorRef = self
   var childNode2: ActorRef = self
@@ -28,10 +29,12 @@ trait BinaryNode extends Node {
 
   var frequencyMonitor: BinaryNodeMonitor = frequencyMonitorFactory.createBinaryNodeMonitor
   var latencyMonitor: BinaryNodeMonitor = latencyMonitorFactory.createBinaryNodeMonitor
+  var bandwidthMonitor: BinaryNodeMonitor = bandwidthMonitorFactory.createBinaryNodeMonitor
   var nodeData: BinaryNodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
   var scheduledTask: Cancellable = _
 
-  val monitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
+  val lmonitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
+  val bmonitor: PathBandwidthBinaryNodeMonitor = bandwidthMonitor.asInstanceOf[PathBandwidthBinaryNodeMonitor]
 
   override def preStart(): Unit = {
     if(scheduledTask == null){
@@ -39,47 +42,63 @@ trait BinaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        counter += 1
-        if(!monitor.met && counter > 3){
-          counter = 0
-          controller ! RequirementsNotMet
-          monitor.met = true
-          //println(monitor.met)
+        if(!lmonitor.met || !bmonitor.met){
+          goodCounter = 0
+          badCounter += 1
+          if(badCounter >= 3){
+            badCounter = 0
+            controller ! RequirementsNotMet
+          }
+        }
+        if(lmonitor.met && bmonitor.met){
+          goodCounter += 1
+          badCounter = 0
+          if(goodCounter >= 3){
+            controller ! RequirementsMet
+          }
         }
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
-        if(monitor.latency.isDefined) {
-          println(monitor.latency.get.toNanos/1000000.0)
-          monitor.latency = None
+        if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
+          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring)
+          lmonitor.latency = None
+          bmonitor.bandwidthForMonitoring = None
         }
       }
   )}}
 
   override def postStop(): Unit = {
     scheduledTask.cancel()
-    monitor.scheduledTask.cancel()
+    lmonitor.scheduledTask.cancel()
+    bmonitor.scheduledTask.cancel()
     println("Shutting down....")
   }
 
   def emitCreated(): Unit = {
-    monitor.childNode1 = childNode1
-    monitor.childNode2 = childNode2
+    lmonitor.childNode1 = childNode1
+    lmonitor.childNode2 = childNode2
+    bmonitor.childNode1 = childNode1
+    bmonitor.childNode2 = childNode2
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)
+    bandwidthMonitor.onCreated(nodeData)
   }
 
   def emitEvent(event: Event): Unit = {
-    monitor.childNode1 = childNode1
-    monitor.childNode2 = childNode2
+    lmonitor.childNode1 = childNode1
+    lmonitor.childNode2 = childNode2
+    bmonitor.childNode1 = childNode1
+    bmonitor.childNode2 = childNode2
     if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
     frequencyMonitor.onEventEmit(event, nodeData)
     latencyMonitor.onEventEmit(event, nodeData)
+    bandwidthMonitor.onEventEmit(event, nodeData)
   }
 
   def setDelay(b: Boolean): Unit = {
     delay = b
-    monitor.delay = b
+    lmonitor.delay = b
   }
 
 }

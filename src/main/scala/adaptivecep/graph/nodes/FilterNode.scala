@@ -13,6 +13,7 @@ case class FilterNode(
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
+    bandwidthMonitorFactory: MonitorFactory,
     createdCallback: Option[() => Any],
     eventCallback: Option[(Event) => Any])
   extends UnaryNode {
@@ -65,7 +66,8 @@ case class FilterNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       scheduledTask.cancel()
-      monitor.scheduledTask.cancel()
+      lmonitor.scheduledTask.cancel()
+      bmonitor.scheduledTask.cancel()
       self ! PoisonPill
       println("Shutting down....")
     case Controller(c) =>

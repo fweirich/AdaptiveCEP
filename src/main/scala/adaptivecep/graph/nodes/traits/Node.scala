@@ -11,6 +11,7 @@ trait Node extends Actor {
   val publishers: Map[String, ActorRef]
   val frequencyMonitorFactory: MonitorFactory
   val latencyMonitorFactory: MonitorFactory
+  val bandwidthMonitorFactory: MonitorFactory
   var controller: ActorRef = self
   var created = false
   var delay: Boolean = false

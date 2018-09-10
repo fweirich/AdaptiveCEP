@@ -19,6 +19,7 @@ case class SequenceNode(
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
+    bandwidthMonitorFactory: MonitorFactory,
     createdCallback: Option[() => Any],
     eventCallback: Option[(Event) => Any])
   extends LeafNode with EsperEngine {

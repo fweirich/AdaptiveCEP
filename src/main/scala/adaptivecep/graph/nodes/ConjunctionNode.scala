@@ -17,6 +17,7 @@ case class ConjunctionNode(
     publishers: Map[String, ActorRef],
     frequencyMonitorFactory: MonitorFactory,
     latencyMonitorFactory: MonitorFactory,
+    bandwidthMonitorFactory: MonitorFactory,
     createdCallback: Option[() => Any],
     eventCallback: Option[(Event) => Any])
   extends BinaryNode with EsperEngine {
@@ -99,7 +100,8 @@ case class ConjunctionNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       scheduledTask.cancel()
-      monitor.scheduledTask.cancel()
+      lmonitor.scheduledTask.cancel()
+      bmonitor.scheduledTask.cancel()
       self ! PoisonPill
       println("Shutting down....")
     case Delay(b) => {

@@ -26,6 +26,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
                            publisherOperators: Map[String, Operator],
                            frequencyMonitorFactory: MonitorFactory,
                            latencyMonitorFactory: MonitorFactory,
+                           bandwidthMonitorFactory: MonitorFactory,
                            here: NodeHost,
                            hosts: Set[ActorRef])
   extends Actor with ActorLogging{
@@ -508,6 +509,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         streamQuery.publisherName, publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     propsOperators += props -> ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
@@ -528,6 +530,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, disjunctionQuery.sq1, disjunctionQuery.sq2, props, consumer)
@@ -550,6 +553,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, conjunctionQuery.sq1, conjunctionQuery.sq2, props, consumer)
@@ -575,6 +579,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, joinQuery.sq1, joinQuery.sq2, props, consumer)
@@ -599,6 +604,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, selfJoinQuery.sq, props, consumer)
@@ -619,6 +625,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, dropElemQuery.sq, props, consumer)
@@ -639,6 +646,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, filterQuery.sq, props, consumer)
@@ -663,6 +671,7 @@ case class PlacementActorFixed (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
     propsOperators += props -> ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])

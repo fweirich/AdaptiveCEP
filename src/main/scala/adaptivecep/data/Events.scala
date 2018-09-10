@@ -18,6 +18,9 @@ object Events {
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
                                      childHost2: Option[ActorRef]) extends GreedyPlacementEvent
+  case class BecomeTentativeOperatorWithTemperature(operator: TentativeOperator, parentNode: ActorRef,
+                                     parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
+                                     childHost2: Option[ActorRef], temperature: Double) extends GreedyPlacementEvent
   case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent
   case object OperatorRequest extends GreedyPlacementEvent
   case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends GreedyPlacementEvent
@@ -61,6 +64,7 @@ object Events {
   case object Kill
 
   case object RequirementsNotMet extends GreedyPlacementEvent
+  case object RequirementsMet extends GreedyPlacementEvent
 
   case class LatencyRequest(instant: Instant)
   case class LatencyResponse(instant: Instant)
