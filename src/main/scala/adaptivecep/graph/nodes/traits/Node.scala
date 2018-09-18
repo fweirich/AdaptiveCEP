@@ -4,6 +4,8 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.qos._
 import akka.actor.{Actor, ActorRef}
 
+import scala.concurrent.duration.Duration
+
 trait Node extends Actor {
 
   val name: String = self.path.name
@@ -24,7 +26,7 @@ trait Node extends Actor {
       case "TT" => TumblingTime(size)
     }
   }
-  println("AHAHAHAHAHHAHAHSHDHJKASHDNCNAKJSNDKGUIAGUYSGDY", name)
+  println(name)
 
 /*
   def createChildNode(

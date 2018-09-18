@@ -4,8 +4,8 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.distributed.random.{HostActor, PlacementActor}
-import adaptivecep.distributed.{ActiveOperator, NodeHost, Operator}
+import adaptivecep.distributed.operator
+import adaptivecep.distributed.operator.NodeHost
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._
@@ -16,12 +16,20 @@ import com.typesafe.config.ConfigFactory
 
 object AppRunnerCentralized extends App {
 
-  val file = new File("application.conf")
+  val file = new File("applicationlocal.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
+  var optimizeFor: String = "bandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
+
+  override def main(args: Array[String]): Unit = {
+    super.main(args)
+    if (args.nonEmpty){
+      optimizeFor = args(0)
+    }
+  }
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
 
   /*
@@ -94,7 +102,7 @@ object AppRunnerCentralized extends App {
   host16 ! Neighbors(neighborsOfHost16)
   */
   val globalIP: String = "[2a02:908:181:7140:69c9:9a2f:55ff:458e]"
-
+/*
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
   val address2 = Address("akka.tcp", "ClusterSystem", sys.env("HOST2"), 8000)
   val address3 = Address("akka.tcp", "ClusterSystem", sys.env("HOST3"), 8000)
@@ -106,6 +114,20 @@ object AppRunnerCentralized extends App {
   val address9 = Address("akka.tcp", "ClusterSystem", sys.env("HOST9"), 8000)
   val address10 = Address("akka.tcp", "ClusterSystem", sys.env("HOST10"), 8000)
   val address11 = Address("akka.tcp", "ClusterSystem", sys.env("HOST11"), 8000)
+  */
+  //LOCAL Setup
+  val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
+  val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
+  val address3 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2553)
+  val address4 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2554)
+  val address5 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2555)
+  val address6 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2556)
+  val address7 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2557)
+  val address8 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2558)
+  val address9 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2559)
+  val address10 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2560)
+  val address11 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2561)
+
   /*val address12 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:dbe6:4d20:b19e:5fcf]", 8000)
   val address13 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:a5f7:96f6:f59:7752]", 8000)
   val address14 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:fb5e:e067:3fc7:89a6]", 8000)
@@ -153,6 +175,7 @@ object AppRunnerCentralized extends App {
   val alternativeHost14: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress14))), "Host" + "-10")
   val alternativeHost15: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress15))), "Host" + "-11")
   */
+val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11/*, host12, host13, host14, host15, host16*/)
 
   val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
   val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
@@ -171,17 +194,17 @@ object AppRunnerCentralized extends App {
   val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
   val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
 
-  host1 ! Neighbors(neighborsOfHost1)
-  host2 ! Neighbors(neighborsOfHost2)
-  host3 ! Neighbors(neighborsOfHost3)
-  host4 ! Neighbors(neighborsOfHost4)
-  host5 ! Neighbors(neighborsOfHost5)
-  host6 ! Neighbors(neighborsOfHost6)
-  host7 ! Neighbors(neighborsOfHost7)
-  host8 ! Neighbors(neighborsOfHost8)
-  host9 ! Neighbors(neighborsOfHost9)
-  host10 ! Neighbors(neighborsOfHost10)
-  host11 ! Neighbors(neighborsOfHost11)
+  host1 ! Neighbors(neighborsOfHost1, hosts)
+  host2 ! Neighbors(neighborsOfHost2, hosts)
+  host3 ! Neighbors(neighborsOfHost3, hosts)
+  host4 ! Neighbors(neighborsOfHost4, hosts)
+  host5 ! Neighbors(neighborsOfHost5, hosts)
+  host6 ! Neighbors(neighborsOfHost6, hosts)
+  host7 ! Neighbors(neighborsOfHost7, hosts)
+  host8 ! Neighbors(neighborsOfHost8, hosts)
+  host9 ! Neighbors(neighborsOfHost9, hosts)
+  host10 ! Neighbors(neighborsOfHost10, hosts)
+  host11 ! Neighbors(neighborsOfHost11, hosts)
   /*host12 ! Neighbors(neighborsOfHost12)
   host13 ! Neighbors(neighborsOfHost13)
   host14 ! Neighbors(neighborsOfHost14)
@@ -198,7 +221,7 @@ object AppRunnerCentralized extends App {
   val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
   val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
 
-  val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11/*, host12, host13, host14, host15, host16*/)
+
   val delayableHosts: Seq[ActorRef] = Seq(host2, host3, host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
 
   val publishers: Map[String, ActorRef] = Map(
@@ -239,22 +262,25 @@ object AppRunnerCentralized extends App {
           frequency > ratio(1.instances, 5.seconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }),
         slidingWindow(3.seconds),
         slidingWindow(3.seconds),
-        latency < timespan(10.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+        bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => },
+        latency < timespan(60.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+
 
   Thread.sleep(3000)
 
-  val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorFixed(actorSystem,
+  val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
     query2,
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = false),
-    PathLatencyMonitorFactory(interval =  2, logging = false), NodeHost(host11), hosts)), "Placement")
+    PathLatencyMonitorFactory(interval =  2, logging = false),
+    PathBandwidthMonitorFactory(interval = 2, logging = false),NodeHost(host11), hosts, optimizeFor)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)
   placement ! Start
 
-  var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
-
+  //var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
+/*
   while (true){
     Thread.sleep(30000)
     //println("delaying Hosts")
@@ -275,6 +301,6 @@ object AppRunnerCentralized extends App {
     //println(delayedHosts)
     delayedHosts.foreach(host => host ! Delay(true))
   }
-
+*/
 }
 

@@ -160,6 +160,7 @@ case class DisjunctionNode(
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
+      bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
   }
 
 }

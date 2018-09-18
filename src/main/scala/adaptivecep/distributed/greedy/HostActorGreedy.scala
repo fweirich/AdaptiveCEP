@@ -1,29 +1,68 @@
 package adaptivecep.distributed.greedy
 
-import java.time._
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 
+import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
-import adaptivecep.distributed.{ActiveOperator, NodeHost, Operator, TentativeOperator}
+import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, TentativeOperator}
+import adaptivecep.distributed.{NodeHost, TentativeOperator, operator}
+import adaptivecep.graph.qos.ChildLatencyResponse
+import adaptivecep.simulation.ContinuousBoundedValue
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Deploy, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.remote
-import akka.remote.RemoteScope
-import akka.remote.WireFormats.RemoteScope
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class HostActorGreedy extends Actor with ActorLogging {
 
   val cluster = Cluster(context.system)
-  val interval = 5
+  val interval = 2
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = None
   var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
+  var optimizeFor: String = "latency"
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
+  var simulatedCosts: Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])] =
+    Map.empty[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
+  var hostProps: HostProps = new HostProps(simulatedCosts)
+  var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
+
+
+  case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
+    def advance = HostProps(
+      costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth.advance)) })
+  }
+
+
+  object latency {
+    implicit val addDuration: (Duration, Duration) => Duration = _ + _
+
+    val template = ContinuousBoundedValue[Duration](
+      Duration.Undefined,
+      min = 2.millis, max = 100.millis,
+      () => (10.millis - 30.milli * random.nextDouble, 1 + random.nextInt(10)))
+
+    def apply() =
+      template copy (value = 2.milli + 98.millis * random.nextDouble)
+  }
+
+  object bandwidth {
+    implicit val addDouble: (Double, Double) => Double = _ + _
+
+    val template = ContinuousBoundedValue[Double](
+      0,
+      min = 5, max = 100,
+      () => (18 - 30 * random.nextDouble, 1 + random.nextInt(10)))
+
+    def apply() =
+      template copy (value = 5 + 95* random.nextDouble)
+  }
+
 
   //
   //GREEDY STRATEGY
@@ -48,7 +87,7 @@ class HostActorGreedy extends Actor with ActorLogging {
   var completedChildren: Int = 0
   var processedCostMessages: Int = 0
   var children: Map[ActorRef, Seq[ActorRef]] = Map.empty[ActorRef, Seq[ActorRef]]
-  var childCosts: Map[ActorRef, Duration] = Map.empty[ActorRef, Duration]
+  var childCosts: Map[ActorRef, (Duration, Double)] = Map.empty[ActorRef, (Duration, Double)]
   var parent: Option[ActorRef] = None
   var consumer: Boolean = false
   var ready: Boolean = false
@@ -68,6 +107,8 @@ class HostActorGreedy extends Actor with ActorLogging {
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
+    neighbors.foreach(neighbor => simulatedCosts += neighbor -> (latency(), bandwidth()))
+    hostProps = HostProps(simulatedCosts)
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 
@@ -75,8 +116,8 @@ class HostActorGreedy extends Actor with ActorLogging {
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
-      neighbors.foreach{ _ ! LatencyRequest(clock.instant)}
-      //println(latencies)
+      hostProps = hostProps.advance
+      reportCostsToNode()
     })
 
   startLatencyMonitoring()
@@ -88,7 +129,18 @@ class HostActorGreedy extends Actor with ActorLogging {
     this.delay = delay
   }
 
+  def reportCostsToNode(): Unit = {
+    var result = Map.empty[ActorRef, Cost]
+    val map = hostPropsToMap
+    hostToNodeMap.foreach(host => if(map.contains(host._1)){result += host._2 -> map(host._1)})
+    if(node.isDefined){
+      node.get ! HostPropsResponse(result)
+    }
+  }
 
+  def hostPropsToMap: Map[ActorRef, Cost] = {
+    hostProps.costs map { case (host, (latency, bandwidth)) => (host, Cost(latency.value, bandwidth.value)) }
+  }
 
   def receive = {
     case MemberUp(member) =>
@@ -114,8 +166,10 @@ class HostActorGreedy extends Actor with ActorLogging {
         latencies += sender() -> FiniteDuration(java.time.Duration.between(requestTime, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
         //neighbors += sender()
       }
-    case Neighbors(n)=>
+    case Neighbors(n, h)=>
       neighbors = n
+      h.foreach(host => simulatedCosts += host -> (latency(), bandwidth()))
+      hostProps = HostProps(simulatedCosts)
     case AllHosts => {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
       //println("sending Hosts", sender(), Hosts(neighbors + self))
@@ -128,10 +182,11 @@ class HostActorGreedy extends Actor with ActorLogging {
     }
     case Node(actorRef) =>{
       node = Some(actorRef)
-      node.get ! Delay(delay)
+      reportCostsToNode()
     }
+    case OptimizeFor(o) => optimizeFor = o
     case gPE: GreedyPlacementEvent => processEvent(gPE, sender())
-    case HostPropsRequest => sender() ! HostPropsResponse(latencies)
+    case HostPropsRequest => sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>
   }
 
@@ -153,22 +208,22 @@ class HostActorGreedy extends Actor with ActorLogging {
     if (children.nonEmpty || parent.isDefined){
       if(activeOperator.isDefined){
         val neighborSeq: Seq[ActorRef] = neighbors.toSeq
-        var chosen: Set[ActorRef] = Set.empty
         var timeout = 0
-        while (chosen.size < degree && timeout < 1000){
-          var randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
+        var chosen: Boolean = false
+        while (tentativeHosts.size < degree && timeout < 1000 && !chosen){
+          val randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
           if(operators(randomNeighbor).isEmpty && !tentativeHosts.contains(randomNeighbor)){
-            chosen += randomNeighbor
             val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
-            tentativeHosts = tentativeHosts :+ randomNeighbor
             randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2)
+            chosen = true
           }
           timeout += 1
         }
         if(timeout >= 1000){
           println("Not enough hosts available as tentative Operators. Continuing without...")
+          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
         }
-        children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+        //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
       } else {
         println("ERROR: Only Active Operator can choose Tentative Operators")
       }
@@ -191,11 +246,21 @@ class HostActorGreedy extends Actor with ActorLogging {
       case SetActiveOperator(operator) =>
         setActiveOperator(operator)
       case BecomeTentativeOperator(operator, p, pHosts, c1, c2) =>
+        println("I'VE BEEN CHOSEN!!!", sender)
         parentNode = Some(p)
         parentHosts = pHosts
         childHost1 = c1
         childHost2 = c2
-        becomeTentativeOperator(operator)
+        becomeTentativeOperator(operator, sender)
+      case TentativeAcknowledgement =>
+        tentativeHosts = tentativeHosts :+ sender
+        if(tentativeHosts.size == degree){
+          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+        } else {
+          chooseTentativeOperators()
+        }
+      case ContinueSearching =>
+        setup()
       case ChooseTentativeOperators(parents) =>
         println("Choosing Tentative Operators")
         parentHosts = parents
@@ -259,7 +324,9 @@ class HostActorGreedy extends Actor with ActorLogging {
         h2 ! ParentHost(self, node.get)
       case ParentHost(p, ref) =>
         println("Got Parent",p ,ref)
+        hostToNodeMap += p -> ref
         if(node.isDefined){
+          reportCostsToNode()
           node.get ! Parent(ref)
           parentNode = Some(ref)
           parent = Some(p)
@@ -281,22 +348,21 @@ class HostActorGreedy extends Actor with ActorLogging {
           }
         }
       case Start =>
-        if(delay){
-          parentHosts.foreach(p => p ! CostRequest(clock.instant().minusMillis(40)))
-        } else {
-          parentHosts.foreach(p => p ! CostRequest(clock.instant()))
-        }
+        parentHosts.foreach(p => p ! CostRequest(clock.instant()))
         if (activeOperator.isDefined) {
           broadcastMessage(Start)
         }
       case CostRequest(t) =>
-        sender ! CostResponse(t)
-      case CostResponse(t) =>
+        system.scheduler.scheduleOnce(
+          FiniteDuration(hostPropsToMap(sender).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+          () => {sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)})
+      case CostResponse(t, _) =>
         if (parentHosts.contains(sender)) {
-          costs += sender -> (FiniteDuration(java.time.Duration.between(t, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), 0)
+          costs += sender -> (FiniteDuration(java.time.Duration.between(t, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), hostPropsToMap(sender).bandwidth)
           sendOutCostMessages()
         }
       case StateTransferMessage(o, p) =>
+        hostToNodeMap += sender -> p
         parent = Some(sender)
         parentNode = Some(p)
         processStateTransferMessage(o)
@@ -307,6 +373,7 @@ class HostActorGreedy extends Actor with ActorLogging {
           println("RECALCULATING")
           broadcastMessage(Start)
         }
+      case RequirementsMet =>
       case MigrationComplete =>
         println("A Child completed Migration", sender)
         completedChildren += 1
@@ -347,7 +414,8 @@ class HostActorGreedy extends Actor with ActorLogging {
 
   def processCostMessage(m: CostMessage, sender: ActorRef): Unit = {
     if(isOperator && isChild(sender)){
-      childCosts += sender -> m.latency
+      childCosts += sender -> (m.latency, m.bandwidth)
+      println(m.latency, m.bandwidth)
     }
     else {
       println("ERROR: Cost Message arrived at Host without Operator")
@@ -367,19 +435,29 @@ class HostActorGreedy extends Actor with ActorLogging {
 
   private def sendOutCostMessages() : Unit = {
     if(children.isEmpty && costs.size == parentHosts.size){
-      parentHosts.foreach(parent => parent ! CostMessage(costs(parent)._1))
+      parentHosts.foreach(parent => parent ! CostMessage(costs(parent)._1, costs(parent)._2))
     }
     else if (processedCostMessages == numberOfChildren && costs.size == parentHosts.size) {
       calculateOptimumNodes()
       println(optimumHosts)
-      val bottleNeckNode = minmaxBy(Maximizing, optimumHosts)(childCosts(_)._1)
+      var bottleNeckNode = self
+      if(optimizeFor == "latency"){
+        bottleNeckNode = minmaxBy(Maximizing, optimumHosts)(childCosts(_)._1)
+      }else if(optimizeFor == "bandwidth"){
+        bottleNeckNode = minmaxBy(Minimizing, optimumHosts)(childCosts(_)._2)
+      }else{
+        bottleNeckNode = minmaxBy(Minimizing, optimumHosts)(childCosts(_))
+      }
+
+
       println(bottleNeckNode)
       childHost1 = optimumChildHost1
       childHost2 = optimumChildHost2
       optimumChildHost1 = None
       optimumChildHost2 = None
       //minmaxBy(Minimizing, costs)(_._2._1)._1
-      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode), costs(parent)._1)))
+      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent)._1),
+        mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent)._2)))
       if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }
@@ -387,11 +465,37 @@ class HostActorGreedy extends Actor with ActorLogging {
     println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
   }
 
+  def mergeBandwidth(b1: Double, b2: Double): Double = {
+    Math.min(b1,b2)
+  }
+
+  implicit val ordering: Ordering[(Duration, Double)] = new Ordering[(Duration, Double)] {
+    def abs(x: Duration) = if (x < Duration.Zero) -x else x
+
+    def compare(x: (Duration, Double), y: (Duration, Double)) = ((-x._1, x._2), (-y._1, y._2)) match {
+      case ((d0, n0), (d1, n1)) if d0 == d1 && n0 == n1 => 0
+      case ((d0, n0), (d1, n1)) if d0 < d1 && n0 < n1 => -1
+      case ((d0, n0), (d1, n1)) if d0 > d1 && n0 > n1 => 1
+      case ((d0, n0), (d1, n1)) =>
+        math.signum((d0 - d1) / abs(d0 + d1) + (n0 - n1) / math.abs(n0 + n1)).toInt
+    }
+  }
+
   def calculateOptimumNodes() : Unit = {
     println(childHost1)
     println(childHost2)
 
-    children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Minimizing, getChildAndTentatives(child._1))(childCosts(_)._1))
+    if(optimizeFor == "latency"){
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Minimizing,
+        getChildAndTentatives(child._1))(childCosts(_)._1))
+    }else if(optimizeFor == "bandwidth"){
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
+        getChildAndTentatives(child._1))(childCosts(_)._2))
+    }else{
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
+        getChildAndTentatives(child._1))(childCosts(_)))
+    }
+
     optimumHosts.foreach(host =>
       if(childHost1.isDefined && getPreviousChild(host) == childHost1.get){
         optimumChildHost1 = Some(host)
@@ -431,6 +535,7 @@ class HostActorGreedy extends Actor with ActorLogging {
     println("PROCESSING STATE TRANSFER....")
     if(oHosts.contains(self)){
       if(activeOperator.isDefined){
+        reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.nonEmpty){
           broadcastMessage(StateTransferMessage(optimumHosts, node.get))
@@ -441,6 +546,7 @@ class HostActorGreedy extends Actor with ActorLogging {
       }
       if(tentativeOperator.isDefined){
         activate()
+        reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.nonEmpty) {
           broadcastMessage(StateTransferMessage(optimumHosts, node.get))
@@ -478,7 +584,7 @@ class HostActorGreedy extends Actor with ActorLogging {
       childHost2 = None
     }
 
-    childCosts = Map.empty[ActorRef, Duration]
+    childCosts = Map.empty[ActorRef, (Duration, Double)]
 
     parentHosts = Seq.empty[ActorRef]
     costs = Map.empty[ActorRef, (Duration, Double)]
@@ -526,12 +632,13 @@ class HostActorGreedy extends Actor with ActorLogging {
     }
   }
 
-  def becomeTentativeOperator(operator: TentativeOperator): Unit ={
-    println("I'VE BEEN CHOSEN!!!")
+  def becomeTentativeOperator(operator: TentativeOperator, sender: ActorRef): Unit ={
     if(!isOperator){
       tentativeOperator = Some(operator)
+      sender ! TentativeAcknowledgement
     } else {
       println("ERROR: Host already has a Operator")
+      sender ! ContinueSearching
     }
   }
 
@@ -543,7 +650,6 @@ class HostActorGreedy extends Actor with ActorLogging {
       println(temp)
       node = Some(temp)
       node.get ! Controller(self)
-      node.get ! Delay(delay)
       tentativeOperator = None
     } else {
       println("ERROR: Cannot Activate without tentative Operator present")

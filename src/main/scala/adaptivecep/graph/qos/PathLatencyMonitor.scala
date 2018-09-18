@@ -3,11 +3,13 @@ package adaptivecep.graph.qos
 import java.time._
 import java.util.concurrent.TimeUnit
 
-import adaptivecep.data.Events.LatencyResponse
+import adaptivecep.data.Cost.Cost
+import adaptivecep.data.Events.{HostPropsResponse, LatencyResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.FiniteDuration
 import akka.actor.{ActorRef, Cancellable}
+
+import scala.concurrent.duration.FiniteDuration
 import adaptivecep.data.Queries._
 
 case class ChildLatencyRequest(time: Instant)
@@ -15,6 +17,8 @@ case class ChildLatencyResponse(childNode: ActorRef, requestTime: Instant)
 case class PathLatency(childNode: ActorRef, duration: Duration)
 
 trait PathLatencyMonitor {
+
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost] withDefaultValue(Cost(scala.concurrent.duration.Duration.Zero, 0))
 
   def isRequirementNotMet(latency: Duration, lr: LatencyRequirement): Boolean = {
     val met: Boolean = lr.operator match {
@@ -39,15 +43,17 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
       println("PROBLEM:\tLatency requirements for leaf nodes are ignored, as leaf node latency is always considered 0.")
   }
 
-  override def onMessageReceive(message: Any, data: LeafNodeData): Unit = {
+  override def onMessageReceive(message: Any, nodeData: LeafNodeData): Unit = {
     message match {
-      case ChildLatencyRequest(requestTime) =>
-        if(delay) {
-          data.parent ! ChildLatencyResponse(data.context.self, requestTime.minusMillis(40))
-        } else {
-          data.parent ! ChildLatencyResponse(data.context.self, requestTime)
+      case ChildLatencyRequest(time) =>
+        if(costs.contains(nodeData.parent)){
+          nodeData.context.system.scheduler.scheduleOnce(
+            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
-        data.parent ! PathLatency(data.context.self, Duration.ZERO)
+        nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)
+      case HostPropsResponse(costMap) => costs = costMap
+      case _ =>
     }
   }
 }
@@ -58,7 +64,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
   val clock: Clock = Clock.systemDefaultZone
   var scheduledTask: Cancellable = null
   var met: Boolean = true
-  var delay: Boolean = true
+  //var delay: Boolean = true
   var latency: Option[Duration] = None
   var childNode: ActorRef = null
   var childNodeLatency: Option[Duration] = None
@@ -80,11 +86,12 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
     val latencyRequirements: Set[LatencyRequirement] =
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
+      case HostPropsResponse(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
-        if(delay) {
-          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(40))
-        } else {
-          nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+        if(costs.contains(nodeData.parent)){
+          nodeData.context.system.scheduler.scheduleOnce(
+            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
       case ChildLatencyResponse(_, requestTime) =>
         childNodeLatency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
@@ -138,7 +145,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with BinaryNodeMonitor {
 
   var met: Boolean = true
-  var delay: Boolean = true
+  //var delay: Boolean = true
   var latency: Option[Duration] = None
   var scheduledTask: Cancellable = null
   val clock: Clock = Clock.systemDefaultZone
@@ -168,12 +175,21 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
     val latencyRequirements: Set[LatencyRequirement] =
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
+      case HostPropsResponse(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
-        if(delay) {
+        if(costs.contains(nodeData.parent)){
+          nodeData.context.system.scheduler.scheduleOnce(
+            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
+        }
+
+
+       // nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(costs(nodeData.parent)._1.toMillis * 2))
+      /*if(delay) {
           nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(40))
         } else {
           nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
-        }
+        }*/
       case ChildLatencyResponse(childNode, requestTime) =>
         childNode match {
           case nodeData.childNode1 =>

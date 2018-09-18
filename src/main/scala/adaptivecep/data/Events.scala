@@ -2,7 +2,9 @@ package adaptivecep.data
 
 import java.time.Instant
 
-import adaptivecep.distributed.{ActiveOperator, TentativeOperator}
+import adaptivecep.data.Cost.Cost
+import adaptivecep.distributed.TentativeOperator
+import adaptivecep.distributed.operator.{ActiveOperator, TentativeOperator}
 import akka.actor.{ActorRef, Props}
 
 import scala.concurrent.duration.Duration
@@ -12,7 +14,7 @@ object Events {
   case object Created
 
   sealed trait GreedyPlacementEvent
-  case class CostMessage(latency: Duration) extends GreedyPlacementEvent
+  case class CostMessage(latency: Duration, bandwidth: Double) extends GreedyPlacementEvent
   case class BecomeActiveOperator(operator: ActiveOperator) extends GreedyPlacementEvent
   case class SetActiveOperator(operator: Props) extends GreedyPlacementEvent
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
@@ -32,11 +34,14 @@ object Events {
   case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  GreedyPlacementEvent
   case object Start extends GreedyPlacementEvent
   case class CostRequest(instant: Instant) extends GreedyPlacementEvent
-  case class CostResponse(instant: Instant) extends GreedyPlacementEvent
+  case class CostResponse(instant: Instant, bandwidth: Double) extends GreedyPlacementEvent
   case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
   case object MigrationComplete extends GreedyPlacementEvent
 
   case object CentralizedCreated
+
+  case object TentativeAcknowledgement extends GreedyPlacementEvent
+  case object ContinueSearching extends GreedyPlacementEvent
 
   case object InitializeQuery
   case class Delay(delay: Boolean)
@@ -44,11 +49,14 @@ object Events {
   case object AllHosts
   case class Hosts(h: Set[ActorRef])
 
+  case class HostToNodeMap(m: Map[ActorRef, ActorRef])
+
   case class Node(actorRef: ActorRef)
 
-  case class Neighbors(neighbors: Set[ActorRef])
+  case class Neighbors(neighbors: Set[ActorRef], allHosts: Set[ActorRef])
 
   case class Controller(controller: ActorRef)
+  case class OptimizeFor(optimizer: String)
 
   sealed trait Child
   case class Child1(c1: ActorRef)               extends Child
@@ -69,7 +77,7 @@ object Events {
   case class LatencyRequest(instant: Instant)
   case class LatencyResponse(instant: Instant)
   case object HostPropsRequest
-  case class HostPropsResponse(latencies: Map[ActorRef, Duration])
+  case class HostPropsResponse(latencies: Map[ActorRef, Cost])
 
   case object DependenciesRequest
   case class DependenciesResponse(dependencies: Seq[ActorRef])

@@ -2,10 +2,11 @@ package adaptivecep.graph.qos
 
 import java.util.concurrent.TimeUnit
 
-
+import adaptivecep.data.Cost.Cost
+import adaptivecep.data.Events.HostPropsResponse
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.actor.{ActorRef, Cancellable}
 import adaptivecep.data.Queries._
 
@@ -15,7 +16,7 @@ case class PathBandwidth(childNode: ActorRef, bandwidth: Double)
 
 trait PathBandwidthMonitor {
 
-  var links: Map[ActorRef, Double] = Map.empty[ActorRef, Double]
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost] withDefaultValue(Cost(Duration.Inf, 0))
 
   def isRequirementNotMet(bandwidth: Double, br: BandwidthRequirement): Boolean = {
     val met: Boolean = br.operator match {
@@ -34,15 +35,19 @@ trait PathBandwidthMonitor {
 case class PathBandwidthLeafNodeMonitor() extends PathBandwidthMonitor with LeafNodeMonitor {
 
   override def onCreated(nodeData: LeafNodeData): Unit = {
-    if (nodeData.requirements.collect{ case br: BandwidthRequirement => br }.nonEmpty)
+    if (nodeData.requirements.collect{ case br: BandwidthRequirement => br }.nonEmpty){}
       //println("PROBLEM:\tLatency requirements for leaf nodes are ignored, as leaf node latency is always considered 0.")
   }
 
-  override def onMessageReceive(message: Any, data: LeafNodeData): Unit = {
+  override def onMessageReceive(message: Any, nodeData: LeafNodeData): Unit = {
     message match {
       case ChildBandwidthRequest =>
-        data.parent ! ChildBandwidthResponse(data.context.self, links(data.parent))
-        data.parent ! PathBandwidth(data.context.self, Double.MaxValue)
+        if(costs.contains(nodeData.parent)){
+          nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
+        }
+        nodeData.parent ! PathBandwidth(nodeData.context.self, Double.MaxValue)
+      case HostPropsResponse(costMap) => costs = costMap
+      case _ =>
     }
   }
 }
@@ -73,8 +78,12 @@ case class PathBandwidthUnaryNodeMonitor(interval: Int, logging: Boolean)
     val bandwidthRequirements: Set[BandwidthRequirement] =
       nodeData.requirements.collect { case br: BandwidthRequirement => br }
     message match {
+      case HostPropsResponse(costMap) => costs = costMap
       case ChildBandwidthRequest =>
-        nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, links(nodeData.parent))
+        if(costs.contains(nodeData.parent)){
+          nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
+        }
+        //nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
       case ChildBandwidthResponse(_, bandwidth) =>
         childNodeBandwidth = Some(bandwidth)
         if (childNodePathBandwidth.isDefined) {
@@ -155,8 +164,11 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
     val bandwidthRequirements: Set[BandwidthRequirement] =
       nodeData.requirements.collect { case br: BandwidthRequirement => br }
     message match {
+      case HostPropsResponse(costMap) => costs = costMap
       case ChildBandwidthRequest =>
-        nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, links(nodeData.parent))
+        if(costs.contains(nodeData.parent)){
+          nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
+        }
       case ChildBandwidthResponse(childNode, bandwidth) =>
         childNode match {
           case nodeData.childNode1 =>
@@ -191,8 +203,8 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
                 s"BANDWIDTH:\tBandwidth to node `${nodeData.name}` is $pathBandwidth2. " +
                 s"(Calculated every $interval seconds.)")
             met = true
-            bandwidthRequirements.foreach(lr => if (isRequirementNotMet(pathBandwidth2, lr)){
-              lr.callback(callbackNodeData)
+            bandwidthRequirements.foreach(br => if (isRequirementNotMet(pathBandwidth2, br)){
+              br.callback(callbackNodeData)
               met = false
             })
           }
@@ -213,7 +225,7 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
           childNode2PathBandwidth.isDefined) {
           val pathBandwidth1 = Math.min(childNode1Bandwidth.get, childNode1PathBandwidth.get)
           val pathBandwidth2 = Math.min(childNode2Bandwidth.get, childNode2PathBandwidth.get)
-          if (pathBandwidth1.compareTo(pathBandwidth2) >= 0) {
+          if (pathBandwidth1.compareTo(pathBandwidth2) <= 0) {
             bandwidthForMonitoring = Some(pathBandwidth1)
             nodeData.parent ! PathBandwidth(nodeData.context.self, pathBandwidth1)
             if (logging && bandwidthRequirements.nonEmpty)
@@ -221,9 +233,9 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
                 s"BANDWIDTH:\tBandwidth to node `${nodeData.name}` is $pathBandwidth1. " +
                   s"(Calculated every $interval seconds.)")
             met = true
-            bandwidthRequirements.foreach(lr =>
-              if (isRequirementNotMet(pathBandwidth1, lr)){
-                lr.callback(callbackNodeData)
+            bandwidthRequirements.foreach(br =>
+              if (isRequirementNotMet(pathBandwidth1, br)){
+                br.callback(callbackNodeData)
                 met = false
               }
             )

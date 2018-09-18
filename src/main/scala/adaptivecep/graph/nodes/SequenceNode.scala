@@ -96,6 +96,7 @@ case class SequenceNode(
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
+      bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
   }
 
   override def postStop(): Unit = {

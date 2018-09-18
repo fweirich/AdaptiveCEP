@@ -110,7 +110,7 @@ object Dsl {
   }
 
   case class BandwidthHelper2(operator: Operator, bandwidth: Double) {
-    def otherwise(callback: String => Any): BandwidthRequirement = BandwidthRequirement(operator, bandwidth, callback)
+    def otherwise(callback: NodeData => Any): BandwidthRequirement = BandwidthRequirement(operator, bandwidth, callback)
   }
 
   def stream[A]                (publisherName: String, requirements: Requirement*): Query1[A] =                Stream1 (publisherName, requirements.toSet)

@@ -1,4 +1,4 @@
-package adaptivecep.distributed
+package adaptivecep.distributed.operator
 
 import akka.actor.{ActorRef, Props}
 

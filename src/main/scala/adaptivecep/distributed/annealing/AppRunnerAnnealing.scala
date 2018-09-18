@@ -4,7 +4,9 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.distributed.{ActiveOperator, NodeHost, Operator}
+import adaptivecep.distributed.greedy.AppRunnerGreedy.{hosts, optimizeFor}
+import adaptivecep.distributed.operator
+import adaptivecep.distributed.operator.NodeHost
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos
 import adaptivecep.graph.qos._
@@ -20,8 +22,16 @@ object AppRunnerAnnealing extends App {
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
+  var optimizeFor: String = "latency"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
+
+  override def main(args: Array[String]): Unit = {
+    super.main(args)
+    if (args.nonEmpty){
+      optimizeFor = args(0)
+    }
+  }
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
 
   /*
@@ -171,6 +181,8 @@ object AppRunnerAnnealing extends App {
   val alternativeHost15: ActorRef = actorSystem.actorOf(Props[HostActorFixed].withDeploy(Deploy(scope = RemoteScope(alternativeAddress15))), "Host" + "-11")
   */
 
+  val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11/*, host12, host13, host14, host15, host16*/)
+
   val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
   val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
   val neighborsOfHost3: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host16*/)
@@ -188,17 +200,17 @@ object AppRunnerAnnealing extends App {
   val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
   val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
 
-  host1 ! Neighbors(neighborsOfHost1)
-  host2 ! Neighbors(neighborsOfHost2)
-  host3 ! Neighbors(neighborsOfHost3)
-  host4 ! Neighbors(neighborsOfHost4)
-  host5 ! Neighbors(neighborsOfHost5)
-  host6 ! Neighbors(neighborsOfHost6)
-  host7 ! Neighbors(neighborsOfHost7)
-  host8 ! Neighbors(neighborsOfHost8)
-  host9 ! Neighbors(neighborsOfHost9)
-  host10 ! Neighbors(neighborsOfHost10)
-  host11 ! Neighbors(neighborsOfHost11)
+  host1 ! Neighbors(neighborsOfHost1, hosts)
+  host2 ! Neighbors(neighborsOfHost2, hosts)
+  host3 ! Neighbors(neighborsOfHost3, hosts)
+  host4 ! Neighbors(neighborsOfHost4, hosts)
+  host5 ! Neighbors(neighborsOfHost5, hosts)
+  host6 ! Neighbors(neighborsOfHost6, hosts)
+  host7 ! Neighbors(neighborsOfHost7, hosts)
+  host8 ! Neighbors(neighborsOfHost8, hosts)
+  host9 ! Neighbors(neighborsOfHost9, hosts)
+  host10 ! Neighbors(neighborsOfHost10, hosts)
+  host11 ! Neighbors(neighborsOfHost11, hosts)
   /*host12 ! Neighbors(neighborsOfHost12)
   host13 ! Neighbors(neighborsOfHost13)
   host14 ! Neighbors(neighborsOfHost14)
@@ -215,7 +227,7 @@ object AppRunnerAnnealing extends App {
   val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
   val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
 
-  val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11/*, host12, host13, host14, host15, host16*/)
+
   val delayableHosts: Seq[ActorRef] = Seq(host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
 
   val publishers: Map[String, ActorRef] = Map(
@@ -259,6 +271,8 @@ object AppRunnerAnnealing extends App {
         latency < timespan(20.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },
         bandwidth > dataRate(100.mbPerSecond) otherwise { nodeData => } )
 
+  hosts.foreach(host => host ! OptimizeFor(optimizeFor))
+
   Thread.sleep(3000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorAnnealing(actorSystem,
@@ -266,14 +280,14 @@ object AppRunnerAnnealing extends App {
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = false),
     PathLatencyMonitorFactory(interval =  2, logging = false),
-    PathBandwidthMonitorFactory(interval = 2, logging = false), NodeHost(host11), hosts)), "Placement")
+    PathBandwidthMonitorFactory(interval = 2, logging = false), NodeHost(host11), hosts, optimizeFor)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)
   placement ! Start
 
   var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
-
+/*
   while (true){
     Thread.sleep(20000)
     //println("delaying Hosts")
@@ -294,6 +308,6 @@ object AppRunnerAnnealing extends App {
     println(delayedHosts)
     delayedHosts.foreach(host => host ! Delay(true))
   }
-
+*/
 }
 

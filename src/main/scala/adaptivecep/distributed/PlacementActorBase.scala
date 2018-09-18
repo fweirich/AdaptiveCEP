@@ -1,11 +1,11 @@
-package adaptivecep.distributed.random
+package adaptivecep.distributed
 
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Events._
-import adaptivecep.distributed._
 import adaptivecep.data.Queries.{Operator => _, _}
-import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
+import adaptivecep.distributed._
+import adaptivecep.distributed.operator._
 import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, PoisonPill, Props}
@@ -18,52 +18,76 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
+import scala.util.Random
 
-case class PlacementActor (actorSystem: ActorSystem,
-                           query: Query,
-                           publishers: Map[String, ActorRef],
-                           publisherOperators: Map[String, Operator],
-                           frequencyMonitorFactory: MonitorFactory,
-                           latencyMonitorFactory: MonitorFactory,
-                           here: NodeHost)
-  extends Actor with ActorLogging{
+trait PlacementActorBase extends Actor with ActorLogging {
 
+  val actorSystem: ActorSystem
+  val query: Query
+  val publishers: Map[String, ActorRef]
+  val publisherOperators: Map[String, Operator]
+  val frequencyMonitorFactory: MonitorFactory
+  val latencyMonitorFactory: MonitorFactory
+  val bandwidthMonitorFactory: MonitorFactory
+  val here: NodeHost
+  val hosts: Set[ActorRef]
+  val optimizeFor: String
 
   case class HostId(id: Int) extends Host
 
   case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
 
   sealed trait Optimizing
+
   case object Maximizing extends Optimizing
+
   case object Minimizing extends Optimizing
 
   val cluster = Cluster(context.system)
   var previousPlacement: Map[Operator, Host] = Map.empty[Operator, Host]
+  val r: Random = scala.util.Random
 
-  var propsOperators: Map[Props, Operator] = Map.empty[Props ,Operator]
+  var propsOperators: Map[Props, Operator] = Map.empty[Props, Operator]
   var propsActors: Map[Props, ActorRef] = Map.empty[Props, ActorRef]
   var parents: Map[Operator, Option[Operator]] = Map.empty[Operator, Option[Operator]] withDefaultValue None
 
-  var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps]
+  var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
   var consumers: Seq[Operator] = Seq.empty[Operator]
-  var hostMap: Map[ActorRef, Host] = Map((here.actorRef) -> here)
+  var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
+  var delayedHosts: Set[Host] = Set.empty[Host]
+  var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
 
   val interval = 5
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
-  val eventCallback: (Event) => Any = {
-      // Callback for `query1`:
-      case Event3(Left(i1), Left(i2), Left(f)) => println(s"COMPLEX EVENT:\tEvent3($i1,$i2,$f)")
-      case Event3(Right(s), _, _)              => println(s"COMPLEX EVENT:\tEvent1($s)")
-      // Callback for `query2`:
-      // case (i1, i2, f, s)             => println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")
-      // This is necessary to avoid warnings about non-exhaustive `match`:
-      case _                             => println("what the hell")
+  val eventCallback: Event => Any = {
+    // Callback for `query1`:
+    //case Event3(Left(i1), Left(i2), Left(f)) => println(s"COMPLEX EVENT:\tEvent3($i1,$i2,$f)")
+    //case Event3(Right(s), _, _)              => println(s"COMPLEX EVENT:\tEvent1($s)")
+    // Callback for `query2`:
+    case Event4(i1, i2, f, s)             => println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")
+    // This is necessary to avoid warnings about non-exhaustive `match`:
+    case _                             => println("what the hell")
   }
 
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
+
+    //here = NodeHost(sender())
+    var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
+    var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
+    hosts.foreach(host => {
+      val nodeHost = NodeHost(host)
+      hostMap += host -> nodeHost
+      latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
+      bandwidthStub = bandwidthStub :+ (nodeHost, Double.MinValue)
+    })
+    if(!hostProps.contains(NoHost)){
+      hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
+    }
+    hostProps(NoHost).latency ++ latencyStub
+    hostProps(NoHost).bandwidth ++ bandwidthStub
   }
 
   override def postStop(): Unit ={
@@ -72,68 +96,30 @@ case class PlacementActor (actorSystem: ActorSystem,
   }
 
   def run(): Unit = {
-    placeOptimizingLatency()
-  }
-
-  def placeAll(map: Map[Operator, Host])={
-    map.foreach(pair => place(pair._1, pair._2))
-    map.keys.foreach(operator => {
-      if (operator.props != null) {
-        val actorRef = propsActors(operator.props)
-        val children = operator.dependencies
-        children.length match {
-          case 0 =>
-          case 1 =>
-            if (children.head.props != null) {
-              actorRef ! Child1(propsActors(children.head.props))
-              actorRef ! CentralizedCreated
-            }
-          case 2 =>
-            if (children.head.props != null && children(1).props != null) {
-              actorRef ! Child2(propsActors(children.head.props), propsActors(children(1).props))
-              actorRef ! CentralizedCreated
-            }
-        }
-        val parent = parents(operator)
-        if (parent.isDefined) {
-          actorRef ! Parent(propsActors(parent.get.props))
-          //println("setting Parent of", actorRef, propsActors(parent.get.props))
-        }
-      }
-    })
-    previousPlacement = map
-  }
-
-  def place(operator: Operator, host: Host): Unit={
-    if(host != NoHost && operator.props != null){
-      val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
-      if(moved) {
-        propsActors(operator.props) ! PoisonPill
-        println("killing old actor", propsActors(operator.props))
-      }
-      if (moved || previousPlacement.isEmpty){
-        val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(host.asInstanceOf[NodeHost].actorRef.path.address))))
-        ref ! Controller(self)
-        propsActors += operator.props -> ref
-        println("placing Actor", ref)
-      }
+    optimizeFor match {
+      case "latency" => placeOptimizingLatency()
+      case "bandwidth" => placeOptimizingBandwidth()
+      case "latencybandwidth" => placeOptimizingLatencyAndBandwidth()
+      case _ => println("ERROR: Typo in optimizeFor Parameter", optimizeFor)
     }
   }
 
+  def placeAll(map: Map[Operator, Host]): Unit
+
+  def place(operator: Operator, host: Host): Unit
+
   override def receive: Receive = {
-    case InitializeQuery => {
+    case InitializeQuery =>
       context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
           hostMap.foreach{
             host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
-            //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
           }
         })
- //     initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, Some(eventCallback), consumer = true)
-      context.system.actorSelection(self.path.address + "/user/Host-14") ! AllHosts
-    }
+      initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, Some(eventCallback), consumer = true)
+    //context.system.actorSelection(self.path.address + "/user/Host-14") ! AllHosts
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     case UnreachableMember(member) =>
@@ -143,90 +129,32 @@ case class PlacementActor (actorSystem: ActorSystem,
         member.address, previousStatus)
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
-      checkAndRestoreActor(member.address)
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
-        println("Recalculating Placement", sender())
+        //println("Recalculating Placement", sender())
         run()
       })
     case Start =>
       println("PLACEMENT ACTOR: starting")
       run()
-    case Hosts(hostss) =>
-      //here = NodeHost(sender())
-      var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
-      hostss.foreach(host => {
-        if(!hostMap.contains(host)) {
-          val nodeHost = NodeHost(host)
-          hostMap += host -> nodeHost
-          latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
+    case HostPropsResponse(costMap) =>
+      var latencies = Seq.empty[(Host, Duration)]
+      var dataRates = Seq.empty[(Host, Double)]
+      costMap.foreach(tuple =>
+        if(hosts.contains(tuple._1)) {
+          latencies = latencies :+ (hostMap(tuple._1), tuple._2.duration)
+          dataRates = dataRates :+ (hostMap(tuple._1), tuple._2.bandwidth)
         }
-      })
-      if(!hostProps.contains(NoHost)){
-        hostProps += NoHost -> HostProps(latencyStub, Seq.empty[(Host, Double)])
+      )
+      if (hosts.contains(sender())) {
+        hostProps += hostMap(sender()) -> HostProps(latencies, dataRates)
       }
-      hostProps(NoHost).latency ++ latencyStub
-    case HostPropsResponse(latencies) => {
-      //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
-      //println(hosts)
-      //println(latencies)
-      var test = Seq.empty[(Host, Duration)]
-      latencies.foreach(tuple => if (hostMap.contains(tuple._1)) {
-        if(hostMap.contains(tuple._1)) {
- //         test = test :+ (hostMap(tuple._1), tuple._2)
-        }
-      })
-      if (hostMap.contains(sender())) {
-        hostProps += hostMap(sender()) -> HostProps(test, Seq.empty[(Host, Double)])
-      }
-    }
   }
-
-  def moveToAddress(props: Props, address: Address): Unit = {
-    val oldActor = propsActors(props)
-    val migratedActor = actorSystem.actorOf(props.withDeploy(Deploy(scope = RemoteScope(address))))
-    propsActors += props -> migratedActor
-    oldActor ! Move(migratedActor)
-  }
-
-
-  def checkAndRestoreActor(address: Address): Unit ={
-    propsActors.foreach(
-      tuple => if(tuple._2.path.address.eq(address)){
-        val oldProps = tuple._1
-        val oldActor = tuple._2
-        val newAddress = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
-        val restoredActor = actorSystem.actorOf(oldProps.withDeploy(Deploy(scope = RemoteScope(newAddress))))
-
-        if (parents(propsOperators(oldProps)).isDefined){
-          val parent = parents(propsOperators(oldProps)).get
-          restoredActor ! Parent(propsActors(parent.props))
-          propsActors(parent.props) ! ChildUpdate(oldActor, restoredActor)
-        }
-        if(propsOperators(oldProps).dependencies.nonEmpty) {
-          propsOperators(oldProps).dependencies length match {
-            case 1 => {
-              val child = propsActors(propsOperators(oldProps).dependencies.head.props)
-              restoredActor ! Child1(child)
-              child ! Parent(restoredActor)
-            }
-            case 2 => {
-              val child1 = propsActors(propsOperators(oldProps).dependencies.head.props)
-              val child2 = propsActors(propsOperators(oldProps).dependencies(1).props)
-              restoredActor! Child2(child1, child2)
-              child1 ! Parent(restoredActor)
-              child2 ! Parent(restoredActor)
-            }
-          }
-        }
-    })
-  }
-
   private def latencySelector(props: HostProps, host: Host): Duration = {
     if(host.equals(NoHost)){
       return Duration.apply(50, TimeUnit.DAYS)
     }
-    val latency = (props.latency collectFirst { case (`host`, latency) => latency })
+    val latency = props.latency collectFirst { case (`host`, latency) => latency }
     if(latency.isDefined){
       latency.get
     }
@@ -234,12 +162,29 @@ case class PlacementActor (actorSystem: ActorSystem,
 
   }
 
-  private def bandwidthSelector(props: HostProps, host: Host): Double =
-    (props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }).get
+  private def bandwidthSelector(props: HostProps, host: Host): Double = {
+    if(host.equals(NoHost)){
+      return 0
+    }
+    val bandwidth = props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }
+    if(bandwidth.isDefined){
+      bandwidth.get
+    }
+    else 0
 
-  private def latencyBandwidthSelector(props: HostProps, host: Host): (Duration, Double) =
-    ((props.latency collectFirst { case (`host`, latency) => latency }).get,
-      (props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }).get)
+  }
+  private def latencyBandwidthSelector(props: HostProps, host: Host): (Duration, Double) = {
+    if(host.equals(NoHost)){
+      return (Duration.apply(50, TimeUnit.DAYS), 0)
+    }
+    val latency = props.latency collectFirst { case (`host`, latency) => latency }
+    val bandwidth = props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }
+    if(latency.isDefined && bandwidth.isDefined){
+      (latency.get, bandwidth.get)
+    }
+    else (Duration.apply(50, TimeUnit.DAYS), 0)
+
+  }
 
   private def avg(durations: Seq[Duration]): Duration =
     if (durations.isEmpty)
@@ -252,13 +197,6 @@ case class PlacementActor (actorSystem: ActorSystem,
       0.0
     else
       numerics.sum / numerics.size
-  /*
-  def measureLatency: Duration =
-    measure(latencySelector, Minimizing, Duration.Zero) { _ + _ } { avg } { _.host }
-
-  def measureBandwidth: Double =
-    measure(bandwidthSelector, Maximizing, Double.MaxValue) { math.min } { avg } { _.host }
-    */
 
   private def measure[T: Ordering](
                                     selector: (HostProps, Host) => T,
@@ -277,7 +215,6 @@ case class PlacementActor (actorSystem: ActorSystem,
 
     avg(consumers map measure)
   }
-
   def placeOptimizingLatency(): Unit = {
     val measureLatency = measure(latencySelector, Minimizing, Duration.Zero) { _ + _ } { avg } _
 
@@ -289,9 +226,9 @@ case class PlacementActor (actorSystem: ActorSystem,
 
     placeAll((if (durationA < durationB) placementsA else placementsB).toMap)
 
-      /*
-      case (operator, host) =>
-      place(operator, host)*/
+    /*
+    case (operator, host) =>
+    place(operator, host)*/
 
   }
 
@@ -304,9 +241,7 @@ case class PlacementActor (actorSystem: ActorSystem,
     val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
-    (if (bandwidthA > bandwidthB) placementsA else placementsB) foreach { case (operator, host) =>
-      place (operator, host)
-    }
+    placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
   }
 
   def placeOptimizingLatencyAndBandwidth(): Unit = {
@@ -337,9 +272,7 @@ case class PlacementActor (actorSystem: ActorSystem,
     val placementsB = placeOptimizingHeuristicB(latencyBandwidthSelector, Maximizing) { merge }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
-    (if (bandwidthA > bandwidthB) placementsA else placementsB) foreach { case (operator, host) =>
-      place (operator, host)
-    }
+    placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
   }
 
   private def placeOptimizingHeuristicA[T: Ordering](
@@ -467,36 +400,38 @@ case class PlacementActor (actorSystem: ActorSystem,
     case Maximizing => traversable maxBy f
     case Minimizing => traversable minBy f
   }
-/*
+
   def initialize(query: Query,
                  publishers: Map[String, ActorRef],
                  frequencyMonitorFactory: MonitorFactory,
                  latencyMonitorFactory: MonitorFactory,
+                 bandwidthMonitorFactory: MonitorFactory,
                  callback: Option[Event => Any],
                  consumer: Boolean ): Props = {
     query match {
       case streamQuery: StreamQuery =>
-        initializeStreamQuery(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  streamQuery, consumer)
+        initializeStreamQuery(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  streamQuery, consumer)
       case sequenceQuery: SequenceQuery =>
-        initializeSequenceNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  sequenceQuery, consumer)
+        initializeSequenceNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  sequenceQuery, consumer)
       case filterQuery: FilterQuery =>
-        initializeFilterNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  filterQuery, consumer)
+        initializeFilterNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  filterQuery, consumer)
       case dropElemQuery: DropElemQuery =>
-        initializeDropElemNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  dropElemQuery, consumer)
+        initializeDropElemNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  dropElemQuery, consumer)
       case selfJoinQuery: SelfJoinQuery =>
-        initializeSelfJoinNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  selfJoinQuery, consumer)
+        initializeSelfJoinNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  selfJoinQuery, consumer)
       case joinQuery: JoinQuery =>
-        initializeJoinNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  joinQuery, consumer)
+        initializeJoinNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  joinQuery, consumer)
       case conjunctionQuery: ConjunctionQuery =>
-        initializeConjunctionNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback,  conjunctionQuery, consumer)
+        initializeConjunctionNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback,  conjunctionQuery, consumer)
       case disjunctionQuery: DisjunctionQuery =>
-        initializeDisjunctionNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, callback, disjunctionQuery, consumer)
+        initializeDisjunctionNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, callback, disjunctionQuery, consumer)
     }
-  }*/
-/*
+  }
+
   private def initializeStreamQuery(publishers: Map[String, ActorRef],
                                     frequencyMonitorFactory: MonitorFactory,
                                     latencyMonitorFactory: MonitorFactory,
+                                    bandwidthMonitorFactory: MonitorFactory,
                                     callback: Option[Event => Any],
                                     streamQuery: StreamQuery,
                                     consumer: Boolean) = {
@@ -506,15 +441,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         streamQuery.publisherName, publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    propsOperators += props -> ActiveOperator(NoHost, props, Seq(publisherOperators(streamQuery.publisherName)))
+    propsOperators += props -> ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
     props
   }
 
   private def initializeDisjunctionNode(publishers: Map[String, ActorRef],
                                         frequencyMonitorFactory: MonitorFactory,
                                         latencyMonitorFactory: MonitorFactory,
+                                        bandwidthMonitorFactory: MonitorFactory,
                                         callback: Option[Event => Any],
                                         disjunctionQuery: DisjunctionQuery,
                                         consumer: Boolean) = {
@@ -526,16 +463,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, disjunctionQuery.sq1, disjunctionQuery.sq2, props, consumer)
+    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, disjunctionQuery.sq1, disjunctionQuery.sq2, props, consumer)
     props
   }
-
 
   private def initializeConjunctionNode(publishers: Map[String, ActorRef],
                                         frequencyMonitorFactory: MonitorFactory,
                                         latencyMonitorFactory: MonitorFactory,
+                                        bandwidthMonitorFactory: MonitorFactory,
                                         callback: Option[Event => Any],
                                         conjunctionQuery: ConjunctionQuery,
                                         consumer: Boolean) = {
@@ -549,15 +487,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, conjunctionQuery.sq1, conjunctionQuery.sq2, props, consumer)
+    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, conjunctionQuery.sq1, conjunctionQuery.sq2, props, consumer)
     props
   }
 
   private def initializeJoinNode(publishers: Map[String, ActorRef],
                                  frequencyMonitorFactory: MonitorFactory,
                                  latencyMonitorFactory: MonitorFactory,
+                                 bandwidthMonitorFactory: MonitorFactory,
                                  callback: Option[Event => Any],
                                  joinQuery: JoinQuery,
                                  consumer: Boolean) = {
@@ -574,15 +514,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, joinQuery.sq1, joinQuery.sq2, props, consumer)
+    connectBinaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, joinQuery.sq1, joinQuery.sq2, props, consumer)
     props
   }
 
   private def initializeSelfJoinNode(publishers: Map[String, ActorRef],
                                      frequencyMonitorFactory: MonitorFactory,
                                      latencyMonitorFactory: MonitorFactory,
+                                     bandwidthMonitorFactory: MonitorFactory,
                                      callback: Option[Event => Any],
                                      selfJoinQuery: SelfJoinQuery,
                                      consumer: Boolean) = {
@@ -598,15 +540,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, selfJoinQuery.sq, props, consumer)
+    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, selfJoinQuery.sq, props, consumer)
     props
   }
 
   private def initializeDropElemNode(publishers: Map[String, ActorRef],
                                      frequencyMonitorFactory: MonitorFactory,
                                      latencyMonitorFactory: MonitorFactory,
+                                     bandwidthMonitorFactory: MonitorFactory,
                                      callback: Option[Event => Any],
                                      dropElemQuery: DropElemQuery,
                                      consumer: Boolean) = {
@@ -618,15 +562,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, dropElemQuery.sq, props, consumer)
+    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, dropElemQuery.sq, props, consumer)
     props
   }
 
   private def initializeFilterNode(publishers: Map[String, ActorRef],
                                    frequencyMonitorFactory: MonitorFactory,
                                    latencyMonitorFactory: MonitorFactory,
+                                   bandwidthMonitorFactory: MonitorFactory,
                                    callback: Option[Event => Any],
                                    filterQuery: FilterQuery,
                                    consumer: Boolean) = {
@@ -638,15 +584,17 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, filterQuery.sq, props, consumer)
+    connectUnaryNode(publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, filterQuery.sq, props, consumer)
     props
   }
 
   private def initializeSequenceNode(publishers: Map[String, ActorRef],
                                      frequencyMonitorFactory: MonitorFactory,
                                      latencyMonitorFactory: MonitorFactory,
+                                     bandwidthMonitorFactory: MonitorFactory,
                                      callback: Option[Event => Any],
                                      sequenceQuery: SequenceQuery,
                                      consumer: Boolean) = {
@@ -662,20 +610,22 @@ case class PlacementActor (actorSystem: ActorSystem,
         publishers,
         frequencyMonitorFactory,
         latencyMonitorFactory,
+        bandwidthMonitorFactory,
         None,
         callback))
-    propsOperators += props -> ActiveOperator(NoHost, props, Seq(publisherOperators(sequenceQuery.s1.publisherName), publisherOperators(sequenceQuery.s2.publisherName)))
+    propsOperators += props -> ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
     props
   }
-*//*
+
   private def connectUnaryNode(publishers: Map[String, ActorRef],
                                frequencyMonitorFactory: MonitorFactory,
                                latencyMonitorFactory: MonitorFactory,
+                               bandwidthMonitorFactory: MonitorFactory,
                                query: Query, props: Props,
                                consumer: Boolean) : Unit = {
     val child = initialize(query, publishers,
       frequencyMonitorFactory,
-      latencyMonitorFactory, None, consumer = false)
+      latencyMonitorFactory, bandwidthMonitorFactory, None, consumer = false)
     val childOperator = propsOperators(child)
     var operator = ActiveOperator(here, props, Seq(childOperator))
     if(consumer){
@@ -690,16 +640,17 @@ case class PlacementActor (actorSystem: ActorSystem,
   private def connectBinaryNode(publishers: Map[String, ActorRef],
                                 frequencyMonitorFactory: MonitorFactory,
                                 latencyMonitorFactory: MonitorFactory,
+                                bandwidthMonitorFactory: MonitorFactory,
                                 query1: Query,
                                 query2: Query,
                                 props: Props,
                                 consumer: Boolean) : Unit = {
     val child1 = initialize(query1, publishers,
       frequencyMonitorFactory,
-      latencyMonitorFactory, None, consumer = false)
+      latencyMonitorFactory, bandwidthMonitorFactory, None, consumer = false)
     val child2 = initialize(query2, publishers,
       frequencyMonitorFactory,
-      latencyMonitorFactory, None, consumer = false)
+      latencyMonitorFactory, bandwidthMonitorFactory, None, consumer = false)
     val child1Operator = propsOperators(child1)
     val child2Operator = propsOperators(child2)
     var operator = ActiveOperator(here, props, Seq(child1Operator, child2Operator))
@@ -711,7 +662,7 @@ case class PlacementActor (actorSystem: ActorSystem,
     parents += child1Operator -> Some(propsOperators(props))
     parents += child2Operator -> Some(propsOperators(props))
   }
-*/
+
   def getQueryLength(query: Query): Int = query match {
     case _: Query1[_] => 1
     case _: Query2[_, _] => 2
@@ -765,5 +716,4 @@ case class PlacementActor (actorSystem: ActorSystem,
     case SlidingTime(i) => i
     case TumblingTime(i) => i
   }
-
 }

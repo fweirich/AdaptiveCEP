@@ -60,7 +60,7 @@ class HostActor extends Actor with ActorLogging {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(otherHosts)
       println("sending Hosts", sender(), Hosts(otherHosts + self))
     }
-    case HostPropsRequest => sender() ! HostPropsResponse(latencies)
+    //case HostPropsRequest => sender() ! HostPropsResponse(latencies)
     case _ =>
   }
 }

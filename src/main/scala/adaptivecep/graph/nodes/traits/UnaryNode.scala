@@ -59,9 +59,10 @@ trait UnaryNode extends Node {
             controller ! RequirementsMet
           }
         }
-        if(lmonitor.latency.isDefined) {
-          println(lmonitor.latency.get.toNanos/1000000.0)
+        if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
+          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get.toInt)
           lmonitor.latency = None
+          bmonitor.bandwidthForMonitoring = None
         }
     })}}
 
@@ -89,7 +90,7 @@ trait UnaryNode extends Node {
 
   def setDelay(b: Boolean): Unit = {
     delay = b
-    lmonitor.delay = b
+    //lmonitor.delay = b
   }
 
 }

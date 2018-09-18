@@ -60,7 +60,7 @@ trait BinaryNode extends Node {
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
-          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring)
+          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get)
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None
         }
@@ -98,7 +98,7 @@ trait BinaryNode extends Node {
 
   def setDelay(b: Boolean): Unit = {
     delay = b
-    lmonitor.delay = b
+    //lmonitor.delay = b
   }
 
 }

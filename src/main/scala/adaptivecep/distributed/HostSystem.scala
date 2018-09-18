@@ -1,11 +1,11 @@
-package adaptivecep.distributed.annealing
+package adaptivecep.distributed
 
 import java.io.File
 
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 
-object HostSystemAnnealing{
+object HostSystem{
 
   def main(args: Array[String]): Unit = {
     if (args.isEmpty)

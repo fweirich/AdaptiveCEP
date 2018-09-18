@@ -1,11 +1,10 @@
-package adaptivecep.distributed.centralized
+package adaptivecep.distributed
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
-import adaptivecep.distributed.HostActorBase
 import adaptivecep.simulation.ContinuousBoundedValue
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.cluster.Cluster
@@ -15,8 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.Random
 
-class HostActorCentralized extends HostActorBase {
-/*
+trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
   val interval = 2
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
@@ -85,53 +83,22 @@ class HostActorCentralized extends HostActorBase {
     })
 
   startLatencyMonitoring()
-/*
-  def delay(delay: Boolean): Unit = {
-    node ! Delay(delay)
-    this.delay = delay
-  }
-*/
+
   def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
-      //context.system.actorSelection(member.address.toString + "/user/Host") ! LatencyRequest(clock.instant())
+    //context.system.actorSelection(member.address.toString + "/user/Host") ! LatencyRequest(clock.instant())
     case UnreachableMember(member) =>
       log.info("Member detected as unreachable: {}", member)
     case MemberRemoved(member, previousStatus) =>
       log.info("Member is Removed: {} after {}",
         member.address, previousStatus)
-    /*case LatencyRequest(time) =>
-      if(sender() != self){
-        if(delay) {
-          sender() ! LatencyResponse(time.minusMillis(40))
-        } else {
-          sender() ! LatencyResponse(time)
-        }
-        //otherHosts += sender()
-        //println(otherHosts)
-      }*/
-    /*case LatencyResponse(requestTime) =>
-      if(sender() != self) {
-        latencies += sender() -> FiniteDuration(java.time.Duration.between(requestTime, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
-        //neighbors += sender()
-      }*/
     case Neighbors(n, h)=>
       neighbors = n
       h.foreach(neighbor => simulatedCosts += neighbor -> (latency(), bandwidth()))
       hostProps = HostProps(simulatedCosts)
-    /*case AllHosts => {
-      context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
-      //println("sending Hosts", sender(), Hosts(neighbors + self))
-    }*/
-    /*case Delay(b) =>{
-      if(sender() != self){
-        delay(b)
-        //println("delaying")
-      }
-    }*/
     case Node(actorRef) =>{
       node = actorRef
-      //node ! Delay(delay)
     }
     case HostToNodeMap(m) =>
       hostToNodeMap = m
@@ -140,5 +107,5 @@ class HostActorCentralized extends HostActorBase {
     case HostPropsRequest =>
       sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>
-  }*/
+  }
 }
