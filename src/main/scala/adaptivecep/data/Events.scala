@@ -13,34 +13,50 @@ object Events {
   case object Created
 
   sealed trait GreedyPlacementEvent
+
   case class CostMessage(latency: Duration, bandwidth: Double) extends GreedyPlacementEvent
+
   case class BecomeActiveOperator(operator: ActiveOperator) extends GreedyPlacementEvent
   case class SetActiveOperator(operator: Props) extends GreedyPlacementEvent
+
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
                                      childHost2: Option[ActorRef]) extends GreedyPlacementEvent
+
   case class BecomeTentativeOperatorWithTemperature(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
                                      childHost2: Option[ActorRef], temperature: Double) extends GreedyPlacementEvent
+
   case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent
+
   case object OperatorRequest extends GreedyPlacementEvent
   case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends GreedyPlacementEvent
+
   case class ParentResponse(parent: Option[ActorRef]) extends GreedyPlacementEvent
+
   case class ChildHost1(actorRef: ActorRef) extends GreedyPlacementEvent
   case class ChildHost2(actorRef1: ActorRef, actorRef2: ActorRef) extends GreedyPlacementEvent
   case class ChildResponse(childNode: ActorRef) extends GreedyPlacementEvent
+
   case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends GreedyPlacementEvent
   case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  GreedyPlacementEvent
+
   case object Start extends GreedyPlacementEvent
+
   case class CostRequest(instant: Instant) extends GreedyPlacementEvent
   case class CostResponse(instant: Instant, bandwidth: Double) extends GreedyPlacementEvent
-  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
-  case object MigrationComplete extends GreedyPlacementEvent
 
-  case object CentralizedCreated
+  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
+
+  case object MigrationComplete extends GreedyPlacementEvent
 
   case object TentativeAcknowledgement extends GreedyPlacementEvent
   case object ContinueSearching extends GreedyPlacementEvent
+
+  case object RequirementsNotMet extends GreedyPlacementEvent
+  case object RequirementsMet extends GreedyPlacementEvent
+
+  case object CentralizedCreated
 
   case object InitializeQuery
   case class Delay(delay: Boolean)
@@ -69,9 +85,6 @@ object Events {
 
   case object KillMe
   case object Kill
-
-  case object RequirementsNotMet extends GreedyPlacementEvent
-  case object RequirementsMet extends GreedyPlacementEvent
 
   case class LatencyRequest(instant: Instant)
   case class LatencyResponse(instant: Instant)

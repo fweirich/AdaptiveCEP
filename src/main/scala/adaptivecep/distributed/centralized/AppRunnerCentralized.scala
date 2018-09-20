@@ -30,145 +30,6 @@ object AppRunnerCentralized extends App {
     }
   }
 
-  val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
-  val address2 = Address("akka.tcp", "ClusterSystem", sys.env("HOST2"), 8000)
-  val address3 = Address("akka.tcp", "ClusterSystem", sys.env("HOST3"), 8000)
-  val address4 = Address("akka.tcp", "ClusterSystem", sys.env("HOST4"), 8000)
-  val address5 = Address("akka.tcp", "ClusterSystem", sys.env("HOST5"), 8000)
-  val address6 = Address("akka.tcp", "ClusterSystem", sys.env("HOST6"), 8000)
-  val address7 = Address("akka.tcp", "ClusterSystem", sys.env("HOST7"), 8000)
-  val address8 = Address("akka.tcp", "ClusterSystem", sys.env("HOST8"), 8000)
-  val address9 = Address("akka.tcp", "ClusterSystem", sys.env("HOST9"), 8000)
-  val address10 = Address("akka.tcp", "ClusterSystem", sys.env("HOST10"), 8000)
-  val address11 = Address("akka.tcp", "ClusterSystem", sys.env("HOST11"), 8000)
-  val address12 = Address("akka.tcp", "ClusterSystem", sys.env("HOST12"), 8000)
-  val address13 = Address("akka.tcp", "ClusterSystem", sys.env("HOST13"), 8000)
-  val address14 = Address("akka.tcp", "ClusterSystem", sys.env("HOST14"), 8000)
-  val address15 = Address("akka.tcp", "ClusterSystem", sys.env("HOST15"), 8000)
-  val address16 = Address("akka.tcp", "ClusterSystem", sys.env("HOST16"), 8000)
-  val address17 = Address("akka.tcp", "ClusterSystem", sys.env("HOST17"), 8000)
-  val address18 = Address("akka.tcp", "ClusterSystem", sys.env("HOST18"), 8000)
-  val address19 = Address("akka.tcp", "ClusterSystem", sys.env("HOST19"), 8000)
-  val address20 = Address("akka.tcp", "ClusterSystem", sys.env("HOST20"), 8000)
-
-  //LOCAL Setup
-  /*
-  val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
-  val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
-  val address3 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2553)
-  val address4 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2554)
-  val address5 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2555)
-  val address6 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2556)
-  val address7 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2557)
-  val address8 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2558)
-  val address9 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2559)
-  val address10 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2560)
-  val address11 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2561)
-  */
-/*
-  /*val address12 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:dbe6:4d20:b19e:5fcf]", 8000)
-  val address13 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:a5f7:96f6:f59:7752]", 8000)
-  val address14 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:fb5e:e067:3fc7:89a6]", 8000)
-  val address15 = Address("akka.tcp", "ClusterSystem", "[2600:1f16:948:9b01:f651:2a09:88b:9d1d]", 8000)
-  val address16 = Address("akka.tcp", "ClusterSystem", globalIP, 8000)*/
-
-  val alternativeAddress5 = Address("akka.tcp", "ClusterSystem", globalIP, 8001)
-  val alternativeAddress6 = Address("akka.tcp", "ClusterSystem", globalIP, 8002)
-  val alternativeAddress7 = Address("akka.tcp", "ClusterSystem", globalIP, 8003)
-  val alternativeAddress8 = Address("akka.tcp", "ClusterSystem", globalIP, 8004)
-  val alternativeAddress9 = Address("akka.tcp", "ClusterSystem", globalIP, 8005)
-  val alternativeAddress10 = Address("akka.tcp", "ClusterSystem", globalIP, 8006)
-  val alternativeAddress11 = Address("akka.tcp", "ClusterSystem", globalIP, 8007)
-  val alternativeAddress12 = Address("akka.tcp", "ClusterSystem", globalIP, 8008)
-  val alternativeAddress13 = Address("akka.tcp", "ClusterSystem", globalIP, 8009)
-  val alternativeAddress14 = Address("akka.tcp", "ClusterSystem", globalIP, 8010)
-  val alternativeAddress15 = Address("akka.tcp", "ClusterSystem", globalIP, 8011)
-*/
-  val host1: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address1))), "Host" + "1")
-  val host2: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address2))), "Host" + "2")
-  val host3: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address3))), "Host" + "3")
-  val host4: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address4))), "Host" + "4")
-  val host5: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address5))), "Host" + "5")
-  val host6: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address6))), "Host" + "6")
-  val host7: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address7))), "Host" + "7")
-  val host8: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address8))), "Host" + "8")
-  val host9: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address9))), "Host" + "9")
-  val host10: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address10))), "Host" + "10")
-  val host11: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address11))), "Host" + "11")
-  val host12: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address12))), "Host" + "12")
-  val host13: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address13))), "Host" + "13")
-  val host14: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address14))), "Host" + "14")
-  val host15: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address15))), "Host" + "15")
-  val host16: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "16")
-  val host17: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "17")
-  val host18: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "18")
-  val host19: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "19")
-  val host20: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "20")
-
-  val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11,
-    host12, host13, host14, host15, host16, host17, host18, host19, host20)
-/*
-  val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
-  val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
-  val neighborsOfHost3: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host16*/)
-  val neighborsOfHost4: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
-  val neighborsOfHost5: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host9, host11/*, host12, host13, host16*/)
-  val neighborsOfHost6: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host7, host9, host10, host11/*, host16*/)
-  val neighborsOfHost7: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host8, host9, host10, host11/*, host14, host16*/)
-  val neighborsOfHost8: Set[ActorRef] = Set(host1, host2, host3, host4, host7, host9, host10, host11/*, host14, host16*/)
-  val neighborsOfHost9: Set[ActorRef] = Set(host1, host2, host5, host6, host7, host8, host10, host11/*, host12, host13, host14, host16*/)
-  val neighborsOfHost10: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host13, host14, host15, host16*/)
-  val neighborsOfHost11: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host13, host14, host16*/)
-  val neighborsOfHost12: Set[ActorRef] = Set(host1, host5, host9, host10, host11/*, host13, host16*/)
-  val neighborsOfHost13: Set[ActorRef] = Set(host5, host8, host9, host10, host11 /*host12, host13, host14, host15, host16*/)
-  val neighborsOfHost14: Set[ActorRef] = Set(host7, host8, host9, host10, host11/*, host13, host14, host15, host16*/)
-  val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
-  val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
-*/
-  hosts.foreach(host => host ! Neighbors(hosts, hosts))
-  /*
-  host1 ! Neighbors(neighborsOfHost1, hosts)
-  host2 ! Neighbors(neighborsOfHost2, hosts)
-  host3 ! Neighbors(neighborsOfHost3, hosts)
-  host4 ! Neighbors(neighborsOfHost4, hosts)
-  host5 ! Neighbors(neighborsOfHost5, hosts)
-  host6 ! Neighbors(neighborsOfHost6, hosts)
-  host7 ! Neighbors(neighborsOfHost7, hosts)
-  host8 ! Neighbors(neighborsOfHost8, hosts)
-  host9 ! Neighbors(neighborsOfHost9, hosts)
-  host10 ! Neighbors(neighborsOfHost10, hosts)
-  host11 ! Neighbors(neighborsOfHost11, hosts)
-  host12 ! Neighbors(neighborsOfHost12)
-  host13 ! Neighbors(neighborsOfHost13)
-  host14 ! Neighbors(neighborsOfHost14)
-  host15 ! Neighbors(neighborsOfHost15)
-  host16 ! Neighbors(neighborsOfHost16)*/
-
-  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
-  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
-  val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
-  val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
-
-  val operatorA = ActiveOperator(NodeHost(host1), null, Seq.empty[Operator])
-  val operatorB = ActiveOperator(NodeHost(host2), null, Seq.empty[Operator])
-  val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
-  val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
-
-
-  //val delayableHosts: Seq[ActorRef] = Seq(host2, host3, host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
-
-  val publishers: Map[String, ActorRef] = Map(
-    "A" -> publisherA,
-    "B" -> publisherB,
-    "C" -> publisherC,
-    "D" -> publisherD)
-
-  val publisherOperators: Map[String, Operator] = Map(
-    "A" -> operatorA,
-    "B" -> operatorB,
-    "C" -> operatorC,
-    "D" -> operatorD)
-
   val query1: Query3[Either[Int, String], Either[Int, X], Either[Float, X]] =
     stream[Int]("A")
       .join(
@@ -214,6 +75,128 @@ object AppRunnerCentralized extends App {
         frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
       .and(stream[Float]("C"), bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => })
 
+
+  val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
+  val address2 = Address("akka.tcp", "ClusterSystem", sys.env("HOST2"), 8000)
+  val address3 = Address("akka.tcp", "ClusterSystem", sys.env("HOST3"), 8000)
+  val address4 = Address("akka.tcp", "ClusterSystem", sys.env("HOST4"), 8000)
+  val address5 = Address("akka.tcp", "ClusterSystem", sys.env("HOST5"), 8000)
+  val address6 = Address("akka.tcp", "ClusterSystem", sys.env("HOST6"), 8000)
+  val address7 = Address("akka.tcp", "ClusterSystem", sys.env("HOST7"), 8000)
+  val address8 = Address("akka.tcp", "ClusterSystem", sys.env("HOST8"), 8000)
+  val address9 = Address("akka.tcp", "ClusterSystem", sys.env("HOST9"), 8000)
+  val address10 = Address("akka.tcp", "ClusterSystem", sys.env("HOST10"), 8000)
+  val address11 = Address("akka.tcp", "ClusterSystem", sys.env("HOST11"), 8000)
+  val address12 = Address("akka.tcp", "ClusterSystem", sys.env("HOST12"), 8000)
+  val address13 = Address("akka.tcp", "ClusterSystem", sys.env("HOST13"), 8000)
+  val address14 = Address("akka.tcp", "ClusterSystem", sys.env("HOST14"), 8000)
+  val address15 = Address("akka.tcp", "ClusterSystem", sys.env("HOST15"), 8000)
+  val address16 = Address("akka.tcp", "ClusterSystem", sys.env("HOST16"), 8000)
+  val address17 = Address("akka.tcp", "ClusterSystem", sys.env("HOST17"), 8000)
+  val address18 = Address("akka.tcp", "ClusterSystem", sys.env("HOST18"), 8000)
+  val address19 = Address("akka.tcp", "ClusterSystem", sys.env("HOST19"), 8000)
+  val address20 = Address("akka.tcp", "ClusterSystem", sys.env("HOST20"), 8000)
+
+  //LOCAL Setup
+  /*
+  val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
+  val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
+  val address3 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2553)
+  val address4 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2554)
+  val address5 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2555)
+  val address6 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2556)
+  val address7 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2557)
+  val address8 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2558)
+  val address9 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2559)
+  val address10 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2560)
+  val address11 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2561)
+  */
+
+  val host1: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address1))), "Host" + "1")
+  val host2: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address2))), "Host" + "2")
+  val host3: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address3))), "Host" + "3")
+  val host4: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address4))), "Host" + "4")
+  val host5: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address5))), "Host" + "5")
+  val host6: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address6))), "Host" + "6")
+  val host7: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address7))), "Host" + "7")
+  val host8: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address8))), "Host" + "8")
+  val host9: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address9))), "Host" + "9")
+  val host10: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address10))), "Host" + "10")
+  val host11: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address11))), "Host" + "11")
+  val host12: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address12))), "Host" + "12")
+  val host13: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address13))), "Host" + "13")
+  val host14: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address14))), "Host" + "14")
+  val host15: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address15))), "Host" + "15")
+  val host16: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address16))), "Host" + "16")
+  val host17: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address17))), "Host" + "17")
+  val host18: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address18))), "Host" + "18")
+  val host19: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address19))), "Host" + "19")
+  val host20: ActorRef = actorSystem.actorOf(Props[HostActorCentralized].withDeploy(Deploy(scope = RemoteScope(address20))), "Host" + "20")
+
+  val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11,
+    host12, host13, host14, host15, host16, host17, host18, host19, host20)
+
+  hosts.foreach(host => host ! Neighbors(hosts, hosts))
+/*
+  val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
+  val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
+  val neighborsOfHost3: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host16*/)
+  val neighborsOfHost4: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
+  val neighborsOfHost5: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host9, host11/*, host12, host13, host16*/)
+  val neighborsOfHost6: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host7, host9, host10, host11/*, host16*/)
+  val neighborsOfHost7: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host8, host9, host10, host11/*, host14, host16*/)
+  val neighborsOfHost8: Set[ActorRef] = Set(host1, host2, host3, host4, host7, host9, host10, host11/*, host14, host16*/)
+  val neighborsOfHost9: Set[ActorRef] = Set(host1, host2, host5, host6, host7, host8, host10, host11/*, host12, host13, host14, host16*/)
+  val neighborsOfHost10: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host13, host14, host15, host16*/)
+  val neighborsOfHost11: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host13, host14, host16*/)
+  val neighborsOfHost12: Set[ActorRef] = Set(host1, host5, host9, host10, host11/*, host13, host16*/)
+  val neighborsOfHost13: Set[ActorRef] = Set(host5, host8, host9, host10, host11 /*host12, host13, host14, host15, host16*/)
+  val neighborsOfHost14: Set[ActorRef] = Set(host7, host8, host9, host10, host11/*, host13, host14, host15, host16*/)
+  val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
+  val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
+*/
+  /*
+  host1 ! Neighbors(neighborsOfHost1, hosts)
+  host2 ! Neighbors(neighborsOfHost2, hosts)
+  host3 ! Neighbors(neighborsOfHost3, hosts)
+  host4 ! Neighbors(neighborsOfHost4, hosts)
+  host5 ! Neighbors(neighborsOfHost5, hosts)
+  host6 ! Neighbors(neighborsOfHost6, hosts)
+  host7 ! Neighbors(neighborsOfHost7, hosts)
+  host8 ! Neighbors(neighborsOfHost8, hosts)
+  host9 ! Neighbors(neighborsOfHost9, hosts)
+  host10 ! Neighbors(neighborsOfHost10, hosts)
+  host11 ! Neighbors(neighborsOfHost11, hosts)
+  host12 ! Neighbors(neighborsOfHost12)
+  host13 ! Neighbors(neighborsOfHost13)
+  host14 ! Neighbors(neighborsOfHost14)
+  host15 ! Neighbors(neighborsOfHost15)
+  host16 ! Neighbors(neighborsOfHost16)*/
+
+  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
+  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
+  val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
+  val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
+
+  val operatorA = ActiveOperator(NodeHost(host1), null, Seq.empty[Operator])
+  val operatorB = ActiveOperator(NodeHost(host2), null, Seq.empty[Operator])
+  val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
+  val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
+
+
+  //val delayableHosts: Seq[ActorRef] = Seq(host2, host3, host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
+
+  val publishers: Map[String, ActorRef] = Map(
+    "A" -> publisherA,
+    "B" -> publisherB,
+    "C" -> publisherC,
+    "D" -> publisherD)
+
+  val publisherOperators: Map[String, Operator] = Map(
+    "A" -> operatorA,
+    "B" -> operatorB,
+    "C" -> operatorC,
+    "D" -> operatorD)
 
   Thread.sleep(3000)
 
