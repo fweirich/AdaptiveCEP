@@ -1,6 +1,5 @@
-package adaptivecep.distributed.greedy
+package adaptivecep.distributed
 
-import java.time.Clock
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
@@ -17,120 +16,14 @@ import akka.remote
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class HostActorGreedy extends HostActorDecentralizedBase{
+trait HostActorDecentralizedBase extends HostActorBase{
 
-  def sendOutCostMessages() : Unit = {
-    if(children.isEmpty && costs.size == parentHosts.size){
-      parentHosts.foreach(parent => parent ! CostMessage(costs(parent)._1, costs(parent)._2))
-    }
-    else if (processedCostMessages == numberOfChildren && costs.size == parentHosts.size) {
-      calculateOptimumNodes()
-      println(optimumHosts)
-      var bottleNeckNode = self
-      if(optimizeFor == "latency"){
-        bottleNeckNode = minmaxBy(Maximizing, optimumHosts)(childCosts(_)._1)
-      }else if(optimizeFor == "bandwidth"){
-        bottleNeckNode = minmaxBy(Minimizing, optimumHosts)(childCosts(_)._2)
-      }else{
-        bottleNeckNode = minmaxBy(Minimizing, optimumHosts)(childCosts(_))
-      }
-
-
-      println(bottleNeckNode)
-      childHost1 = optimumChildHost1
-      childHost2 = optimumChildHost2
-      optimumChildHost1 = None
-      optimumChildHost2 = None
-      //minmaxBy(Minimizing, costs)(_._2._1)._1
-      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent)._1),
-        mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent)._2)))
-      if (consumer) {
-        broadcastMessage(StateTransferMessage(optimumHosts, node.get))
-      }
-    }
-    println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
-  }
-
-  def calculateOptimumNodes() : Unit = {
-    println(childHost1)
-    println(childHost2)
-
-    if(optimizeFor == "latency"){
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Minimizing,
-        getChildAndTentatives(child._1))(childCosts(_)._1))
-    }else if(optimizeFor == "bandwidth"){
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
-        getChildAndTentatives(child._1))(childCosts(_)._2))
-    }else{
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
-        getChildAndTentatives(child._1))(childCosts(_)))
-    }
-
-    optimumHosts.foreach(host =>
-      if(childHost1.isDefined && getPreviousChild(host) == childHost1.get){
-        optimumChildHost1 = Some(host)
-        println(optimumChildHost1)
-        println(getPreviousChild(host))
-      } else if(childHost2.isDefined && getPreviousChild(host) == childHost2.get){
-        optimumChildHost2 = Some(host)
-        println(optimumChildHost2)
-        println(getPreviousChild(host))
-      } else {
-        println("ERROR: optimumHost does not belong to a child")
-      }
-    )
-  }
-/*
-  val cluster = Cluster(context.system)
-  val interval = 2
-  var neighbors: Set[ActorRef] = Set.empty[ActorRef]
-  var node: Option[ActorRef] = None
-  var delay: Boolean = false
-  val clock: Clock = Clock.systemDefaultZone
-  var optimizeFor: String = "latency"
-  var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
-  var simulatedCosts: Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])] =
-    Map.empty[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
-  var hostProps: HostProps = new HostProps(simulatedCosts)
-  var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
-
-
-  case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
-    def advance = HostProps(
-      costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth.advance)) })
-  }
-
-
-  object latency {
-    implicit val addDuration: (Duration, Duration) => Duration = _ + _
-
-    val template = ContinuousBoundedValue[Duration](
-      Duration.Undefined,
-      min = 2.millis, max = 100.millis,
-      () => (10.millis - 30.milli * random.nextDouble, 1 + random.nextInt(10)))
-
-    def apply() =
-      template copy (value = 2.milli + 98.millis * random.nextDouble)
-  }
-
-  object bandwidth {
-    implicit val addDouble: (Double, Double) => Double = _ + _
-
-    val template = ContinuousBoundedValue[Double](
-      0,
-      min = 5, max = 100,
-      () => (18 - 30 * random.nextDouble, 1 + random.nextInt(10)))
-
-    def apply() =
-      template copy (value = 5 + 95* random.nextDouble)
-  }
-
-
-  //
-  //GREEDY STRATEGY
+  sealed trait Optimizing
+  case object Maximizing extends Optimizing
+  case object Minimizing extends Optimizing
 
   val degree: Int = 2
-  val random: scala.util.Random = scala.util.Random
+  var optimizeFor: String = "latency"
   val system: ActorSystem = context.system
 
   var activeOperator: Option[ActiveOperator] = None
@@ -165,37 +58,22 @@ class HostActorGreedy extends HostActorDecentralizedBase{
 
   var operators: Map[ActorRef, Option[Operator]] = Map.empty[ActorRef, Option[Operator]]
 
-  // subscribe to cluster changes, re-subscribe when restart
-  override def preStart(): Unit = {
-    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
-      classOf[MemberEvent], classOf[UnreachableMember])
-  }
-  override def postStop(): Unit = cluster.unsubscribe(self)
+  implicit val ordering: Ordering[(Duration, Double)] = new Ordering[(Duration, Double)] {
+    def abs(x: Duration) = if (x < Duration.Zero) -x else x
 
-  def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(interval, TimeUnit.SECONDS),
-    runnable = () => {
-      hostProps = hostProps.advance
-      reportCostsToNode()
-    })
-
-  startLatencyMonitoring()
-
-  def reportCostsToNode(): Unit = {
-    var result = Map.empty[ActorRef, Cost]
-    val map = hostPropsToMap
-    hostToNodeMap.foreach(host => if(map.contains(host._1)){result += host._2 -> map(host._1)})
-    if(node.isDefined){
-      node.get ! HostPropsResponse(result)
+    def compare(x: (Duration, Double), y: (Duration, Double)) = ((-x._1, x._2), (-y._1, y._2)) match {
+      case ((d0, n0), (d1, n1)) if d0 == d1 && n0 == n1 => 0
+      case ((d0, n0), (d1, n1)) if d0 < d1 && n0 < n1 => -1
+      case ((d0, n0), (d1, n1)) if d0 > d1 && n0 > n1 => 1
+      case ((d0, n0), (d1, n1)) =>
+        math.signum((d0 - d1) / abs(d0 + d1) + (n0 - n1) / math.abs(n0 + n1)).toInt
     }
   }
 
-  def hostPropsToMap: Map[ActorRef, Cost] = {
-    hostProps.costs map { case (host, (latency, bandwidth)) => (host, Cost(latency.value, bandwidth.value)) }
-  }
+  def resetAllData(bool: Boolean): Unit
+  def sendOutCostMessages(): Unit
 
-  def receive = {
+  override def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
     //context.system.actorSelection(member.address.toString + "/user/Host") ! LatencyRequest(clock.instant())
@@ -204,21 +82,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     case MemberRemoved(member, previousStatus) =>
       log.info("Member is Removed: {} after {}",
         member.address, previousStatus)
-    case LatencyRequest(time) =>
-      if(sender() != self){
-        if(delay) {
-          sender() ! LatencyResponse(time.minusMillis(40))
-        } else {
-          sender() ! LatencyResponse(time)
-        }
-        //otherHosts += sender()
-        //println(otherHosts)
-      }
-    case LatencyResponse(requestTime) =>
-      if(sender() != self) {
-        latencies += sender() -> FiniteDuration(java.time.Duration.between(requestTime, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
-        //neighbors += sender()
-      }
     case Neighbors(n, h)=>
       neighbors = n
       h.foreach(host => simulatedCosts += host -> (latency(), bandwidth()))
@@ -226,12 +89,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     case AllHosts => {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
       //println("sending Hosts", sender(), Hosts(neighbors + self))
-    }
-    case Delay(b) =>{
-      if(sender() != self){
-        delay(b)
-        //println("delaying")
-      }
     }
     case Node(actorRef) =>{
       node = Some(actorRef)
@@ -243,19 +100,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     case _ =>
   }
 
-  sealed trait Optimizing
-  case object Maximizing extends Optimizing
-  case object Minimizing extends Optimizing
-  /*
-    def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
-      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-      interval = FiniteDuration(5, TimeUnit.SECONDS),
-      runnable = () => {
-        parentHosts.foreach{ _ ! CostRequest(clock.instant)}
-      })
-
-    startLatencyMonitoring()
-  */
   def chooseTentativeOperators() : Unit = {
     println("CHOOSING TENTATIVE OPERATORS")
     if (children.nonEmpty || parent.isDefined){
@@ -348,7 +192,7 @@ class HostActorGreedy extends HostActorDecentralizedBase{
         println("Got Child Response", c)
         println(childHost1)
         println(childHost2)
-        if(sender.equals(childHost1.get)){
+        if(childHost1.isDefined && sender.equals(childHost1.get)){
           childNode1 = Some(c)
         } else if (childHost2.isDefined && sender.equals(childHost2.get)){
           childNode2 = Some(c)
@@ -435,11 +279,11 @@ class HostActorGreedy extends HostActorDecentralizedBase{
             parent.get ! MigrationComplete
           }
         } else if(consumer){
-           if (completedChildren == children.size) {
-              updateChildren()
-              resetAllData(false)
-              children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
-           }
+          if (completedChildren == children.size) {
+            updateChildren()
+            resetAllData(false)
+            children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+          }
         } else {
           println("ERROR: Something went terribly wrong")
         }
@@ -481,31 +325,14 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     var isChild = false
     children.foreach(child =>
       if(child._1.equals(actorRef) || child._2.contains(actorRef)){
-      isChild = true
-    })
+        isChild = true
+      })
     isChild
   }
-*/
-
-/*
   def mergeBandwidth(b1: Double, b2: Double): Double = {
     Math.min(b1,b2)
   }
 
-  implicit val ordering: Ordering[(Duration, Double)] = new Ordering[(Duration, Double)] {
-    def abs(x: Duration) = if (x < Duration.Zero) -x else x
-
-    def compare(x: (Duration, Double), y: (Duration, Double)) = ((-x._1, x._2), (-y._1, y._2)) match {
-      case ((d0, n0), (d1, n1)) if d0 == d1 && n0 == n1 => 0
-      case ((d0, n0), (d1, n1)) if d0 < d1 && n0 < n1 => -1
-      case ((d0, n0), (d1, n1)) if d0 > d1 && n0 > n1 => 1
-      case ((d0, n0), (d1, n1)) =>
-        math.signum((d0 - d1) / abs(d0 + d1) + (n0 - n1) / math.abs(n0 + n1)).toInt
-    }
-  }
-*/
-
-/*
   def getPreviousChild(actorRef: ActorRef): ActorRef = {
     children.foreach(child => if(child._1.equals(actorRef) || child._2.contains(actorRef)) return child._1)
     null
@@ -564,39 +391,7 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     children = Map.empty[ActorRef, Seq[ActorRef]]
     optimumHosts.foreach(host => children += host -> Seq.empty[ActorRef])
   }
-*/
-  def resetAllData(deleteEverything: Boolean): Unit ={
-    if(deleteEverything){
-      if(node.isDefined){
-        node.get ! Kill
-      }
-      node = None
-      parent = None
-      activeOperator = None
-      tentativeOperator = None
-      children = Map.empty[ActorRef, Seq[ActorRef]]
-      childHost1 = None
-      childHost2 = None
-    }
 
-    childCosts = Map.empty[ActorRef, (Duration, Double)]
-
-    parentHosts = Seq.empty[ActorRef]
-    costs = Map.empty[ActorRef, (Duration, Double)]
-
-    optimumHosts = Seq.empty[ActorRef]
-    tentativeHosts = Seq.empty[ActorRef]
-
-    finishedChildren = 0
-    completedChildren = 0
-    processedCostMessages = 0
-    receivedResponses = Set.empty[ActorRef]
-
-    ready = false
-
-    operators = Map.empty[ActorRef, Option[Operator]]
-  }
-/*
   def setOperators(sender: ActorRef, activeOperator: Option[ActiveOperator], tentativeOperator: Option[TentativeOperator]): Unit = {
     if (activeOperator.isDefined){
       operators += sender -> activeOperator
@@ -671,14 +466,14 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     else None
   }
 
-  private def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
+  def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
     case Maximizing => traversable.min
     case Minimizing => traversable.max
   }
 
-  private def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
+  def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
     case Maximizing => traversable maxBy f
     case Minimizing => traversable minBy f
   }
-*/
+
 }

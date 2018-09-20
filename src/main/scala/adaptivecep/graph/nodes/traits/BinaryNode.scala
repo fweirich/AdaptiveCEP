@@ -42,24 +42,24 @@ trait BinaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!lmonitor.met || !bmonitor.met){
-          goodCounter = 0
-          badCounter += 1
-          if(badCounter >= 3){
-            badCounter = 0
-            controller ! RequirementsNotMet
-          }
-        }
-        if(lmonitor.met && bmonitor.met){
-          goodCounter += 1
-          badCounter = 0
-          if(goodCounter >= 3){
-            controller ! RequirementsMet
-          }
-        }
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
+          if(!lmonitor.met || !bmonitor.met){
+            goodCounter = 0
+            badCounter += 1
+            if(badCounter >= 3){
+              badCounter = 0
+              controller ! RequirementsNotMet
+            }
+          }
+          if(lmonitor.met && bmonitor.met){
+            goodCounter += 1
+            badCounter = 0
+            if(goodCounter >= 3){
+              controller ! RequirementsMet
+            }
+          }
           println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get)
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None

@@ -3,10 +3,10 @@ package adaptivecep.distributed.annealing
 import java.io.File
 
 import adaptivecep.data.Events._
-import adaptivecep.data.Queries._
+import adaptivecep.data.Queries.{Query3, Query4, X}
 import adaptivecep.distributed.greedy.AppRunnerGreedy.{hosts, optimizeFor}
 import adaptivecep.distributed.operator
-import adaptivecep.distributed.operator.NodeHost
+import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos
 import adaptivecep.graph.qos._
@@ -22,7 +22,7 @@ object AppRunnerAnnealing extends App {
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "latency"
+  var optimizeFor: String = "bandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 

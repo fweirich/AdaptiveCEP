@@ -31,9 +31,66 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
                                    here: NodeHost,
                                    hosts: Set[ActorRef],
                                    optimizeFor: String)
-  extends Actor with ActorLogging{
+  extends PlacementActorBase {
 
+  def placeAll(map: Map[Operator, Host]): Unit ={
+    map.foreach(pair => place(pair._1, pair._2))
+    map.keys.foreach(operator => {
+      if (operator.props != null) {
+        val actorRef = propsActors(operator.props)
+        val children = operator.dependencies
+        children.length match {
+          case 0 =>
+          case 1 =>
+            if (children.head.props != null) {
+              map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost1(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef)
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
+              actorRef ! Child1(propsActors(children.head.props))
+              actorRef ! CentralizedCreated
 
+            }
+          case 2 =>
+            if (children.head.props != null && children(1).props != null) {
+              map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost2(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef, map(propsOperators(children(1).props)).asInstanceOf[NodeHost].actorRef)
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
+              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children(1).props))
+              actorRef ! Child2(propsActors(children.head.props), propsActors(children(1).props))
+              actorRef ! CentralizedCreated
+
+            }
+        }
+        val parent = parents(operator)
+        if (parent.isDefined) {
+          map(operator).asInstanceOf[NodeHost].actorRef ! ParentHost(map(propsOperators(parent.get.props)).asInstanceOf[NodeHost].actorRef, propsActors(parent.get.props))
+          //actorRef ! Parent(propsActors(parent.get.props))
+          //println("setting Parent of", actorRef, propsActors(parent.get.props))
+        }
+      }
+    })
+    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
+    previousPlacement = map
+  }
+
+  def place(operator: Operator, host: Host): Unit = {
+    if(host != NoHost && operator.props != null){
+      val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
+      if(moved) {
+        propsActors(operator.props) ! PoisonPill
+        //println("killing old actor", propsActors(operator.props))
+      }
+      if (moved || previousPlacement.isEmpty){
+        val hostActor = host.asInstanceOf[NodeHost].actorRef
+        val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
+        hostActor ! SetActiveOperator(operator.props)
+        hostActor ! Node(ref)
+        ref ! Controller(hostActor)
+        propsActors += operator.props -> ref
+        //println("placing Actor", ref)
+      }
+    }
+  }
+
+/*
   case class HostId(id: Int) extends Host
 
   case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
@@ -101,64 +158,8 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
       case _ => println("ERROR: Typo in optimizeFor Parameter", optimizeFor)
     }
   }
-
-  def placeAll(map: Map[Operator, Host]): Unit ={
-    map.foreach(pair => place(pair._1, pair._2))
-    map.keys.foreach(operator => {
-      if (operator.props != null) {
-        val actorRef = propsActors(operator.props)
-        val children = operator.dependencies
-        children.length match {
-          case 0 =>
-          case 1 =>
-            if (children.head.props != null) {
-              map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost1(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef)
-              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
-              actorRef ! Child1(propsActors(children.head.props))
-              actorRef ! CentralizedCreated
-
-            }
-          case 2 =>
-            if (children.head.props != null && children(1).props != null) {
-              map(operator).asInstanceOf[NodeHost].actorRef ! ChildHost2(map(propsOperators(children.head.props)).asInstanceOf[NodeHost].actorRef, map(propsOperators(children(1).props)).asInstanceOf[NodeHost].actorRef)
-              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children.head.props))
-              //map(operator).asInstanceOf[NodeHost].actorRef ! ChildResponse(propsActors(children(1).props))
-              actorRef ! Child2(propsActors(children.head.props), propsActors(children(1).props))
-              actorRef ! CentralizedCreated
-
-            }
-        }
-        val parent = parents(operator)
-        if (parent.isDefined) {
-          map(operator).asInstanceOf[NodeHost].actorRef ! ParentHost(map(propsOperators(parent.get.props)).asInstanceOf[NodeHost].actorRef, propsActors(parent.get.props))
-          //actorRef ! Parent(propsActors(parent.get.props))
-          //println("setting Parent of", actorRef, propsActors(parent.get.props))
-        }
-      }
-    })
-    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
-    previousPlacement = map
-  }
-
-  def place(operator: Operator, host: Host): Unit = {
-    if(host != NoHost && operator.props != null){
-      val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
-      if(moved) {
-        propsActors(operator.props) ! PoisonPill
-        //println("killing old actor", propsActors(operator.props))
-      }
-      if (moved || previousPlacement.isEmpty){
-        val hostActor = host.asInstanceOf[NodeHost].actorRef
-        val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
-        hostActor ! SetActiveOperator(operator.props)
-        hostActor ! Node(ref)
-        ref ! Controller(hostActor)
-        propsActors += operator.props -> ref
-        //println("placing Actor", ref)
-      }
-    }
-  }
-
+*/
+/*
   override def receive: Receive = {
     case InitializeQuery =>
       context.system.scheduler.schedule(
@@ -181,7 +182,6 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
         member.address, previousStatus)
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
-      checkAndRestoreActor(member.address)
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
         //println("Recalculating Placement", sender())
@@ -205,44 +205,6 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
       if (hosts.contains(sender())) {
         hostProps += hostMap(sender()) -> HostProps(latencies, dataRates)
       }
-  }
-
-  def moveToAddress(props: Props, address: Address): Unit = {
-    val oldActor = propsActors(props)
-    val migratedActor = actorSystem.actorOf(props.withDeploy(Deploy(scope = RemoteScope(address))))
-    propsActors += props -> migratedActor
-    oldActor ! Move(migratedActor)
-  }
-
-
-  def checkAndRestoreActor(address: Address): Unit ={
-    propsActors.foreach(
-      tuple => if(tuple._2.path.address.eq(address)){
-        val oldProps = tuple._1
-        val oldActor = tuple._2
-        val newAddress = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
-        val restoredActor = actorSystem.actorOf(oldProps.withDeploy(Deploy(scope = RemoteScope(newAddress))))
-
-        if (parents(propsOperators(oldProps)).isDefined){
-          val parent = parents(propsOperators(oldProps)).get
-          restoredActor ! Parent(propsActors(parent.props))
-          propsActors(parent.props) ! ChildUpdate(oldActor, restoredActor)
-        }
-        if(propsOperators(oldProps).dependencies.nonEmpty) {
-          propsOperators(oldProps).dependencies length match {
-            case 1 =>
-              val child = propsActors(propsOperators(oldProps).dependencies.head.props)
-              restoredActor ! Child1(child)
-              child ! Parent(restoredActor)
-            case 2 =>
-              val child1 = propsActors(propsOperators(oldProps).dependencies.head.props)
-              val child2 = propsActors(propsOperators(oldProps).dependencies(1).props)
-              restoredActor! Child2(child1, child2)
-              child1 ! Parent(restoredActor)
-              child2 ! Parent(restoredActor)
-          }
-        }
-    })
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {
@@ -823,5 +785,5 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
     case SlidingTime(i) => i
     case TumblingTime(i) => i
   }
-
+*/
 }

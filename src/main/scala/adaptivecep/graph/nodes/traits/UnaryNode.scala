@@ -44,22 +44,22 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(!lmonitor.met){
-          goodCounter = 0
-          badCounter += 1
-          if(badCounter >= 3){
-            badCounter = 0
-            controller ! RequirementsNotMet
-          }
-        }
-        if(lmonitor.met){
-          goodCounter += 1
-          badCounter = 0
-          if(goodCounter >= 3){
-            controller ! RequirementsMet
-          }
-        }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
+          if(!lmonitor.met){
+            goodCounter = 0
+            badCounter += 1
+            if(badCounter >= 3){
+              badCounter = 0
+              controller ! RequirementsNotMet
+            }
+          }
+          if(lmonitor.met){
+            goodCounter += 1
+            badCounter = 0
+            if(goodCounter >= 3){
+              controller ! RequirementsMet
+            }
+          }
           println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get.toInt)
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None

@@ -18,7 +18,7 @@ trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
   val interval = 2
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
-  var node: ActorRef = self
+  var node: Option[ActorRef] = Some(self)
   var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
@@ -37,7 +37,9 @@ trait HostActorBase extends Actor with ActorLogging{
     var result = Map.empty[ActorRef, Cost]
     val map = hostPropsToMap
     hostToNodeMap.foreach(host => if(map.contains(host._1)){result += host._2 -> map(host._1)})
-    node ! HostPropsResponse(result)
+    if(node.isDefined){
+      node.get ! HostPropsResponse(result)
+    }
   }
 
   object latency {
@@ -98,7 +100,7 @@ trait HostActorBase extends Actor with ActorLogging{
       h.foreach(neighbor => simulatedCosts += neighbor -> (latency(), bandwidth()))
       hostProps = HostProps(simulatedCosts)
     case Node(actorRef) =>{
-      node = actorRef
+      node = Some(actorRef)
     }
     case HostToNodeMap(m) =>
       hostToNodeMap = m

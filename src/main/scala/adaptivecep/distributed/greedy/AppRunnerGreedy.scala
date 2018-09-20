@@ -3,10 +3,10 @@ package adaptivecep.distributed.greedy
 import java.io.File
 
 import adaptivecep.data.Events._
-import adaptivecep.data.Queries._
+import adaptivecep.data.Queries.{Query3, Query4, X}
 import adaptivecep.distributed.greedy.{HostActorGreedy, PlacementActorGreedy}
 import adaptivecep.distributed.operator
-import adaptivecep.distributed.operator.NodeHost
+import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._
