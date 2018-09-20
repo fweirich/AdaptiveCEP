@@ -22,7 +22,7 @@ trait HostActorBase extends Actor with ActorLogging{
   var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
-  val random: Random = new Random(0)
+  val random: Random = new Random(clock.millis())
   var simulatedCosts: Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])] =
     Map.empty[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
   var hostProps: HostProps = HostProps(simulatedCosts)
@@ -48,7 +48,7 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Duration](
       Duration.Undefined,
       min = 2.millis, max = 100.millis,
-      () => (10.millis - 30.milli * random.nextDouble, 1 + random.nextInt(10)))
+      () => (5.millis - 10.milli * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
       template copy (value = 2.milli + 98.millis * random.nextDouble)
@@ -60,7 +60,7 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Double](
       0,
       min = 5, max = 100,
-      () => (10 - 30 * random.nextDouble, 1 + random.nextInt(10)))
+      () => (5 - 10 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
       template copy (value = 5 + 95* random.nextDouble)
@@ -105,7 +105,7 @@ trait HostActorBase extends Actor with ActorLogging{
     case HostToNodeMap(m) =>
       hostToNodeMap = m
       println(hostToNodeMap)
-      println("GotHostToNodeMap")
+      //println("GotHostToNodeMap")
     case HostPropsRequest =>
       sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>

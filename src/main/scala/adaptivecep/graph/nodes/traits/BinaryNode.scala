@@ -60,7 +60,7 @@ trait BinaryNode extends Node {
               controller ! RequirementsMet
             }
           }
-          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get)
+          println(lmonitor.latency.get.toNanos/1000000.0 + ", " + bmonitor.bandwidthForMonitoring.get)
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None
         }

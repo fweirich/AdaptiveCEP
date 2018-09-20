@@ -271,12 +271,28 @@ object AppRunnerAnnealing extends App {
         latency < timespan(20.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },
         bandwidth > dataRate(100.mbPerSecond) otherwise { nodeData => } )
 
+  val query3: Query3[Int, Int, Float] =
+    stream[Int]("A")
+      .join(
+        stream[Int]("B"),
+        slidingWindow(2.seconds),
+        slidingWindow(2.seconds))
+      .where(_ < _)
+      .dropElem1(
+        /*latency < timespan(1.milliseconds) otherwise { nodeData => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") }*/)
+      .selfJoin(
+        tumblingWindow(1.instances),
+        tumblingWindow(1.instances),
+        frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },
+        frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
+      .and(stream[Float]("C"), bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => })
+
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
   Thread.sleep(3000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorAnnealing(actorSystem,
-    query2,
+    query3,
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = false),
     PathLatencyMonitorFactory(interval =  2, logging = false),

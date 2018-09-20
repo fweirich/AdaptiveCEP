@@ -60,7 +60,7 @@ trait UnaryNode extends Node {
               controller ! RequirementsMet
             }
           }
-          println(lmonitor.latency.get.toNanos/1000000.0, bmonitor.bandwidthForMonitoring.get.toInt)
+          println(lmonitor.latency.get.toNanos/1000000.0 + ", " + bmonitor.bandwidthForMonitoring.get)
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None
         }
@@ -69,7 +69,7 @@ trait UnaryNode extends Node {
   override def postStop(): Unit = {
     scheduledTask.cancel()
     lmonitor.scheduledTask.cancel()
-    println("Shutting down....")
+    //println("Shutting down....")
   }
 
   def emitCreated(): Unit = {

@@ -101,7 +101,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   }
 
   def chooseTentativeOperators() : Unit = {
-    println("CHOOSING TENTATIVE OPERATORS")
+    //println("CHOOSING TENTATIVE OPERATORS")
     if (children.nonEmpty || parent.isDefined){
       if(activeOperator.isDefined){
         val neighborSeq: Seq[ActorRef] = neighbors.toSeq
@@ -117,7 +117,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
           timeout += 1
         }
         if(timeout >= 1000){
-          println("Not enough hosts available as tentative Operators. Continuing without...")
+          //println("Not enough hosts available as tentative Operators. Continuing without...")
           children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
         }
         //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
@@ -131,7 +131,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   }
 
   def setup() : Unit = {
-    println("setting UP", neighbors)
+    //println("setting UP", neighbors)
     neighbors.foreach(neighbor => neighbor ! OperatorRequest)
   }
 
@@ -143,7 +143,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case SetActiveOperator(operator) =>
         setActiveOperator(operator)
       case BecomeTentativeOperator(operator, p, pHosts, c1, c2) =>
-        println("I'VE BEEN CHOSEN!!!", sender)
+        //println("I'VE BEEN CHOSEN!!!", sender)
         parentNode = Some(p)
         parentHosts = pHosts
         childHost1 = c1
@@ -175,9 +175,9 @@ trait HostActorDecentralizedBase extends HostActorBase{
         sender ! OperatorResponse(activeOperator, tentativeOperator)
       case OperatorResponse(ao, to) =>
         receivedResponses += sender
-        println("Received Operator Response:")
-        println("no. of responses ", receivedResponses.size)
-        println("no. of neighbors ", neighbors.size)
+        //println("Received Operator Response:")
+        //println("no. of responses ", receivedResponses.size)
+        //println("no. of neighbors ", neighbors.size)
         if(ao.isDefined){
           operators += sender -> ao
         } else {
@@ -189,7 +189,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case ParentResponse(p) =>
         parent = p
       case ChildResponse(c) =>
-        println("Got Child Response", c)
+        //println("Got Child Response", c)
         println(childHost1)
         println(childHost2)
         if(childHost1.isDefined && sender.equals(childHost1.get)){
@@ -220,7 +220,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         h1 ! ParentHost(self, node.get)
         h2 ! ParentHost(self, node.get)
       case ParentHost(p, ref) =>
-        println("Got Parent",p ,ref)
+        //println("Got Parent",p ,ref)
         hostToNodeMap += p -> ref
         if(node.isDefined){
           reportCostsToNode()
@@ -231,12 +231,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case FinishedChoosing(tChildren) =>
         children += sender -> tChildren
         finishedChildren += 1
-        println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
+        //println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
         if(activeOperator.isDefined) {
           if (finishedChildren == children.size) {
             if (consumer) {
               ready = true
-              println("READY TO CALCULATE NEW PLACEMENT!")
+              //println("READY TO CALCULATE NEW PLACEMENT!")
             } else {
               parentHosts.foreach(_ ! FinishedChoosing(tentativeHosts))
             }
@@ -267,12 +267,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
         println(sender)
         if(consumer && ready){
           ready = false
-          println("RECALCULATING")
+          //println("RECALCULATING")
           broadcastMessage(Start)
         }
       case RequirementsMet =>
       case MigrationComplete =>
-        println("A Child completed Migration", sender)
+        //println("A Child completed Migration", sender)
         completedChildren += 1
         if(parent.isDefined){
           if (completedChildren == children.size) {
@@ -354,7 +354,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   }
 
   def processStateTransferMessage(oHosts: Seq[ActorRef]): Unit ={
-    println("PROCESSING STATE TRANSFER....")
+    //println("PROCESSING STATE TRANSFER....")
     if(oHosts.contains(self)){
       if(activeOperator.isDefined){
         reportCostsToNode()
@@ -382,7 +382,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         parent.get ! ChildResponse(node.get)
       }
     } else {
-      println("DEACTIVATING....")
+      //println("DEACTIVATING....")
       resetAllData(true)
     }
   }
@@ -412,7 +412,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
     if(!isOperator){
       activeOperator = Some(operator)
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
-      println(temp)
       node = Some(temp)
       node.get ! Controller(self)
       node.get ! Delay(delay)
@@ -433,7 +432,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   }
 
   def activate() : Unit = {
-    println("ACTIVATING...")
+    //println("ACTIVATING...")
     if(tentativeOperator.isDefined){
       activeOperator = Some(ActiveOperator(tentativeOperator.get.host, tentativeOperator.get.props, tentativeOperator.get.dependencies))
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
