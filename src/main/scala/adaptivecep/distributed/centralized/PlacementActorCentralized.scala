@@ -58,7 +58,7 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
     if(host != NoHost && operator.props != null){
       val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
       if(moved) {
-        propsActors(operator.props) ! PoisonPill
+        propsActors(operator.props) ! Kill
         //println("killing old actor", propsActors(operator.props))
       }
       if (moved || previousPlacement.isEmpty){
