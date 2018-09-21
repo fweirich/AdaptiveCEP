@@ -77,6 +77,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   def place(operator: Operator, host: Host): Unit
 
   override def preStart(): Unit = {
+    println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
 
@@ -134,7 +135,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
-        //println("Recalculating Placement", sender())
+        //println("Recalculating Placement", sender(), optimizeFor)
         run()
       })
     case Start =>

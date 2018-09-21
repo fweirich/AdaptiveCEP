@@ -68,9 +68,9 @@ object AppRunnerCentralized extends App {
       .dropElem1()
       .selfJoin(
         tumblingWindow(1.instances),
-        tumblingWindow(1.instances),
-        frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },
-        frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
+        tumblingWindow(1.instances)
+        /*frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },*/
+        /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/)
       .and(stream[Float]("C").and(stream[String]("D")), bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => })
 
 
