@@ -104,7 +104,7 @@ trait HostActorBase extends Actor with ActorLogging{
     }
     case HostToNodeMap(m) =>
       hostToNodeMap = m
-      println(hostToNodeMap)
+      //println(hostToNodeMap)
       //println("GotHostToNodeMap")
     case HostPropsRequest =>
       sender() ! HostPropsResponse(hostPropsToMap)
