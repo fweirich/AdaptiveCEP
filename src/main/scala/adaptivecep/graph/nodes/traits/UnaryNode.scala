@@ -37,7 +37,7 @@ trait UnaryNode extends Node {
 
   var goodCounter: Int = 0
   var badCounter: Int = 0
-  var failsafe: Int = failsafe
+  var failsafe: Int = 0
 
   override def preStart(): Unit = {
     if(scheduledTask == null){
