@@ -73,7 +73,7 @@ case class SequenceNode(
         emitCreated()
       }
     case Parent(p1) => {
-      println("Parent received", p1)
+      //println("Parent received", p1)
       parentNode = p1
       parentReceived = true
       nodeData = LeafNodeData(name, requirements, context, parentNode)
@@ -85,10 +85,10 @@ case class SequenceNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       self ! PoisonPill
-      println("Shutting down....")
+      //println("Shutting down....")
     case Controller(c) =>
       controller = c
-      println("Got Controller", c)
+      //println("Got Controller", c)
     case Delay(b) => {
       setDelay(b)
     }

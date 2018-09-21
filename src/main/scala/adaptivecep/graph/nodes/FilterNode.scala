@@ -43,14 +43,14 @@ case class FilterNode(
         emitCreated()
       }
     case Parent(p1) => {
-      println("Parent received", p1)
+      //println("Parent received", p1)
       parentNode = p1
       parentReceived = true
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       //if (childCreated && !created) emitCreated()
     }
     case Child1(c) => {
-      println("Child received", c)
+      //println("Child received", c)
       emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
@@ -69,10 +69,10 @@ case class FilterNode(
       lmonitor.scheduledTask.cancel()
       bmonitor.scheduledTask.cancel()
       self ! PoisonPill
-      println("Shutting down....")
+      //println("Shutting down....")
     case Controller(c) =>
       controller = c
-      println("Got Controller", c)
+      //println("Got Controller", c)
     case Delay(b) => {
       setDelay(b)
     }
