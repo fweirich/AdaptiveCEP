@@ -37,6 +37,7 @@ trait UnaryNode extends Node {
 
   var goodCounter: Int = 0
   var badCounter: Int = 0
+  var failsafe: Int = failsafe
 
   override def preStart(): Unit = {
     if(scheduledTask == null){
@@ -44,6 +45,10 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
+        failsafe += 1
+        if(failsafe > 10){
+          controller ! RequirementsNotMet
+        }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
           if(!lmonitor.met){
             goodCounter = 0

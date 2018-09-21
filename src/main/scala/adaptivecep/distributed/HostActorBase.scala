@@ -48,10 +48,10 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Duration](
       Duration.Undefined,
       min = 2.millis, max = 100.millis,
-      () => (5.millis - 10.milli * random.nextDouble, 1 + random.nextInt(10)))
+      () => (1.millis - 2.milli * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
-      template copy (value = 2.milli + 98.millis * random.nextDouble)
+      template copy (value = 20.milli + 80.millis * random.nextDouble)
   }
 
   object bandwidth {
@@ -60,10 +60,10 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Double](
       0,
       min = 5, max = 100,
-      () => (4 - 7.5 * random.nextDouble, 1 + random.nextInt(10)))
+      () => (1 - 2 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
-      template copy (value = 5 + 95* random.nextDouble)
+      template copy (value = 20 + 80* random.nextDouble)
   }
 
   def hostPropsToMap: Map[ActorRef, Cost] = {

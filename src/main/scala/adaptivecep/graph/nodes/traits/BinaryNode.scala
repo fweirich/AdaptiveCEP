@@ -21,6 +21,7 @@ trait BinaryNode extends Node {
   val interval = 2
   var badCounter = 0
   var goodCounter = 0
+  var failsafe = 0
 
   var childNode1: ActorRef = self
   var childNode2: ActorRef = self
@@ -44,7 +45,12 @@ trait BinaryNode extends Node {
       runnable = () => {
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
+        failsafe += 1
+        if(failsafe > 10){
+          controller ! RequirementsNotMet
+        }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
+          failsafe = 0
           if(!lmonitor.met || !bmonitor.met){
             goodCounter = 0
             badCounter += 1
