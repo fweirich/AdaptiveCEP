@@ -287,6 +287,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         } else {
           println("ERROR: Something went terribly wrong")
         }
+      case _ =>
     }
   }
 

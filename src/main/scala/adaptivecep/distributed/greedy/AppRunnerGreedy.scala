@@ -207,7 +207,7 @@ object AppRunnerGreedy extends App{
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = false),
     PathLatencyMonitorFactory(interval =  2, logging = false),
-    PathBandwidthMonitorFactory(interval = 2, logging = false),NodeHost(host11), hosts, optimizeFor)), "Placement")
+    PathBandwidthMonitorFactory(interval = 2, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)

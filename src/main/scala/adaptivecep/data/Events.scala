@@ -2,7 +2,7 @@ package adaptivecep.data
 
 import java.time.Instant
 
-import adaptivecep.data.Cost.Cost
+import adaptivecep.data.Cost._
 import adaptivecep.distributed.operator.{ActiveOperator, TentativeOperator}
 import akka.actor.{ActorRef, Props}
 
