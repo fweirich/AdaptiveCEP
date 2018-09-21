@@ -149,7 +149,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       var dataRates = Seq.empty[(Host, Double)]
       costMap.foreach(tuple =>
         if(hosts.contains(tuple._1)) {
-          println(tuple._1, tuple._2.bandwidth)
+          //println(tuple._1, tuple._2.bandwidth)
           latencies = latencies :+ (hostMap(tuple._1), tuple._2.duration)
           dataRates = dataRates :+ (hostMap(tuple._1), tuple._2.bandwidth)
         }

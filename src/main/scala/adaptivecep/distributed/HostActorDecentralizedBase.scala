@@ -2,19 +2,14 @@ package adaptivecep.distributed
 
 import java.util.concurrent.TimeUnit
 
-import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator, TentativeOperator}
-import adaptivecep.distributed.{HostActorDecentralizedBase, operator}
-import adaptivecep.graph.qos.ChildLatencyResponse
-import adaptivecep.simulation.ContinuousBoundedValue
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Deploy, Props}
-import akka.cluster.Cluster
+import akka.actor.{ActorRef, ActorSystem, Deploy, Props}
 import akka.cluster.ClusterEvent._
 import akka.remote
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 trait HostActorDecentralizedBase extends HostActorBase{
 
@@ -159,11 +154,11 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case ContinueSearching =>
         setup()
       case ChooseTentativeOperators(parents) =>
-        println("Choosing Tentative Operators")
+        //println("Choosing Tentative Operators")
         parentHosts = parents
         if(parents.isEmpty){
           consumer = true
-          println(children)
+          //println(children)
           children.toSeq.head._1 ! ChooseTentativeOperators(Seq(self))
         } else if(children.isEmpty){
           parentHosts.foreach(_ ! FinishedChoosing(Seq.empty[ActorRef]))
@@ -171,7 +166,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
           setup()
         }
       case OperatorRequest =>
-        println("Got Operator Request, Sending Response", isOperator, " to", sender)
+        //println("Got Operator Request, Sending Response", isOperator, " to", sender)
         sender ! OperatorResponse(activeOperator, tentativeOperator)
       case OperatorResponse(ao, to) =>
         receivedResponses += sender
@@ -190,8 +185,8 @@ trait HostActorDecentralizedBase extends HostActorBase{
         parent = p
       case ChildResponse(c) =>
         //println("Got Child Response", c)
-        println(childHost1)
-        println(childHost2)
+        //println(childHost1)
+        //println(childHost2)
         if(childHost1.isDefined && sender.equals(childHost1.get)){
           childNode1 = Some(c)
         } else if (childHost2.isDefined && sender.equals(childHost2.get)){
@@ -264,7 +259,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         parentNode = Some(p)
         processStateTransferMessage(o)
       case RequirementsNotMet =>
-        println(sender)
+        //println(sender)
         if(consumer && ready){
           ready = false
           //println("RECALCULATING")
@@ -313,7 +308,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def processCostMessage(m: CostMessage, sender: ActorRef): Unit = {
     if(isOperator && isChild(sender)){
       childCosts += sender -> (m.latency, m.bandwidth)
-      println(m.latency, m.bandwidth)
+      //println(m.latency, m.bandwidth)
     }
     else {
       println("ERROR: Cost Message arrived at Host without Operator")
@@ -437,7 +432,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
     if(tentativeOperator.isDefined){
       activeOperator = Some(ActiveOperator(tentativeOperator.get.host, tentativeOperator.get.props, tentativeOperator.get.dependencies))
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
-      println(temp)
+      //println(temp)
       node = Some(temp)
       node.get ! Controller(self)
       tentativeOperator = None
