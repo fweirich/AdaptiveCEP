@@ -149,6 +149,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       var dataRates = Seq.empty[(Host, Double)]
       costMap.foreach(tuple =>
         if(hosts.contains(tuple._1)) {
+          println(tuple._1, tuple._2.bandwidth)
           latencies = latencies :+ (hostMap(tuple._1), tuple._2.duration)
           dataRates = dataRates :+ (hostMap(tuple._1), tuple._2.bandwidth)
         }
@@ -256,6 +257,11 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
+
+    if (bandwidthA > bandwidthB){
+     //placementsA.foreach(line => println(line))
+    }
+
 
     placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
   }
