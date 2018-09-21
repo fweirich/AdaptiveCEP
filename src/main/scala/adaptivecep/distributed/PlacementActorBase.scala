@@ -58,7 +58,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   var delayedHosts: Set[Host] = Set.empty[Host]
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
 
-  val interval = 5
+  val interval = 2
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
