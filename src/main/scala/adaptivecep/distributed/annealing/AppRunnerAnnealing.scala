@@ -15,7 +15,7 @@ import com.typesafe.config.ConfigFactory
 
 object AppRunnerAnnealing extends App {
 
-  val file = new File("applicationlocal.conf")
+  val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
