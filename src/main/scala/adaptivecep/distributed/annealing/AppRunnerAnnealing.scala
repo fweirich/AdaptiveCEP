@@ -59,21 +59,19 @@ object AppRunnerAnnealing extends App {
         latency < timespan(20.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },
         bandwidth > dataRate(100.mbPerSecond) otherwise { nodeData => } )
 
-  val query3: Query3[Int, Int, Float] =
+  val query3: Query4[Int, Int, Float, String] =
     stream[Int]("A")
       .join(
         stream[Int]("B"),
         slidingWindow(2.seconds),
         slidingWindow(2.seconds))
-      .where(_ < _)
-      .dropElem1(
-        /*latency < timespan(1.milliseconds) otherwise { nodeData => println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!") }*/)
+      .dropElem1()
       .selfJoin(
         tumblingWindow(1.instances),
         tumblingWindow(1.instances),
         frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },
         frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })
-      .and(stream[Float]("C"), bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => })
+      .and(stream[Float]("C").and(stream[String]("D")), bandwidth > dataRate(40.mbPerSecond) otherwise { nodeData => })
   //AWS Setup
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
