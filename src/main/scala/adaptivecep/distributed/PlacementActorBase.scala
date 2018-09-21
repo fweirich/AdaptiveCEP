@@ -135,7 +135,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case RequirementsNotMet =>
       propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
         //println("Recalculating Placement", sender())
-        run()
+        //run()
       })
     case Start =>
       println("PLACEMENT ACTOR: starting")
@@ -155,6 +155,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       if (hosts.contains(sender())) {
         hostProps += hostMap(sender()) -> HostProps(latencies, dataRates)
       }
+    case _ =>
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {
