@@ -39,6 +39,9 @@ trait UnaryNode extends Node {
   var badCounter: Int = 0
   var failsafe: Int = 0
 
+  var previousBandwidth : Double = 0
+  var previousLatency : Duration = Duration.Zero
+
   override def preStart(): Unit = {
     if(scheduledTask == null){
       scheduledTask = context.system.scheduler.schedule(
@@ -66,8 +69,13 @@ trait UnaryNode extends Node {
             }
           }
           println(lmonitor.latency.get.toNanos/1000000.0 + ", " + bmonitor.bandwidthForMonitoring.get)
+          previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
+          previousBandwidth = bmonitor.bandwidthForMonitoring.get
           lmonitor.latency = None
           bmonitor.bandwidthForMonitoring = None
+        }
+        else {
+          println(previousLatency.toNanos/1000000.0 + ", " + previousBandwidth)
         }
     })}}
 
