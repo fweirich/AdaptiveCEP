@@ -51,7 +51,7 @@ trait HostActorBase extends Actor with ActorLogging{
       () => (1.millis - 2.milli * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
-      template copy (value = 20.milli + 80.millis * random.nextDouble)
+      template copy (value = 5.milli + 95.millis * random.nextDouble)
   }
 
   object bandwidth {
