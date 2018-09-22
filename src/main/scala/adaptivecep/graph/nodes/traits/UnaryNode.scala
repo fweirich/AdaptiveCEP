@@ -50,6 +50,7 @@ trait UnaryNode extends Node {
       runnable = () => {
         failsafe += 1
         if(failsafe > 10){
+          failsafe = 0
           controller ! RequirementsNotMet
         }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {

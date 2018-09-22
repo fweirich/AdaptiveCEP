@@ -50,6 +50,7 @@ trait BinaryNode extends Node {
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
         failsafe += 1
         if(failsafe > 10){
+          failsafe = 0
           controller ! RequirementsNotMet
         }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
