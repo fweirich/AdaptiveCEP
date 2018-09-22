@@ -20,7 +20,7 @@ object AppRunnerGreedy extends App{
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "bandwidth"
+  var optimizeFor: String = "latency"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
@@ -67,7 +67,9 @@ object AppRunnerGreedy extends App{
         tumblingWindow(1.instances))
         /*frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },*/
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })*/
-      .and(stream[Float]("C").and(stream[String]("D")), bandwidth > dataRate(55.mbPerSecond) otherwise { nodeData => })
+      .and(stream[Float]("C").and(stream[String]("D")),
+      /*bandwidth > dataRate(55.mbPerSecond) otherwise { nodeData => }*/
+      latency < timespan(230.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
 
   override def main(args: Array[String]): Unit = {
@@ -204,8 +206,8 @@ object AppRunnerGreedy extends App{
     query3,
     publishers, publisherOperators,
     AverageFrequencyMonitorFactory(interval = 15, logging = false),
-    PathLatencyMonitorFactory(interval =  2, logging = false),
-    PathBandwidthMonitorFactory(interval = 2, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
+    PathLatencyMonitorFactory(interval =  100, logging = false),
+    PathBandwidthMonitorFactory(interval = 100, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)

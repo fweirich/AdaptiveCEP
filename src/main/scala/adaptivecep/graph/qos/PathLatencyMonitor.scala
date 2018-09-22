@@ -76,7 +76,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
     if(scheduledTask == null) {
       scheduledTask = nodeData.context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => childNode ! ChildLatencyRequest(clock.instant))
     }
   }
@@ -162,7 +162,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
     if(scheduledTask == null) {
       scheduledTask = nodeData.context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
           childNode1 ! ChildLatencyRequest(clock.instant)
           childNode2 ! ChildLatencyRequest(clock.instant)

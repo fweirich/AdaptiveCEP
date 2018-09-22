@@ -68,7 +68,7 @@ case class PathBandwidthUnaryNodeMonitor(interval: Int, logging: Boolean)
     if(scheduledTask == null) {
       scheduledTask = nodeData.context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => childNode ! ChildBandwidthRequest)
     }
   }
@@ -151,7 +151,7 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
     if(scheduledTask == null) {
       scheduledTask = nodeData.context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
           childNode1 ! ChildBandwidthRequest
           childNode2 ! ChildBandwidthRequest
