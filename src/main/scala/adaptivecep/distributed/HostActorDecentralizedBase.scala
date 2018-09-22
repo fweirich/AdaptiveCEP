@@ -245,12 +245,13 @@ trait HostActorDecentralizedBase extends HostActorBase{
           broadcastMessage(Start)
         }
       case CostRequest(t) =>
-        system.scheduler.scheduleOnce(
-          FiniteDuration(hostPropsToMap(sender).duration.toMillis * 2, TimeUnit.MILLISECONDS),
-          () => {sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)})
-      case CostResponse(t, _) =>
+        /*system.scheduler.scheduleOnce(
+          FiniteDuration(hostPropsToMap(sender).duration.toMillis, TimeUnit.MILLISECONDS),
+          () => {sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)})*/
+        sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)
+      case CostResponse(_, _) =>
         if (parentHosts.contains(sender)) {
-          costs += sender -> (FiniteDuration(java.time.Duration.between(t, clock.instant).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), hostPropsToMap(sender).bandwidth)
+          costs += sender -> (hostPropsToMap(sender).duration, hostPropsToMap(sender).bandwidth)
           sendOutCostMessages()
         }
       case StateTransferMessage(o, p) =>
@@ -262,7 +263,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         //println(sender)
         if(consumer && ready){
           ready = false
-          //println("RECALCULATING")
+          println("RECALCULATING")
           broadcastMessage(Start)
         }
       case RequirementsMet =>

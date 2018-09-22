@@ -48,7 +48,7 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
       case ChildLatencyRequest(time) =>
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
             () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
         nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)
@@ -90,11 +90,11 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
       case ChildLatencyRequest(time) =>
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
             () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
       case ChildLatencyResponse(_, requestTime) =>
-        childNodeLatency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
+        childNodeLatency = Some(Duration.between(requestTime, clock.instant))
         if (childNodePathLatency.isDefined) {
           val pathLatency: Duration = childNodeLatency.get.plus(childNodePathLatency.get)
           latency = Some(pathLatency)
@@ -179,7 +179,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
       case ChildLatencyRequest(time) =>
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
             () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
 
@@ -193,9 +193,9 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
       case ChildLatencyResponse(childNode, requestTime) =>
         childNode match {
           case nodeData.childNode1 =>
-            childNode1Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
+            childNode1Latency = Some(Duration.between(requestTime, clock.instant))
           case nodeData.childNode2 =>
-            childNode2Latency = Some(Duration.between(requestTime, clock.instant).dividedBy(2))
+            childNode2Latency = Some(Duration.between(requestTime, clock.instant))
           case _ =>
         }
         if (childNode1Latency.isDefined &&
