@@ -127,6 +127,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
 
   def setup() : Unit = {
     //println("setting UP", neighbors)
+    receivedResponses = Set.empty[ActorRef]
     neighbors.foreach(neighbor => neighbor ! OperatorRequest)
   }
 
@@ -423,7 +424,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       tentativeOperator = Some(operator)
       sender ! TentativeAcknowledgement
     } else {
-      println("ERROR: Host already has a Operator")
+      println("ERROR: Host already has an Operator")
       sender ! ContinueSearching
     }
   }
