@@ -51,9 +51,9 @@ case class FilterNode(
     }
     case Child1(c) => {
       //println("Child received", c)
-      emitCreated()
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
+      emitCreated()
     }
     case ChildUpdate(_, a) => {
       emitCreated()

@@ -129,10 +129,10 @@ case class DisjunctionNode(
     }
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
-      emitCreated()
       childNode1 = c1
       childNode2 = c2
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
+      emitCreated()
     }
     case Move(a) => {
       moveTo(a)
