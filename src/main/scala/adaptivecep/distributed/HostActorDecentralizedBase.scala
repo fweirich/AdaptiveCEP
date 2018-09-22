@@ -412,7 +412,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
       node = Some(temp)
       node.get ! Controller(self)
-      node.get ! CentralizedCreated
 
     }else{
       println("ERROR: Host already has an Operator")
@@ -436,7 +435,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
       //println(temp)
       node = Some(temp)
-      node.get ! CentralizedCreated
       node.get ! Controller(self)
       tentativeOperator = None
     } else {

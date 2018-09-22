@@ -69,7 +69,7 @@ object AppRunnerGreedy extends App{
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") })*/
       .and(stream[Float]("C").and(stream[String]("D")),
       /*bandwidth > dataRate(55.mbPerSecond) otherwise { nodeData => }*/
-      latency < timespan(250.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+      latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
 
   override def main(args: Array[String]): Unit = {
@@ -205,9 +205,9 @@ object AppRunnerGreedy extends App{
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorGreedy(actorSystem,
     query3,
     publishers, publisherOperators,
-    AverageFrequencyMonitorFactory(interval = 15, logging = false),
-    PathLatencyMonitorFactory(interval =  500, logging = false),
-    PathBandwidthMonitorFactory(interval = 500, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
+    AverageFrequencyMonitorFactory(interval = 15000, logging = false),
+    PathLatencyMonitorFactory(interval =  1000, logging = false),
+    PathBandwidthMonitorFactory(interval = 1000, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
 
   placement ! InitializeQuery
   Thread.sleep(10000)
