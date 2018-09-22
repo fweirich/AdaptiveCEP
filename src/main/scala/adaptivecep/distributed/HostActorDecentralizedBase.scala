@@ -424,7 +424,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       tentativeOperator = Some(operator)
       sender ! TentativeAcknowledgement
     } else {
-      println("ERROR: Host already has an Operator")
+      //println("ERROR: Host already has an Operator")
       sender ! ContinueSearching
     }
   }
