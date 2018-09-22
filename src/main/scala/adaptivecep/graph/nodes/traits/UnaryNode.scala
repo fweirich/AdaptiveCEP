@@ -49,7 +49,7 @@ trait UnaryNode extends Node {
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
         failsafe += 1
-        if(failsafe > 10){
+        if(failsafe > 2){
           failsafe = 0
           controller ! RequirementsNotMet
         }

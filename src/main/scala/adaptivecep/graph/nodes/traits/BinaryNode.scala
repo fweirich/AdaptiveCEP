@@ -49,7 +49,7 @@ trait BinaryNode extends Node {
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
         failsafe += 1
-        if(failsafe > 10){
+        if(failsafe > 2){
           failsafe = 0
           controller ! RequirementsNotMet
         }
