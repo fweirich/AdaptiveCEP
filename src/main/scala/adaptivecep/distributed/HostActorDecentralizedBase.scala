@@ -264,7 +264,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         //println(sender)
         if(consumer && ready){
           ready = false
-          println("RECALCULATING")
+          //println("RECALCULATING")
           broadcastMessage(Start)
         }
       case RequirementsMet =>
