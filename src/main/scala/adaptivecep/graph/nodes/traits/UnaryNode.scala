@@ -48,11 +48,6 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        failsafe += 1
-        if(failsafe > 2){
-          failsafe = 0
-          controller ! RequirementsNotMet
-        }
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
           if(!lmonitor.met){
             goodCounter = 0

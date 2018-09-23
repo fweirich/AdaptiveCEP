@@ -133,9 +133,10 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      if(sender() == consumerActor){
-        run()
-      }
+      //if(sender() == consumerActor){
+      run()
+      println(sender())
+      //}
     case Start =>
       println("PLACEMENT ACTOR: starting")
       run()
