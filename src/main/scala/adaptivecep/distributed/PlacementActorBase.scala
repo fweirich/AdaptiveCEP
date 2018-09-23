@@ -146,8 +146,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
       //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
       //println(hosts)
       //println(latencies)
-      /*costsMap += hostMap(sender()) -> costMap
-
+      costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
+      /*
       var latencies = Seq.empty[(Host, Duration)]
       var dataRates = Seq.empty[(Host, Double)]
       costMap.foreach(tuple =>
@@ -174,17 +174,18 @@ trait PlacementActorBase extends Actor with ActorLogging {
     })
     var result: Map[Host, HostProps] = Map.empty
     for(h <- hosts){
-      var latencies = Seq.empty[(Host, Duration)]
-      var dataRates = Seq.empty[(Host, Double)]
+      var latencies: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
+      var dataRates: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
       costsMap.foreach(host =>
-        latencies = latencies :+ (host._1, host._2(h).duration)
+        latencies = latencies :+ (host._1, host._2(hostMap(h)).duration)
       )
       costsMap.foreach(host =>
-        dataRates = dataRates :+ (host._1, host._2(h).bandwidth)
+        dataRates = dataRates :+ (host._1, host._2(hostMap(h)).bandwidth)
       )
       result += hostMap(h) -> HostProps(latencies, dataRates)
     }
     result += NoHost -> HostProps(latencyStub, bandwidthStub)
+    result
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {

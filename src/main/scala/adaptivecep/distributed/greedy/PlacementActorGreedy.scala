@@ -68,9 +68,6 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
       if (moved || previousPlacement.isEmpty){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
-        if(consumers.contains(operator)){
-          consumerActor = ref
-        }
         hostActor ! SetActiveOperator(operator.props)
         hostActor ! Node(ref)
         ref ! Controller(hostActor)
