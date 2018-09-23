@@ -39,9 +39,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
 
   sealed trait Optimizing
-
   case object Maximizing extends Optimizing
-
   case object Minimizing extends Optimizing
 
   val cluster = Cluster(context.system)
@@ -414,8 +412,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
   private def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
-    case Maximizing => traversable.min
-    case Minimizing => traversable.max
+    case Maximizing => traversable.max
+    case Minimizing => traversable.min
   }
 
   private def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
