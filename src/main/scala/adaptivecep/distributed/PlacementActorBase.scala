@@ -2,6 +2,7 @@ package adaptivecep.distributed
 
 import java.util.concurrent.TimeUnit
 
+import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.{Operator => _, _}
 import adaptivecep.distributed
@@ -50,9 +51,9 @@ trait PlacementActorBase extends Actor with ActorLogging {
   var propsActors: Map[Props, ActorRef] = Map.empty[Props, ActorRef]
   var parents: Map[Operator, Option[Operator]] = Map.empty[Operator, Option[Operator]] withDefaultValue None
 
-  var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
+  //var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
   var consumers: Seq[Operator] = Seq.empty[Operator]
-  var consumerActor: ActorRef = _
+  var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]]
   var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
   var delayedHosts: Set[Host] = Set.empty[Host]
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
@@ -143,6 +144,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
       //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
       //println(hosts)
       //println(latencies)
+      /*costsMap += hostMap(sender()) -> costMap
+
       var latencies = Seq.empty[(Host, Duration)]
       var dataRates = Seq.empty[(Host, Double)]
       costMap.foreach(tuple =>
@@ -154,8 +157,24 @@ trait PlacementActorBase extends Actor with ActorLogging {
       )
       if (hosts.contains(sender())) {
         hostProps += hostMap(sender()) -> HostProps(latencies, dataRates)
-      }
+      }*/
     case _ =>
+  }
+
+  def hostProps: Map[Host, HostProps] = {
+    var result: Map[Host, HostProps] = Map.empty
+    for(h <- hosts){
+      var latencies = Seq.empty[(Host, Duration)]
+      var dataRates = Seq.empty[(Host, Double)]
+      costsMap.foreach(host =>
+        latencies = latencies :+ (host._1, host._2(h).duration)
+      )
+      costsMap.foreach(host =>
+        dataRates = dataRates :+ (host._1, host._2(h).bandwidth)
+      )
+      result += hostMap(h) -> HostProps(latencies, dataRates)
+    }
+    result
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {
