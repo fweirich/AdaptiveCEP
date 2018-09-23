@@ -135,7 +135,6 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case RequirementsNotMet =>
       //if(sender() == consumerActor){
       run()
-      println(sender())
       //}
     case Start =>
       println("PLACEMENT ACTOR: starting")
@@ -405,8 +404,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
   private def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
-    case Maximizing => traversable.max
-    case Minimizing => traversable.min
+    case Maximizing => traversable.min
+    case Minimizing => traversable.max
   }
 
   private def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
