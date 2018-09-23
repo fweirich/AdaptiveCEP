@@ -90,11 +90,13 @@ trait PlacementActorBase extends Actor with ActorLogging {
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
       bandwidthStub = bandwidthStub :+ (nodeHost, Double.MinValue)
     })
+    /*
     if(!hostProps.contains(NoHost)){
       hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
     }
     hostProps(NoHost).latency ++ latencyStub
     hostProps(NoHost).bandwidth ++ bandwidthStub
+    */
   }
 
   override def postStop(): Unit ={
@@ -162,6 +164,14 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
   def hostProps: Map[Host, HostProps] = {
+    var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
+    var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
+    hosts.foreach(host => {
+      val nodeHost = NodeHost(host)
+      hostMap += host -> nodeHost
+      latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
+      bandwidthStub = bandwidthStub :+ (nodeHost, Double.MinValue)
+    })
     var result: Map[Host, HostProps] = Map.empty
     for(h <- hosts){
       var latencies = Seq.empty[(Host, Duration)]
@@ -174,7 +184,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       )
       result += hostMap(h) -> HostProps(latencies, dataRates)
     }
-    result
+    result += NoHost -> HostProps(latencyStub, bandwidthStub)
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {
