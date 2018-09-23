@@ -52,6 +52,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
   var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
   var consumers: Seq[Operator] = Seq.empty[Operator]
+  var consumerActor: ActorRef = _
   var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
   var delayedHosts: Set[Host] = Set.empty[Host]
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
@@ -132,8 +133,9 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      run()
-      println(sender())
+      if(sender() == consumerActor){
+        run()
+      }
     case Start =>
       println("PLACEMENT ACTOR: starting")
       run()
