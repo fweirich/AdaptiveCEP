@@ -64,10 +64,10 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
       if (moved || previousPlacement.isEmpty){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
+        propsActors += operator.props -> ref
         hostToNodeMap += hostActor -> ref
         hostActor ! Node(ref)
         ref ! Controller(self)
-        propsActors += operator.props -> ref
         //println("placing Actor", ref)
       }
     }

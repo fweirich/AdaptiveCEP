@@ -132,8 +132,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      propsActors.values.foreach(actorRef => if(sender().equals(actorRef)){
-        println("Recalculating Placement", sender(), optimizeFor)
+      propsActors.values.foreach(actorRef => if(consumers.contains(sender())){
+        //println("Recalculating Placement", sender(), optimizeFor)
         run()
       })
     case Start =>

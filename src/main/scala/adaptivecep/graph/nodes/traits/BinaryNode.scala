@@ -48,11 +48,11 @@ trait BinaryNode extends Node {
       runnable = () => {
         //val pathLatency1 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode1PathLatency
         //val pathLatency2 = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor].childNode2PathLatency
-        failsafe += 1
+        /*failsafe += 1
         if(failsafe > 2){
           failsafe = 0
           controller ! RequirementsNotMet
-        }
+        }*/
         if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
           failsafe = 0
           if(!lmonitor.met || !bmonitor.met){
@@ -60,6 +60,8 @@ trait BinaryNode extends Node {
             badCounter += 1
             if(badCounter >= 3){
               badCounter = 0
+              lmonitor.met = true
+              bmonitor.met = true
               controller ! RequirementsNotMet
             }
           }

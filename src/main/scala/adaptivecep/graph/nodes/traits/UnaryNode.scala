@@ -59,6 +59,8 @@ trait UnaryNode extends Node {
             badCounter += 1
             if(badCounter >= 3){
               badCounter = 0
+              lmonitor.met = true
+              bmonitor.met = true
               controller ! RequirementsNotMet
             }
           }
