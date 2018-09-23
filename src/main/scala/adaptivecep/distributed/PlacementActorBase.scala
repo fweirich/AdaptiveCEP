@@ -57,7 +57,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   var delayedHosts: Set[Host] = Set.empty[Host]
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
 
-  val interval = 2
+  val interval = 500
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
@@ -114,7 +114,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case InitializeQuery =>
       context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
           hostMap.foreach{
             host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
