@@ -18,17 +18,9 @@ object AppRunnerCentralized extends App {
   val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
-  val r = scala.util.Random
   var optimizeFor: String = "latency"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
-
-  override def main(args: Array[String]): Unit = {
-    super.main(args)
-    if (args.nonEmpty){
-      optimizeFor = args(0)
-    }
-  }
 
   val query1: Query3[Either[Int, String], Either[Int, X], Either[Float, X]] =
     stream[Int]("A")

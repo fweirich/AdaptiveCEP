@@ -239,6 +239,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val placementsB = placeOptimizingHeuristicB(latencySelector, Minimizing) { _ + _ }
     val durationB = measureLatency { placementsB(_) }
 
+    println(durationA, durationB)
     placeAll((if (durationA < durationB) placementsA else placementsB).toMap)
 
   }
