@@ -18,7 +18,7 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
                                      here: NodeHost,
                                      hosts: Set[ActorRef],
                                      optimizeFor: String)
-  extends PlacementActorBase /*Actor with ActorLogging*/{
+  extends PlacementActorBase{
 
   def placeAll(map: Map[Operator, Host]): Unit ={
     map.foreach(pair => place(pair._1, pair._2))

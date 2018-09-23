@@ -241,10 +241,6 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     placeAll((if (durationA < durationB) placementsA else placementsB).toMap)
 
-    /*
-    case (operator, host) =>
-    place(operator, host)*/
-
   }
 
   def placeOptimizingBandwidth(): Unit = {
@@ -255,10 +251,6 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
-
-    if (bandwidthA > bandwidthB){
-     //placementsA.foreach(line => println(line))
-    }
 
 
     placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
