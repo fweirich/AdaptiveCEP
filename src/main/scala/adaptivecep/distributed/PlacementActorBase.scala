@@ -88,7 +88,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       val nodeHost = NodeHost(host)
       hostMap += host -> nodeHost
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
-      bandwidthStub = bandwidthStub :+ (nodeHost, 0)
+      bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
     })
     /*
     if(!hostProps.contains(NoHost)){
