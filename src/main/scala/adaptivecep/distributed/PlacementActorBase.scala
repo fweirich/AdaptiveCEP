@@ -206,25 +206,25 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
   private def bandwidthSelector(props: HostProps, host: Host): Double = {
     if(host.equals(NoHost)){
-      return 0
+      return 0.0
     }
     val bandwidth = props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }
     if(bandwidth.isDefined){
       bandwidth.get
     }
-    else 0
+    else 0.0
 
   }
   private def latencyBandwidthSelector(props: HostProps, host: Host): (Duration, Double) = {
     if(host.equals(NoHost)){
-      return (Duration.apply(50, TimeUnit.DAYS), 0)
+      return (Duration.apply(50, TimeUnit.DAYS), 0.0)
     }
     val latency = props.latency collectFirst { case (`host`, latency) => latency }
     val bandwidth = props.bandwidth collectFirst { case (`host`, bandwidth) => bandwidth }
     if(latency.isDefined && bandwidth.isDefined){
       (latency.get, bandwidth.get)
     }
-    else (Duration.apply(50, TimeUnit.DAYS), 0)
+    else (Duration.apply(50, TimeUnit.DAYS), 0.0)
   }
 
   private def avg(durations: Seq[Duration]): Duration =
@@ -681,7 +681,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     if(consumer){
       consumers = consumers :+ operator
     }
-    operator = ActiveOperator(here, props, Seq(childOperator))
+    operator = ActiveOperator(NoHost, props, Seq(childOperator))
     propsOperators += props -> operator
     parents += childOperator -> Some(propsOperators(props))
 
@@ -710,7 +710,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
       consumers = consumers :+ operator
     } else {
-      operator = ActiveOperator(here, props, Seq(child1Operator, child2Operator))
+      operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
     }
     propsOperators += props -> operator
     parents += child1Operator -> Some(propsOperators(props))

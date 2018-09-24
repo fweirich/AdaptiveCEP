@@ -7,7 +7,7 @@ trait Host
 object NoHost extends Host
 
 trait Operator {
-  val host: Host
+  var host: Host
   val props: Props
   val dependencies: Seq[Operator]
   //val optimumPath: Map[Any, Operator]
