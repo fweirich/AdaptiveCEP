@@ -378,7 +378,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     @tailrec def placeOperators(): Unit = {
       val changed = operators map {
-        case (operator, Some(parent)) if operator.dependencies.nonEmpty =>
+        case (operator, Some(parent)) if operator.dependencies.nonEmpty && !consumers.contains(operator) =>
           val valuesForHosts =
             hostProps.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
               merge(
@@ -405,17 +405,20 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
           if (!noPotentialPlacements) {
             val (value, host) = minmaxBy(optimizing, valuesForHosts) { case (value, _) => value }
-            if(host != here){
-              val changePlacement = value < currentValue
-
-              if (changePlacement) {
-                placements += operator -> host
-                previousPlacements(operator) += host
-              }
-
-              changePlacement
+            var changePlacement = false
+            if(optimizeFor == "latency") {
+              changePlacement = value < currentValue
             }
-            else false
+            else{
+              changePlacement = value > currentValue
+            }
+
+            if (changePlacement) {
+              placements += operator -> host
+              previousPlacements(operator) += host
+            }
+
+            changePlacement
           }
           else
             false
