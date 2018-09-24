@@ -13,7 +13,7 @@ trait Operator {
   //val optimumPath: Map[Any, Operator]
 }
 
-case class ActiveOperator(host: Host, props: Props, /*tentativeOperators: Seq[Operator],
-                          */dependencies: Seq[Operator]/*, optimumPath: Map[Any, Operator]*/) extends Operator
-case class TentativeOperator(host: Host, props: Props, dependencies: Seq[Operator]/*, neighbor: Operator, optimumPath: Map[Any, Operator]*/) extends Operator
+case class ActiveOperator(var host: Host, props: Props,/* tentativeOperators: Seq[Operator]*/
+                          dependencies: Seq[Operator]/*, optimumPath: Map[Any, Operator]*/) extends Operator
+case class TentativeOperator(var host: Host, props: Props, dependencies: Seq[Operator]/*, neighbor: Operator, optimumPath: Map[Any, Operator]*/) extends Operator
 case class NodeHost(/*id: Int, */actorRef: ActorRef /*neighbors: Seq[Host]*/) extends Host
