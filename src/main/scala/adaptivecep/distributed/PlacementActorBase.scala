@@ -405,14 +405,17 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
           if (!noPotentialPlacements) {
             val (value, host) = minmaxBy(optimizing, valuesForHosts) { case (value, _) => value }
-            val changePlacement = value < currentValue
+            if(host != here){
+              val changePlacement = value < currentValue
 
-            if (changePlacement) {
-              placements += operator -> host
-              previousPlacements(operator) += host
+              if (changePlacement) {
+                placements += operator -> host
+                previousPlacements(operator) += host
+              }
+
+              changePlacement
             }
-
-            changePlacement
+            else false
           }
           else
             false
