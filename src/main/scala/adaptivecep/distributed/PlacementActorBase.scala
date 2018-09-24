@@ -279,7 +279,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val placementsA = placeOptimizingHeuristicA(bandwidthSelector, Maximizing)
     val bandwidthA = measureBandwidth { placementsA(_) }
 
-    val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
+    val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Minimizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
     println(bandwidthA, bandwidthB)
