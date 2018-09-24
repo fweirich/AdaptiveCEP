@@ -378,7 +378,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     @tailrec def placeOperators(): Unit = {
       val changed = operators map {
-        case (operator, Some(parent)) if operator.dependencies.nonEmpty && !consumers.contains(operator) =>
+        case (operator, Some(parent)) if operator.dependencies.nonEmpty =>
           val valuesForHosts =
             hostProps.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
               merge(
