@@ -435,8 +435,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
   private def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
-    case Maximizing => traversable.min
-    case Minimizing => traversable.max
+    case Maximizing => traversable.max
+    case Minimizing => traversable.min
   }
 
   private def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
