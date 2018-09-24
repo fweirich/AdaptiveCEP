@@ -88,7 +88,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       val nodeHost = NodeHost(host)
       hostMap += host -> nodeHost
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
-      bandwidthStub = bandwidthStub :+ (nodeHost, Double.MinValue)
+      bandwidthStub = bandwidthStub :+ (nodeHost, 0)
     })
     /*
     if(!hostProps.contains(NoHost)){
@@ -435,8 +435,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
   private def minmax[T: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T]): T = optimizing match {
-    case Maximizing => traversable.max
-    case Minimizing => traversable.min
+    case Maximizing => traversable.min
+    case Minimizing => traversable.max
   }
 
   private def minmaxBy[T, U: Ordering](optimizing: Optimizing, traversable: TraversableOnce[T])(f: T => U): T = optimizing match {
