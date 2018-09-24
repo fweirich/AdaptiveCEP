@@ -282,9 +282,6 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
-    placementsB.foreach(placement => println(placement._2))
-    println(bandwidthA, bandwidthB)
-
     placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
   }
 
@@ -411,13 +408,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
           if (!noPotentialPlacements) {
             val (value, host) = minmaxBy(optimizing, valuesForHosts) { case (value, _) => value }
             println(value)
-            var changePlacement = false
-            if(optimizeFor == "latency"){
-              changePlacement = value < currentValue
-            }
-            else{
-              changePlacement = value > currentValue
-            }
+            val changePlacement = value < currentValue
 
             if (changePlacement) {
               placements += operator -> host
@@ -683,7 +674,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     if(consumer){
       consumers = consumers :+ operator
     }
-    operator = ActiveOperator(NoHost, props, Seq(childOperator))
+    operator = ActiveOperator(here, props, Seq(childOperator))
     propsOperators += props -> operator
     parents += childOperator -> Some(propsOperators(props))
 
@@ -712,7 +703,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
       consumers = consumers :+ operator
     } else {
-      operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
+      operator = ActiveOperator(here, props, Seq(child1Operator, child2Operator))
     }
     propsOperators += props -> operator
     parents += child1Operator -> Some(propsOperators(props))
