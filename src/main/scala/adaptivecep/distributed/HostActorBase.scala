@@ -97,7 +97,7 @@ trait HostActorBase extends Actor with ActorLogging{
         member.address, previousStatus)
     case Neighbors(n, h)=>
       neighbors = n
-      h.foreach(neighbor => if(neighbor != self) {simulatedCosts += neighbor -> (latency(), bandwidth())})
+      h.foreach(neighbor => simulatedCosts += neighbor -> (latency(), bandwidth()))
       hostProps = HostProps(simulatedCosts)
     case Node(actorRef) =>{
       node = Some(actorRef)
