@@ -387,14 +387,12 @@ trait PlacementActorBase extends Actor with ActorLogging {
                 }),
                 selector(hostProps(placements(parent)), host)) -> host
             }
-          println(valuesForHosts)
           val currentValue =
             merge(
               minmax(optimizing, operator.dependencies map { dependency =>
                 selector(hostProps(placements(operator)), placements(dependency))
               }),
               selector(hostProps(placements(parent)), placements(operator)))
-          println(currentValue)
           val noPotentialPlacements =
             if (valuesForHosts.isEmpty) {
               if ((hostProps.keySet -- placements.values --previousPlacements(operator)).isEmpty)
@@ -407,7 +405,6 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
           if (!noPotentialPlacements) {
             val (value, host) = minmaxBy(optimizing, valuesForHosts) { case (value, _) => value }
-            println(value)
             val changePlacement = value < currentValue
 
             if (changePlacement) {
