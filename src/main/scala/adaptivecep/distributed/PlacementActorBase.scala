@@ -282,6 +282,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
+    placementsB.foreach(placement => println(placement._2))
     println(bandwidthA, bandwidthB)
 
     placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
