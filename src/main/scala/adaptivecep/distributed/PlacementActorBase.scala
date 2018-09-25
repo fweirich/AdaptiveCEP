@@ -44,7 +44,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   case object Minimizing extends Optimizing
 
   val cluster = Cluster(context.system)
-  var previousPlacement: Map[Operator, Host] = Map.empty[Operator, Host]
+  var previousPlacement: Map[Operator, Host] = Map.empty[Operator, Host] withDefaultValue(NoHost)
   val r: Random = scala.util.Random
 
   var propsOperators: Map[Props, Operator] = Map.empty[Props, Operator]
@@ -376,7 +376,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
 
     val operators = consumers flatMap { allOperators(_, None) }
     operators foreach { case (operator, _) =>
-      placements += operator -> operator.host
+      placements += operator -> previousPlacement(operator)//operator.host
       previousPlacements += operator -> mutable.Set(operator.host)
     }
 
