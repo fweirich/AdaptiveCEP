@@ -15,6 +15,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
   val minTemperature: Double = 0.01
   var temperature: Double = 1.0
   val temperatureReductionFactor: Double = 0.9
+  var temperatureCounter = 0
 
   override def chooseTentativeOperators() : Unit = {
     //println("CHOOSING TENTATIVE OPERATORS")
@@ -181,6 +182,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         processStateTransferMessage(o)
       case RequirementsNotMet =>
         //println(sender)
+        temperatureCounter = 0
         if(temperature > minTemperature) {
           temperature = temperature * temperatureReductionFactor
         }
@@ -191,7 +193,8 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           broadcastMessage(Start)
         }
       case RequirementsMet =>
-        if(temperature != 1.0){
+        temperatureCounter += 1
+        if(temperature != 1.0 && temperatureCounter > 2){
           //println("Resetting Temperature....")
           temperature = 1.0
           broadcastMessage(RequirementsMet)
