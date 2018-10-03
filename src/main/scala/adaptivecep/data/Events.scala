@@ -21,10 +21,6 @@ object Events {
 
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
-                                     childHost2: Option[ActorRef]) extends GreedyPlacementEvent
-
-  case class BecomeTentativeOperatorWithTemperature(operator: TentativeOperator, parentNode: ActorRef,
-                                     parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
                                      childHost2: Option[ActorRef], temperature: Double) extends GreedyPlacementEvent
 
   case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent

@@ -106,7 +106,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
           val randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
           if(operators(randomNeighbor).isEmpty && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
-            randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2)
+            randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0)
             chosen = true
           }
           timeout += 1
@@ -138,7 +138,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         becomeActiveOperator(operator)
       case SetActiveOperator(operator) =>
         setActiveOperator(operator)
-      case BecomeTentativeOperator(operator, p, pHosts, c1, c2) =>
+      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, _) =>
         //println("I'VE BEEN CHOSEN!!!", sender)
         parentNode = Some(p)
         parentHosts = pHosts
