@@ -157,6 +157,9 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           }
         }
       case Start =>
+        if(temperature > minTemperature) {
+          temperature = temperature * temperatureReductionFactor
+        }
         parentHosts.foreach(p => p ! CostRequest(clock.instant()))
         if (activeOperator.isDefined) {
           broadcastMessage(Start)
@@ -178,9 +181,11 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         processStateTransferMessage(o)
       case RequirementsNotMet =>
         //println(sender)
+        if(temperature > minTemperature) {
+          temperature = temperature * temperatureReductionFactor
+        }
         if(consumer && ready){
           ready = false
-          temperature = temperature * temperatureReductionFactor
           println(temperature)
           //println("RECALCULATING")
           broadcastMessage(Start)
@@ -235,9 +240,6 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent)._1), mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent)._2)))
       if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
-        if(temperature > minTemperature){
-          temperature = temperature * temperatureReductionFactor
-        }
       }
     }
     //println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
