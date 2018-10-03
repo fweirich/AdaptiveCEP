@@ -180,6 +180,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         //println(sender)
         if(consumer && ready){
           ready = false
+          temperature = temperature * temperatureReductionFactor
           println(temperature)
           //println("RECALCULATING")
           broadcastMessage(Start)
