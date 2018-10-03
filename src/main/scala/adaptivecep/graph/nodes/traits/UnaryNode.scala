@@ -52,7 +52,7 @@ trait UnaryNode extends Node {
           if(!lmonitor.met){
             goodCounter = 0
             badCounter += 1
-            if(badCounter >= 3){
+            if(badCounter >= 1){
               badCounter = 0
               lmonitor.met = true
               bmonitor.met = true
@@ -62,7 +62,7 @@ trait UnaryNode extends Node {
           if(lmonitor.met){
             goodCounter += 1
             badCounter = 0
-            if(goodCounter >= 3){
+            if(goodCounter >= 1){
               controller ! RequirementsMet
             }
           }
