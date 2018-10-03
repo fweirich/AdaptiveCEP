@@ -269,7 +269,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       if(childHost2.isDefined){
         val worse2 = containsWorseSolutionFor(childHost2.get, worseSolution)
         if (worse2.isDefined){
-          optimumChildHost1 = worse2
+          optimumChildHost2 = worse2
           optimumHosts = optimumHosts :+ worse2.get
         }
         else {
