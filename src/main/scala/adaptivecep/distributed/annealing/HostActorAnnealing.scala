@@ -188,7 +188,6 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         }
         if(consumer && ready){
           ready = false
-          println(temperature)
           //println("RECALCULATING")
           broadcastMessage(Start)
         }
@@ -200,6 +199,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           broadcastMessage(ResetTemperature)
         }
       case ResetTemperature =>
+        println(temperature)
         temperature = 1.0
         broadcastMessage(ResetTemperature)
       case MigrationComplete =>
@@ -341,7 +341,10 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         } else {
           diff = (childCosts(child._1)._2 + 1 / childCosts(child._1)._1.toMillis).-(childCosts(tChild)._2 + 1 / childCosts(tChild)._1.toMillis)
         }
+
         val acceptanceProb = Math.exp(diff/temperature)
+        println(acceptanceProb)
+        println(Math.random())
         if(acceptanceProb > Math.random()){
           temp = temp :+ tChild
         }
