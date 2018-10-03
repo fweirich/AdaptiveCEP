@@ -199,7 +199,6 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           broadcastMessage(ResetTemperature)
         }
       case ResetTemperature =>
-        println(temperature)
         temperature = 1.0
         if(activeOperator.isDefined){
           broadcastMessage(ResetTemperature)
@@ -347,8 +346,6 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         if(diff < 0){
           acceptanceProb = Math.exp(diff/temperature)
         }
-        println(diff)
-        println(acceptanceProb)
         if(acceptanceProb > Math.random()){
           temp = temp :+ tChild
         }
