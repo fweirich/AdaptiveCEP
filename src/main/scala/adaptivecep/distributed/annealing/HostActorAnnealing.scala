@@ -194,11 +194,14 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         }
       case RequirementsMet =>
         temperatureCounter += 1
-        if(temperature != 1.0 && temperatureCounter > 2){
+        if(consumer && temperature != 1.0 && temperatureCounter > 2){
           //println("Resetting Temperature....")
           temperature = 1.0
-          broadcastMessage(RequirementsMet)
+          broadcastMessage(ResetTemperature)
         }
+      case ResetTemperature =>
+        temperature = 1.0
+        broadcastMessage(ResetTemperature)
       case MigrationComplete =>
         //println("A Child completed Migration", sender)
         completedChildren += 1

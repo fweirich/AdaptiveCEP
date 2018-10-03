@@ -52,6 +52,8 @@ object Events {
   case object RequirementsNotMet extends GreedyPlacementEvent
   case object RequirementsMet extends GreedyPlacementEvent
 
+  case object ResetTemperature extends GreedyPlacementEvent
+
   case object CentralizedCreated
 
   case object InitializeQuery
