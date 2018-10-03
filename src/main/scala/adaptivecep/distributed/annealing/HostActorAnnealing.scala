@@ -201,7 +201,9 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       case ResetTemperature =>
         println(temperature)
         temperature = 1.0
-        broadcastMessage(ResetTemperature)
+        if(activeOperator.isDefined){
+          broadcastMessage(ResetTemperature)
+        }
       case MigrationComplete =>
         //println("A Child completed Migration", sender)
         completedChildren += 1
@@ -337,14 +339,16 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         if(optimizeFor == "latency"){
           diff = childCosts(child._1)._1.-(childCosts(tChild)._1).toMillis
         } else if(optimizeFor == "bandwidth"){
-          diff = childCosts(child._1)._2.-(childCosts(tChild)._2)
+          diff = (childCosts(tChild)._2).-(childCosts(child._1)._2)
         } else {
           diff = (childCosts(child._1)._2 + 1 / childCosts(child._1)._1.toMillis).-(childCosts(tChild)._2 + 1 / childCosts(tChild)._1.toMillis)
         }
-
-        val acceptanceProb = Math.exp(diff/temperature)
+        var acceptanceProb = 0.0
+        if(diff < 0){
+          acceptanceProb = Math.exp(diff/temperature)
+        }
+        println(diff)
         println(acceptanceProb)
-        println(Math.random())
         if(acceptanceProb > Math.random()){
           temp = temp :+ tChild
         }
