@@ -18,7 +18,7 @@ object AppRunnerCentralized extends App {
   val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
-  var optimizeFor: String = "latency"
+  var optimizeFor: String = "bandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 
@@ -64,8 +64,8 @@ object AppRunnerCentralized extends App {
         /*frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },*/
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/)
       .and(stream[Float]("C").and(stream[String]("D")),
-        /*bandwidth > dataRate(30.mbPerSecond) otherwise { nodeData => },*/
-        latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+        bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => }
+        /*latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }*/)
 
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
