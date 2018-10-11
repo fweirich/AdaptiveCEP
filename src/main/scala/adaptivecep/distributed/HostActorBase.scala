@@ -40,7 +40,7 @@ trait HostActorBase extends Actor with ActorLogging{
   }
 
   def reportCostsToNode(): Unit = {
-    var result = Map.empty[ActorRef, Cost]
+    var result = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
     hostToNodeMap.foreach(host =>
       if(costs.contains(host._1)){
         result += host._2 -> costs(host._1)
@@ -101,7 +101,7 @@ trait HostActorBase extends Actor with ActorLogging{
         context.system.scheduler.scheduleOnce(
           FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
           () => {neighbor ! LatencyRequest(now)})
-      }else {
+      } else {
         neighbor ! LatencyRequest(now)
       }
     }

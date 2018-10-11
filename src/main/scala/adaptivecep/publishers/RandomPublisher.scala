@@ -13,9 +13,9 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
   def publish(id: Integer): Unit = {
     val event: Event = createEventFromId(id)
     subscribers.foreach(_ ! event)
-    //println(s"STREAM $publisherName:\t$event")
+    println(s"STREAM $publisherName:\t$event")
     context.system.scheduler.scheduleOnce(
-      delay = FiniteDuration(1000, TimeUnit.MILLISECONDS),
+      delay = FiniteDuration(100, TimeUnit.MILLISECONDS),
       runnable = () => publish(id + 1)
     )
   }
