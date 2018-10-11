@@ -156,8 +156,13 @@ trait HostActorBase extends Actor with ActorLogging{
   }
 
   def send(receiver: ActorRef, message: Any): Unit ={
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(hostPropsToMap(receiver).duration.toMillis, TimeUnit.MILLISECONDS),
-      () => {receiver ! EndThroughPutMeasurement})
+    if(hostPropsToMap.contains(receiver)){
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(hostPropsToMap(receiver).duration.toMillis, TimeUnit.MILLISECONDS),
+        () => {receiver ! message})
+    }
+    else {
+      receiver ! message
+    }
   }
 }
