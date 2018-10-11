@@ -97,9 +97,13 @@ trait HostActorBase extends Actor with ActorLogging{
         FiniteDuration(100, TimeUnit.MILLISECONDS),
         () => {neighbor ! EndThroughPutMeasurement})
       val now = clock.instant()
-      context.system.scheduler.scheduleOnce(
-        FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
-        () => {neighbor ! LatencyRequest(now)})
+      if(hostPropsToMap.contains(neighbor)){
+        context.system.scheduler.scheduleOnce(
+          FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+          () => {neighbor ! LatencyRequest(now)})
+      }else {
+        neighbor ! LatencyRequest(now)
+      }
     }
   }
 
@@ -140,9 +144,9 @@ trait HostActorBase extends Actor with ActorLogging{
     case HostToNodeMap(m) =>
       hostToNodeMap = m
     case HostPropsRequest =>
-      send(sender(), HostPropsResponse(costs))
+      sender() ! HostPropsResponse(costs)
     case LatencyRequest(t)=>
-      send(sender(), LatencyResponse(t))
+      sender() ! LatencyResponse(t)
     case LatencyResponse(t) =>
       costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
     case StartThroughPutMeasurement =>
