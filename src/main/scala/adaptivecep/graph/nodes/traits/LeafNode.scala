@@ -40,8 +40,8 @@ trait LeafNode extends Node {
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
-        emittedEvents += 1
-        if(emittedEvents < costs(parentNode).bandwidth) {
+        if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+          emittedEvents += 1
           if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
           latencyMonitor.onEventEmit(event, nodeData)

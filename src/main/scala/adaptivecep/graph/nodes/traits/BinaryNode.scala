@@ -86,6 +86,12 @@ trait BinaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
+    context.system.scheduler.schedule(
+      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+      interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
+      runnable = () => {
+        emittedEvents = 0
+      })
     lmonitor.childNode1 = childNode1
     lmonitor.childNode2 = childNode2
     //bmonitor.childNode1 = childNode1
@@ -100,12 +106,12 @@ trait BinaryNode extends Node {
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
-        emittedEvents += 1
         println(emittedEvents)
         println(costs(parentNode))
-        if(emittedEvents < costs(parentNode).bandwidth) {
-          lmonitor.childNode1 = childNode1
-          lmonitor.childNode2 = childNode2
+        lmonitor.childNode1 = childNode1
+        lmonitor.childNode2 = childNode2
+        if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+          emittedEvents += 1
           //bmonitor.childNode1 = childNode1
           //bmonitor.childNode2 = childNode2
           if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
@@ -116,12 +122,4 @@ trait BinaryNode extends Node {
       }
     )
   }
-
-  context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
-    runnable = () => {
-      emittedEvents = 0
-    })
-
 }
