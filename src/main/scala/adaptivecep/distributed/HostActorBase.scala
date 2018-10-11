@@ -87,22 +87,30 @@ trait HostActorBase extends Actor with ActorLogging{
 
   def measureCosts() = {
     for (neighbor <- neighbors){
-      neighbor ! StartThroughPutMeasurement
-      for(i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)){
+      if(hostPropsToMap.contains(neighbor)) {
+        neighbor ! StartThroughPutMeasurement
+        for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)) {
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(i, TimeUnit.MILLISECONDS),
+            () => {
+              neighbor ! TestEvent
+            })
+        }
         context.system.scheduler.scheduleOnce(
-          FiniteDuration(i, TimeUnit.MILLISECONDS),
-          () => {neighbor ! TestEvent})
-      }
-      context.system.scheduler.scheduleOnce(
-        FiniteDuration(100, TimeUnit.MILLISECONDS),
-        () => {neighbor ! EndThroughPutMeasurement})
-      val now = clock.instant()
-      if(hostPropsToMap.contains(neighbor)){
-        context.system.scheduler.scheduleOnce(
-          FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
-          () => {neighbor ! LatencyRequest(now)})
-      } else {
-        neighbor ! LatencyRequest(now)
+          FiniteDuration(100, TimeUnit.MILLISECONDS),
+          () => {
+            neighbor ! EndThroughPutMeasurement
+          })
+        val now = clock.instant()
+        if (hostPropsToMap.contains(neighbor)) {
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            () => {
+              neighbor ! LatencyRequest(now)
+            })
+        } else {
+          neighbor ! LatencyRequest(now)
+        }
       }
     }
   }
