@@ -1,9 +1,10 @@
 package adaptivecep.graph.qos
 
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, Cancellable}
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 
@@ -15,13 +16,14 @@ trait AverageFrequencyMonitor {
   var currentOutput: Option[Int] = None
   var averageOutput: Option[Int] = None
   var met = true
+  var scheduledTask: Cancellable = _
 
   def onCreated(name: String, requirements: Set[Requirement], context: ActorContext): Unit = {
     val frequencyRequirements: Set[FrequencyRequirement] = requirements.collect{ case fr: FrequencyRequirement => fr }
     val callbackNodeData: NodeData = NodeData(name, requirements, context)
     currentOutput = Some(0)
     if (frequencyRequirements.nonEmpty) {
-      context.system.scheduler.schedule(
+      scheduledTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {

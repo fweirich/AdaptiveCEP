@@ -132,6 +132,7 @@ case class DropElemNode(
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
+      fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       self ! PoisonPill
       //println("Shutting down....")

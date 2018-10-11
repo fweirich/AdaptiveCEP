@@ -25,6 +25,8 @@ trait LeafNode extends Node {
   var bandwidthMonitor: LeafNodeMonitor = bandwidthMonitorFactory.createLeafNodeMonitor
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
+  var fMonitor: AverageFrequencyLeafNodeMonitor = frequencyMonitor.asInstanceOf[AverageFrequencyLeafNodeMonitor]
+
   private val monitor: PathLatencyLeafNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyLeafNodeMonitor]
 
   def emitCreated(): Unit = {

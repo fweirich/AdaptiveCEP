@@ -85,6 +85,7 @@ case class SequenceNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       self ! PoisonPill
+      fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
     case Controller(c) =>
       controller = c
