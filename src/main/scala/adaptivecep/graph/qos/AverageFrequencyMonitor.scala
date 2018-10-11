@@ -16,7 +16,7 @@ trait AverageFrequencyMonitor {
   var currentOutput: Option[Int] = None
   var averageOutput: Option[Int] = None
   var met = true
-  var scheduledTask: Cancellable = _
+  var scheduledTask: Cancellable = null
 
   def onCreated(name: String, requirements: Set[Requirement], context: ActorContext): Unit = {
     val frequencyRequirements: Set[FrequencyRequirement] = requirements.collect{ case fr: FrequencyRequirement => fr }

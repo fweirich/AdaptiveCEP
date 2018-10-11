@@ -57,7 +57,7 @@ case class StreamNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       self ! PoisonPill
-      fMonitor.scheduledTask.cancel()
+      //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
     case Controller(c) =>
       controller = c
