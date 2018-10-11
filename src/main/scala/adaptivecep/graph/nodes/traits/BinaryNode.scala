@@ -18,7 +18,7 @@ trait BinaryNode extends Node {
 
   val query: Query1[Int] = stream[Int]("A")
 
-  val interval = 2
+  val interval = 1
   var badCounter = 0
   var goodCounter = 0
   var failsafe = 0
@@ -47,36 +47,30 @@ trait BinaryNode extends Node {
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
-          if(lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined/*bmonitor.bandwidthForMonitoring.isDefined*/) {
-            if(!lmonitor.met || !fMonitor.met){
-              goodCounter = 0
-              badCounter += 1
-              if(badCounter >= 1){
-                badCounter = 0
-                lmonitor.met = true
-                //bmonitor.met = true
-                fMonitor.met = true
-                controller ! RequirementsNotMet
-              }
+          if (lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined /*bmonitor.bandwidthForMonitoring.isDefined*/ ) {
+            if (!lmonitor.met || !fMonitor.met) {
+              lmonitor.met = true
+              //bmonitor.met = true
+              fMonitor.met = true
+              controller ! RequirementsNotMet
             }
-            if(lmonitor.met && fMonitor.met){
-              goodCounter += 1
-              badCounter = 0
-              if(goodCounter >= 1){
-                controller ! RequirementsMet
-              }
+
+            if (lmonitor.met && fMonitor.met) {
+              controller ! RequirementsMet
             }
-            println(lmonitor.latency.get.toNanos/1000000.0 + ", " + fMonitor.averageOutput.get/*bmonitor.bandwidthForMonitoring.get*/)
+            println(lmonitor.latency.get.toNanos / 1000000.0 + ", " + fMonitor.averageOutput.get /*bmonitor.bandwidthForMonitoring.get*/)
             previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
             previousBandwidth = fMonitor.averageOutput.get
             lmonitor.latency = None
             fMonitor.averageOutput = None
             //bmonitor.bandwidthForMonitoring = None
-          }
-          else {
+          } else {
             println(previousLatency.toNanos/1000000.0 + ", " + previousBandwidth)
           }
-        })}}
+        }
+      )
+    }
+  }
 
   override def postStop(): Unit = {
     scheduledTask.cancel()

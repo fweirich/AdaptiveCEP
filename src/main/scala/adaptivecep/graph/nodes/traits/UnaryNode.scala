@@ -21,7 +21,7 @@ trait UnaryNode extends Node {
   //val childNode: ActorRef = createChildNode(1, query.sq)
   var childNode: ActorRef = self
   var parentNode: ActorRef = self
-  val interval = 2
+  val interval = 1
 
   var scheduledTask: Cancellable = _
 
@@ -46,39 +46,33 @@ trait UnaryNode extends Node {
   override def preStart(): Unit = {
     if(scheduledTask == null){
       scheduledTask = context.system.scheduler.schedule(
-      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-      interval = FiniteDuration(interval, TimeUnit.SECONDS),
-      runnable = () => {
-        if(lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined/*bmonitor.bandwidthForMonitoring.isDefined*/) {
-          if(!lmonitor.met || !fMonitor.met){
-            goodCounter = 0
-            badCounter += 1
-            if(badCounter >= 1){
-              badCounter = 0
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        runnable = () => {
+          if (lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined /*bmonitor.bandwidthForMonitoring.isDefined*/ ) {
+            if (!lmonitor.met || !fMonitor.met) {
               lmonitor.met = true
               //bmonitor.met = true
               fMonitor.met = true
               controller ! RequirementsNotMet
             }
-          }
-          if(lmonitor.met && fMonitor.met){
-            goodCounter += 1
-            badCounter = 0
-            if(goodCounter >= 1){
+
+            if (lmonitor.met && fMonitor.met) {
               controller ! RequirementsMet
             }
+            println(lmonitor.latency.get.toNanos / 1000000.0 + ", " + fMonitor.averageOutput.get /*bmonitor.bandwidthForMonitoring.get*/)
+            previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
+            previousBandwidth = fMonitor.averageOutput.get
+            lmonitor.latency = None
+            fMonitor.averageOutput = None
+            //bmonitor.bandwidthForMonitoring = None
+          } else {
+            println(previousLatency.toNanos/1000000.0 + ", " + previousBandwidth)
           }
-          println(lmonitor.latency.get.toNanos/1000000.0 + ", " + fMonitor.averageOutput.get/*bmonitor.bandwidthForMonitoring.get*/)
-          previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
-          previousBandwidth = fMonitor.averageOutput.get
-          lmonitor.latency = None
-          fMonitor.averageOutput = None
-          //bmonitor.bandwidthForMonitoring = None
         }
-        else {
-          println(previousLatency.toNanos/1000000.0 + ", " + previousBandwidth)
-        }
-    })}}
+      )
+    }
+  }
 
   override def postStop(): Unit = {
     scheduledTask.cancel()

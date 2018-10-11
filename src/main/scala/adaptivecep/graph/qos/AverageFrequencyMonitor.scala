@@ -24,7 +24,7 @@ trait AverageFrequencyMonitor {
     currentOutput = Some(0)
     if (frequencyRequirements.nonEmpty) {
       scheduledTask = context.system.scheduler.schedule(
-        initialDelay = FiniteDuration(interval, TimeUnit.MILLISECONDS),
+        initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
         interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
           frequencyRequirements.foreach(requirement => {
@@ -70,6 +70,7 @@ trait AverageFrequencyMonitor {
   }
 
   def onEventEmit(event: Event): Unit = {
+    println(currentOutput)
     if (currentOutput.isDefined) currentOutput = Some(currentOutput.get + 1)
   }
 }
