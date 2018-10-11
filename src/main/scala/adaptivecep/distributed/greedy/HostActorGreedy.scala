@@ -1,5 +1,6 @@
 package adaptivecep.distributed.greedy
 
+import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.distributed.HostActorDecentralizedBase
 import adaptivecep.distributed.operator.Operator
@@ -10,10 +11,10 @@ import scala.concurrent.duration._
 class HostActorGreedy extends HostActorDecentralizedBase{
 
   def sendOutCostMessages() : Unit = {
-    if(children.isEmpty && costs.size == parentHosts.size){
-      parentHosts.foreach(parent => parent ! CostMessage(costs(parent)._1, costs(parent)._2))
+    if(children.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
+      parentHosts.foreach(parent => parent ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
     }
-    else if (processedCostMessages == numberOfChildren && costs.size == parentHosts.size) {
+    else if (processedCostMessages == numberOfChildren && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
       calculateOptimumNodes()
       //println(optimumHosts)
       var bottleNeckNode = self
@@ -32,8 +33,8 @@ class HostActorGreedy extends HostActorDecentralizedBase{
       optimumChildHost1 = None
       optimumChildHost2 = None
       //minmaxBy(Minimizing, costs)(_._2._1)._1
-      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent)._1),
-        mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent)._2)))
+      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent).duration),
+        mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent).bandwidth)))
       if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }
@@ -88,7 +89,7 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     childCosts = Map.empty[ActorRef, (Duration, Double)]
 
     parentHosts = Seq.empty[ActorRef]
-    costs = Map.empty[ActorRef, (Duration, Double)]
+    costs = Map.empty[ActorRef, Cost]
 
     optimumHosts = Seq.empty[ActorRef]
     tentativeHosts = Seq.empty[ActorRef]
@@ -97,6 +98,8 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     completedChildren = 0
     processedCostMessages = 0
     receivedResponses = Set.empty[ActorRef]
+    latencyResponses = Set.empty[ActorRef]
+    bandwidthResponses = Set.empty[ActorRef]
 
     ready = false
 

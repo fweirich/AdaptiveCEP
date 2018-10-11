@@ -89,9 +89,11 @@ case class SequenceNode(
     case Controller(c) =>
       controller = c
       //println("Got Controller", c)
-    case Delay(b) => {
-      setDelay(b)
-    }
+    case HostPropsResponse(c) =>
+      costs = c
+      frequencyMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
+      latencyMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
+      bandwidthMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
     case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)

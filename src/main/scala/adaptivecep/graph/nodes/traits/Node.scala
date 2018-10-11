@@ -1,5 +1,6 @@
 package adaptivecep.graph.nodes.traits
 
+import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Queries._
 import adaptivecep.graph.qos._
 import akka.actor.{Actor, ActorRef}
@@ -17,6 +18,8 @@ trait Node extends Actor {
   var controller: ActorRef = self
   var created = false
   var delay: Boolean = false
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
+  var emittedEvents: Int = 0
 
   def createWindow(windowType: String, size: Int): Window ={
     windowType match {

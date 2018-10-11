@@ -41,6 +41,8 @@ object Events {
 
   case class CostRequest(instant: Instant) extends GreedyPlacementEvent
   case class CostResponse(instant: Instant, bandwidth: Double) extends GreedyPlacementEvent
+  case class LatencyCostResponse(instant: Instant) extends GreedyPlacementEvent
+  case class BandwidthCostResponse(bandwidth: Double) extends GreedyPlacementEvent
 
   case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
 
@@ -55,6 +57,10 @@ object Events {
   case object ResetTemperature extends GreedyPlacementEvent
 
   case object CentralizedCreated
+
+  case object StartThroughPutMeasurement extends GreedyPlacementEvent
+  case object EndThroughPutMeasurement extends GreedyPlacementEvent
+  case object TestEvent extends GreedyPlacementEvent
 
   case object InitializeQuery
   case class Delay(delay: Boolean)
@@ -86,6 +92,7 @@ object Events {
 
   case class LatencyRequest(instant: Instant)
   case class LatencyResponse(instant: Instant)
+  case class ThroughPutResponse(eventsPerSecond: Int)
   case object HostPropsRequest
   case class HostPropsResponse(latencies: Map[ActorRef, Cost])
 

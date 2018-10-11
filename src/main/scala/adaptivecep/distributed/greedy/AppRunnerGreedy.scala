@@ -20,7 +20,7 @@ object AppRunnerGreedy extends App{
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "latencybandwidth"
+  var optimizeFor: String = "bandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
@@ -68,9 +68,9 @@ object AppRunnerGreedy extends App{
         /*frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },*/
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/)
       .and(stream[Float]("C").and(stream[String]("D")),
-        bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => }
-        /*latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }*/)
-
+        /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },
+        latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }*/
+        frequency > ratio(500.instances, 1.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") })
 
   override def main(args: Array[String]): Unit = {
     if (args.nonEmpty) {
@@ -212,7 +212,5 @@ object AppRunnerGreedy extends App{
   placement ! InitializeQuery
   Thread.sleep(10000)
   placement ! Start
-
-
 }
 

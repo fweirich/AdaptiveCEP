@@ -17,9 +17,9 @@ import scala.util.Random
 trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
   val interval = 2
+  var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
-  var delay: Boolean = false
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[ActorRef, scala.concurrent.duration.Duration] = Map.empty[ActorRef, scala.concurrent.duration.Duration]
   val random: Random = new Random(clock.millis())
@@ -27,16 +27,25 @@ trait HostActorBase extends Actor with ActorLogging{
     Map.empty[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
   var hostProps: HostProps = HostProps(simulatedCosts)
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
+  var throughputMeasureMap: Map[ActorRef, Int] = Map.empty[ActorRef, Int] withDefaultValue(0)
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
 
   case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
     def advance = HostProps(
       costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth.advance)) })
+    def advanceLatency = HostProps(
+      costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth)) })
+    def advanceBandwidth = HostProps(
+      costs map { case (host, (latency, bandwidth)) => (host, (latency, bandwidth.advance)) })
   }
 
   def reportCostsToNode(): Unit = {
     var result = Map.empty[ActorRef, Cost]
-    val map = hostPropsToMap
-    hostToNodeMap.foreach(host => if(map.contains(host._1)){result += host._2 -> map(host._1)})
+    hostToNodeMap.foreach(host =>
+      if(costs.contains(host._1)){
+        result += host._2 -> costs(host._1)
+      }
+    )
     if(node.isDefined){
       node.get ! HostPropsResponse(result)
     }
@@ -76,11 +85,36 @@ trait HostActorBase extends Actor with ActorLogging{
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 
+  def measureCosts() = {
+    for (neighbor <- neighbors){
+      neighbor ! StartThroughPutMeasurement
+      for(i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)){
+        context.system.scheduler.scheduleOnce(
+          FiniteDuration(i, TimeUnit.MILLISECONDS),
+          () => {neighbor ! TestEvent})
+      }
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(100, TimeUnit.MILLISECONDS),
+        () => {neighbor ! EndThroughPutMeasurement})
+      val now = clock.instant()
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+        () => {neighbor ! LatencyRequest(now)})
+    }
+  }
+
   def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
-      hostProps = hostProps.advance
+      if(optimizeFor == "latency"){
+        hostProps = hostProps.advanceLatency
+      } else if (optimizeFor == "bandwidth") {
+        hostProps = hostProps.advanceBandwidth
+      } else {
+        hostProps = hostProps.advance
+      }
+      measureCosts()
       reportCostsToNode()
     })
 
@@ -102,12 +136,28 @@ trait HostActorBase extends Actor with ActorLogging{
     case Node(actorRef) =>{
       node = Some(actorRef)
     }
+    case OptimizeFor(o) => optimizeFor = o
     case HostToNodeMap(m) =>
       hostToNodeMap = m
-      //println(hostToNodeMap)
-      //println("GotHostToNodeMap")
     case HostPropsRequest =>
-      sender() ! HostPropsResponse(hostPropsToMap)
+      send(sender(), HostPropsResponse(costs))
+    case LatencyRequest(t)=>
+      send(sender(), LatencyResponse(t))
+    case LatencyResponse(t) =>
+      costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
+    case StartThroughPutMeasurement =>
+    case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
+    case EndThroughPutMeasurement =>
+      send(sender(), ThroughPutResponse(throughputMeasureMap(sender())))
+      throughputMeasureMap += sender() -> 0
+    case ThroughPutResponse(r) =>
+      costs += sender() -> Cost(costs(sender()).duration, r)
     case _ =>
+  }
+
+  def send(receiver: ActorRef, message: Any): Unit ={
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(hostPropsToMap(receiver).duration.toMillis, TimeUnit.MILLISECONDS),
+      () => {receiver ! EndThroughPutMeasurement})
   }
 }

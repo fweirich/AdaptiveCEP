@@ -33,13 +33,14 @@ trait UnaryNode extends Node {
   var nodeData: UnaryNodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
 
   val lmonitor: PathLatencyUnaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyUnaryNodeMonitor]
-  val bmonitor: PathBandwidthUnaryNodeMonitor = bandwidthMonitor.asInstanceOf[PathBandwidthUnaryNodeMonitor]
+  //val bmonitor: PathBandwidthUnaryNodeMonitor = bandwidthMonitor.asInstanceOf[PathBandwidthUnaryNodeMonitor]
+  var fMonitor: AverageFrequencyUnaryNodeMonitor = frequencyMonitor.asInstanceOf[AverageFrequencyUnaryNodeMonitor]
 
   var goodCounter: Int = 0
   var badCounter: Int = 0
   var failsafe: Int = 0
 
-  var previousBandwidth : Double = 0
+  var previousBandwidth : Int = 0
   var previousLatency : Duration = Duration.Zero
 
   override def preStart(): Unit = {
@@ -48,29 +49,31 @@ trait UnaryNode extends Node {
       initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
       interval = FiniteDuration(interval, TimeUnit.SECONDS),
       runnable = () => {
-        if(lmonitor.latency.isDefined && bmonitor.bandwidthForMonitoring.isDefined) {
-          if(!lmonitor.met){
+        if(lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined/*bmonitor.bandwidthForMonitoring.isDefined*/) {
+          if(!lmonitor.met || !fMonitor.met){
             goodCounter = 0
             badCounter += 1
             if(badCounter >= 1){
               badCounter = 0
               lmonitor.met = true
-              bmonitor.met = true
+              //bmonitor.met = true
+              fMonitor.met = true
               controller ! RequirementsNotMet
             }
           }
-          if(lmonitor.met){
+          if(lmonitor.met && fMonitor.met){
             goodCounter += 1
             badCounter = 0
             if(goodCounter >= 1){
               controller ! RequirementsMet
             }
           }
-          println(lmonitor.latency.get.toNanos/1000000.0 + ", " + bmonitor.bandwidthForMonitoring.get)
+          println(lmonitor.latency.get.toNanos/1000000.0 + ", " + fMonitor.averageOutput.get/*bmonitor.bandwidthForMonitoring.get*/)
           previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
-          previousBandwidth = bmonitor.bandwidthForMonitoring.get
+          previousBandwidth = fMonitor.averageOutput.get
           lmonitor.latency = None
-          bmonitor.bandwidthForMonitoring = None
+          fMonitor.averageOutput = None
+          //bmonitor.bandwidthForMonitoring = None
         }
         else {
           println(previousLatency.toNanos/1000000.0 + ", " + previousBandwidth)
@@ -92,16 +95,24 @@ trait UnaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    lmonitor.childNode = childNode
-    if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
-    frequencyMonitor.onEventEmit(event, nodeData)
-    latencyMonitor.onEventEmit(event, nodeData)
-    bandwidthMonitor.onEventEmit(event, nodeData)
-  }
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
+      () => {
+        emittedEvents += 1
+        if(emittedEvents < costs(parentNode).bandwidth){
+          lmonitor.childNode = childNode
+          if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
+          frequencyMonitor.onEventEmit(event, nodeData)
+          latencyMonitor.onEventEmit(event, nodeData)
+          bandwidthMonitor.onEventEmit(event, nodeData)
+      }}
+    )
 
-  def setDelay(b: Boolean): Unit = {
-    delay = b
-    //lmonitor.delay = b
   }
-
+  context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+    interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
+    runnable = () => {
+      emittedEvents = 0
+    })
 }

@@ -104,7 +104,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     cluster.unsubscribe(self)
   }
 
-  def run(): Unit = {
+  def adapt(): Unit = {
     optimizeFor match {
       case "latency" => placeOptimizingLatency()
       case "bandwidth" => placeOptimizingBandwidth()
@@ -137,11 +137,11 @@ trait PlacementActorBase extends Actor with ActorLogging {
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
       //if(sender() == consumerActor){
-      run()
+      adapt()
       //}
     case Start =>
       println("PLACEMENT ACTOR: starting")
-      run()
+      adapt()
     case HostPropsResponse(costMap) =>
       //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
       //println(hosts)

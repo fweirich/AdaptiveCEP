@@ -13,6 +13,8 @@ trait AverageFrequencyMonitor {
   val interval: Int
 
   var currentOutput: Option[Int] = None
+  var averageOutput: Option[Int] = None
+  var met = true
 
   def onCreated(name: String, requirements: Set[Requirement], context: ActorContext): Unit = {
     val frequencyRequirements: Set[FrequencyRequirement] = requirements.collect{ case fr: FrequencyRequirement => fr }
@@ -20,26 +22,45 @@ trait AverageFrequencyMonitor {
     currentOutput = Some(0)
     if (frequencyRequirements.nonEmpty) {
       context.system.scheduler.schedule(
-        initialDelay = FiniteDuration(interval, TimeUnit.SECONDS),
-        interval = FiniteDuration(interval, TimeUnit.SECONDS),
+        initialDelay = FiniteDuration(interval, TimeUnit.MILLISECONDS),
+        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
           frequencyRequirements.foreach(requirement => {
             require(requirement.seconds <= interval)
             // `divisor`, e.g., if `interval` == 30, and `requirement.seconds` == 10, then `divisor` == 3
-            val divisor: Int = interval / requirement.seconds
+            val divisor: Int = interval / (requirement.seconds * 1000)
             val frequency: Int = currentOutput.get / divisor
             if (logging) println(
               s"FREQUENCY:\tOn average, node `$name` emits $frequency events every ${requirement.seconds} seconds. " +
               s"(Calculated every $interval seconds.)")
             requirement.operator match {
-              case Equal =>        if (!(frequency == requirement.instances)) requirement.callback(callbackNodeData)
-              case NotEqual =>     if (!(frequency != requirement.instances)) requirement.callback(callbackNodeData)
-              case Greater =>      if (!(frequency >  requirement.instances)) requirement.callback(callbackNodeData)
-              case GreaterEqual => if (!(frequency >= requirement.instances)) requirement.callback(callbackNodeData)
-              case Smaller =>      if (!(frequency <  requirement.instances)) requirement.callback(callbackNodeData)
-              case SmallerEqual => if (!(frequency <= requirement.instances)) requirement.callback(callbackNodeData)
+              case Equal =>        if (!(frequency == requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
+              case NotEqual =>     if (!(frequency != requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
+              case Greater =>      if (!(frequency >  requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
+              case GreaterEqual => if (!(frequency >= requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
+              case Smaller =>      if (!(frequency <  requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
+              case SmallerEqual => if (!(frequency <= requirement.instances)){
+                met = false
+                requirement.callback(callbackNodeData)
+              }
             }
           })
+          averageOutput = currentOutput
           currentOutput = Some(0)
         }
       )
@@ -49,7 +70,6 @@ trait AverageFrequencyMonitor {
   def onEventEmit(event: Event): Unit = {
     if (currentOutput.isDefined) currentOutput = Some(currentOutput.get + 1)
   }
-
 }
 
 case class AverageFrequencyLeafNodeMonitor(interval: Int, logging: Boolean) extends AverageFrequencyMonitor with LeafNodeMonitor {

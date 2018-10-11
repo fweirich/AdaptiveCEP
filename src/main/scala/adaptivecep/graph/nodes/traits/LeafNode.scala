@@ -8,6 +8,9 @@ import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
 import akka.actor.ActorRef
 
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.ExecutionContext.Implicits.global
+
 trait LeafNode extends Node {
 
   val createdCallback: Option[() => Any]
@@ -32,15 +35,25 @@ trait LeafNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
-    frequencyMonitor.onEventEmit(event, nodeData)
-    latencyMonitor.onEventEmit(event, nodeData)
-    bandwidthMonitor.onEventEmit(event, nodeData)
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
+      () => {
+        emittedEvents += 1
+        if(emittedEvents < costs(parentNode).bandwidth) {
+          if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
+          frequencyMonitor.onEventEmit(event, nodeData)
+          latencyMonitor.onEventEmit(event, nodeData)
+          bandwidthMonitor.onEventEmit(event, nodeData)
+        }
+      }
+    )
   }
 
-  def setDelay(b: Boolean): Unit = {
-    delay = b
-    monitor.delay = b
-  }
+  context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+    interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
+    runnable = () => {
+      emittedEvents = 0
+    })
 
 }

@@ -13,7 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 import adaptivecep.data.Queries._
 
 case class ChildLatencyRequest(time: Instant)
-case class ChildLatencyResponse(childNode: ActorRef, requestTime: Duration)
+case class ChildLatencyResponse(childNode: ActorRef, requestTime: Instant)
 case class PathLatency(childNode: ActorRef, duration: Duration)
 
 trait PathLatencyMonitor {
@@ -49,9 +49,11 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
             FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
-            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, Duration.ofMillis(costs(nodeData.parent).duration.toMillis))})
+            () => {
+              nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
+              nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)
+            })
         }
-        nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)
       case HostPropsResponse(costMap) => costs = costMap
       case _ =>
     }
@@ -91,10 +93,10 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
             FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
-            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, Duration.ofMillis(costs(nodeData.parent).duration.toMillis))})
+            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
       case ChildLatencyResponse(_, requestTime) =>
-        childNodeLatency = Some(requestTime)//Some(Duration.between(requestTime, clock.instant))
+        childNodeLatency = Some((Duration.between(requestTime, clock.instant)).dividedBy(2))//Some(Duration.between(requestTime, clock.instant))
         if (childNodePathLatency.isDefined) {
           val pathLatency: Duration = childNodeLatency.get.plus(childNodePathLatency.get)
           latency = Some(pathLatency)
@@ -180,7 +182,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
             FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
-            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, Duration.ofMillis(costs(nodeData.parent).duration.toMillis))})
+            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
         }
 
 
@@ -193,9 +195,9 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
       case ChildLatencyResponse(childNode, requestTime) =>
         childNode match {
           case nodeData.childNode1 =>
-            childNode1Latency = Some(requestTime)//(Duration.between(requestTime, clock.instant))
+            childNode1Latency = Some((Duration.between(requestTime, clock.instant)).dividedBy(2))
           case nodeData.childNode2 =>
-            childNode2Latency = Some(requestTime)//(Duration.between(requestTime, clock.instant))
+            childNode2Latency = Some((Duration.between(requestTime, clock.instant)).dividedBy(2))
           case _ =>
         }
         if (childNode1Latency.isDefined &&

@@ -2,6 +2,7 @@ package adaptivecep.distributed
 
 import java.util.concurrent.TimeUnit
 
+import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator, TentativeOperator}
 import akka.actor.{ActorRef, ActorSystem, Deploy, Props}
@@ -18,7 +19,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
   case object Minimizing extends Optimizing
 
   val degree: Int = 2
-  var optimizeFor: String = "latency"
   val system: ActorSystem = context.system
 
   var activeOperator: Option[ActiveOperator] = None
@@ -45,11 +45,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
   var optimumHosts: Seq[ActorRef] = Seq.empty[ActorRef]
 
   var receivedResponses: Set[ActorRef] = Set.empty
+  var latencyResponses: Set[ActorRef] = Set.empty
+  var bandwidthResponses: Set[ActorRef] = Set.empty
+  var testEvents: Int = 0
 
   var parentNode: Option[ActorRef] = None
   var parentHosts: Seq[ActorRef] = Seq.empty[ActorRef]
-
-  var costs: Map[ActorRef, (Duration, Double)] = Map.empty
 
   var operators: Map[ActorRef, Option[Operator]] = Map.empty[ActorRef, Option[Operator]]
 
@@ -68,6 +69,8 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def resetAllData(bool: Boolean): Unit
   def sendOutCostMessages(): Unit
 
+  override def startLatencyMonitoring(): Unit = {}
+
   override def receive = {
     case MemberUp(member) =>
       log.info("Member is Up: {}", member.address)
@@ -83,15 +86,36 @@ trait HostActorDecentralizedBase extends HostActorBase{
       hostProps = HostProps(simulatedCosts)
     case AllHosts => {
       context.system.actorSelection(self.path.address.toString + "/user/Placement") ! Hosts(neighbors)
-      //println("sending Hosts", sender(), Hosts(neighbors + self))
     }
     case Node(actorRef) =>{
       node = Some(actorRef)
       reportCostsToNode()
     }
     case OptimizeFor(o) => optimizeFor = o
+    case LatencyRequest(t)=>
+      sender() ! LatencyResponse(t)
+    case LatencyResponse(t) =>
+      latencyResponses += sender()
+      val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
+      if(costs.contains(sender)){
+        costs += sender() -> Cost(latency, costs(sender()).bandwidth)
+      }else{
+        costs += sender() -> Cost(latency, 0)
+      }
+      sendOutCostMessages()
+    case StartThroughPutMeasurement =>
+    case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
+    case EndThroughPutMeasurement =>
+      bandwidthResponses += sender()
+      if(costs.contains(sender)){
+        costs += sender() -> Cost(costs(sender()).duration, throughputMeasureMap(sender()))
+      }else{
+        costs += sender() -> Cost(Duration.create(5, TimeUnit.DAYS), throughputMeasureMap(sender()))
+      }
+      throughputMeasureMap += sender() -> 0
+      sendOutCostMessages()
     case gPE: GreedyPlacementEvent => processEvent(gPE, sender())
-    case HostPropsRequest => sender() ! HostPropsResponse(hostPropsToMap)
+    case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
     case _ =>
   }
 
@@ -106,14 +130,14 @@ trait HostActorDecentralizedBase extends HostActorBase{
           val randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
           if(operators(randomNeighbor).isEmpty && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
-            randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0)
+            send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0))
             chosen = true
           }
           timeout += 1
         }
         if(timeout >= 1000){
           //println("Not enough hosts available as tentative Operators. Continuing without...")
-          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+          send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
         }
         //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
       } else {
@@ -121,14 +145,14 @@ trait HostActorDecentralizedBase extends HostActorBase{
       }
     }
     else {
-      parentHosts.foreach(_ ! FinishedChoosing(tentativeHosts))
+      parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
     }
   }
 
   def setup() : Unit = {
     //println("setting UP", neighbors)
     receivedResponses = Set.empty[ActorRef]
-    neighbors.foreach(neighbor => neighbor ! OperatorRequest)
+    neighbors.foreach(neighbor => send(neighbor, OperatorRequest))
   }
 
   def processEvent(event: GreedyPlacementEvent, sender: ActorRef): Unit ={
@@ -148,7 +172,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case TentativeAcknowledgement =>
         tentativeHosts = tentativeHosts :+ sender
         if(tentativeHosts.size == degree){
-          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+          send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
         } else {
           chooseTentativeOperators()
         }
@@ -160,15 +184,15 @@ trait HostActorDecentralizedBase extends HostActorBase{
         if(parents.isEmpty){
           consumer = true
           //println(children)
-          children.toSeq.head._1 ! ChooseTentativeOperators(Seq(self))
+          send(children.toSeq.head._1, ChooseTentativeOperators(Seq(self)))
         } else if(children.isEmpty){
-          parentHosts.foreach(_ ! FinishedChoosing(Seq.empty[ActorRef]))
+          parentHosts.foreach(send(_, FinishedChoosing(Seq.empty[ActorRef])))
         } else {
           setup()
         }
       case OperatorRequest =>
         //println("Got Operator Request, Sending Response", isOperator, " to", sender)
-        sender ! OperatorResponse(activeOperator, tentativeOperator)
+        send(sender, OperatorResponse(activeOperator, tentativeOperator))
       case OperatorResponse(ao, to) =>
         receivedResponses += sender
         //println("Received Operator Response:")
@@ -207,14 +231,14 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case ChildHost1(h) =>
         children += h -> Seq.empty[ActorRef]
         childHost1 = Some(h)
-        h ! ParentHost(self, node.get)
+        send(h, ParentHost(self, node.get))
       case ChildHost2(h1, h2) =>
         children += h1 -> Seq.empty[ActorRef]
         children += h2 -> Seq.empty[ActorRef]
         childHost1 = Some(h1)
         childHost2 = Some(h2)
-        h1 ! ParentHost(self, node.get)
-        h2 ! ParentHost(self, node.get)
+        send(h1, ParentHost(self, node.get))
+        send(h2, ParentHost(self, node.get))
       case ParentHost(p, ref) =>
         //println("Got Parent",p ,ref)
         hostToNodeMap += p -> ref
@@ -234,25 +258,36 @@ trait HostActorDecentralizedBase extends HostActorBase{
               ready = true
               //println("READY TO CALCULATE NEW PLACEMENT!")
             } else {
-              parentHosts.foreach(_ ! FinishedChoosing(tentativeHosts))
+              parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
             }
           } else if (finishedChildren < children.size) {
             children.toSeq(finishedChildren)._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
           }
         }
       case Start =>
-        parentHosts.foreach(p => p ! CostRequest(clock.instant()))
+        for(p <- parentHosts){
+          p ! StartThroughPutMeasurement
+          for(i <- Range(0, hostPropsToMap(p).bandwidth.toInt)){
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(i, TimeUnit.MILLISECONDS),
+              () => {p ! TestEvent})
+          }
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(100, TimeUnit.MILLISECONDS),
+            () => {p ! EndThroughPutMeasurement})
+          val now = clock.instant()
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(hostPropsToMap(sender).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+            () => {p ! CostRequest(now)}
+        )}
         if (activeOperator.isDefined) {
           broadcastMessage(Start)
         }
       case CostRequest(t) =>
-        /*system.scheduler.scheduleOnce(
-          FiniteDuration(hostPropsToMap(sender).duration.toMillis, TimeUnit.MILLISECONDS),
-          () => {sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)})*/
-        sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)
-      case CostResponse(_, _) =>
+        send(sender, CostResponse(t, hostPropsToMap(sender).bandwidth))
+      case CostResponse(t, b) =>
         if (parentHosts.contains(sender)) {
-          costs += sender -> (hostPropsToMap(sender).duration, hostPropsToMap(sender).bandwidth)
+          costs += sender -> Cost(hostPropsToMap(sender).duration, hostPropsToMap(sender).bandwidth)
           sendOutCostMessages()
         }
       case StateTransferMessage(o, p) =>
@@ -273,13 +308,13 @@ trait HostActorDecentralizedBase extends HostActorBase{
         completedChildren += 1
         if(parent.isDefined){
           if (completedChildren == children.size) {
-            parent.get ! MigrationComplete
+            send(parent.get, MigrationComplete)
           }
         } else if(consumer){
           if (completedChildren == children.size) {
             updateChildren()
             resetAllData(false)
-            children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+            send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
           }
         } else {
           println("ERROR: Something went terribly wrong")
@@ -302,8 +337,8 @@ trait HostActorDecentralizedBase extends HostActorBase{
 
   def broadcastMessage(message: GreedyPlacementEvent): Unit ={
     children.foreach(child => {
-      child._1 ! message
-      child._2.foreach(tentativeChild => tentativeChild ! message)
+      send(child._1, message)
+      child._2.foreach(tentativeChild => send(tentativeChild, message))
     })
   }
 
@@ -361,7 +396,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
           broadcastMessage(StateTransferMessage(optimumHosts, node.get))
           updateChildren()
         } else {
-          parent.get ! MigrationComplete
+          send(parent.get, MigrationComplete)
         }
       }
       if(tentativeOperator.isDefined){
@@ -372,12 +407,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
           broadcastMessage(StateTransferMessage(optimumHosts, node.get))
           updateChildren()
         } else {
-          parent.get ! MigrationComplete
+          send(parent.get, MigrationComplete)
         }
       }
       resetAllData(false)
       if(parent.isDefined && node.isDefined){
-        parent.get ! ChildResponse(node.get)
+        send(parent.get, ChildResponse(node.get))
       }
     } else {
       //println("DEACTIVATING....")
@@ -421,10 +456,10 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def becomeTentativeOperator(operator: TentativeOperator, sender: ActorRef): Unit ={
     if(!isOperator){
       tentativeOperator = Some(operator)
-      sender ! TentativeAcknowledgement
+      send(sender, TentativeAcknowledgement)
     } else {
       //println("ERROR: Host already has an Operator")
-      sender ! ContinueSearching
+      send(sender, ContinueSearching)
     }
   }
 
@@ -471,5 +506,4 @@ trait HostActorDecentralizedBase extends HostActorBase{
     case Maximizing => traversable maxBy f
     case Minimizing => traversable minBy f
   }
-
 }
