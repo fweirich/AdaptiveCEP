@@ -6,7 +6,7 @@ import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Query1
 import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
-import akka.actor.ActorRef
+import akka.actor.{ActorRef, Cancellable}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,10 +26,19 @@ trait LeafNode extends Node {
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
   var fMonitor: AverageFrequencyLeafNodeMonitor = frequencyMonitor.asInstanceOf[AverageFrequencyLeafNodeMonitor]
+  var resetTask: Cancellable = _
 
   private val monitor: PathLatencyLeafNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyLeafNodeMonitor]
 
   def emitCreated(): Unit = {
+    if(resetTask != null){
+      resetTask = context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
+        runnable = () => {
+          emittedEvents = 0
+        })
+    }
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)
@@ -50,12 +59,4 @@ trait LeafNode extends Node {
       }
     )
   }
-
-  context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
-    runnable = () => {
-      emittedEvents = 0
-    })
-
 }

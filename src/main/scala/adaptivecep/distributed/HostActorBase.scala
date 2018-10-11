@@ -91,13 +91,13 @@ trait HostActorBase extends Actor with ActorLogging{
         neighbor ! StartThroughPutMeasurement
         for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)) {
           context.system.scheduler.scheduleOnce(
-            FiniteDuration(i, TimeUnit.MILLISECONDS),
+            FiniteDuration(i*10, TimeUnit.MILLISECONDS),
             () => {
               neighbor ! TestEvent
             })
         }
         context.system.scheduler.scheduleOnce(
-          FiniteDuration(100, TimeUnit.MILLISECONDS),
+          FiniteDuration(1000, TimeUnit.MILLISECONDS),
           () => {
             neighbor ! EndThroughPutMeasurement
           })

@@ -84,7 +84,7 @@ trait BinaryNode extends Node {
     if(resetTask != null){
       resetTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
+        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
         runnable = () => {
           emittedEvents = 0
         })

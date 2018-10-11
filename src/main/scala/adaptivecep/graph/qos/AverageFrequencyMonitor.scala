@@ -72,7 +72,6 @@ trait AverageFrequencyMonitor {
   }
 
   def onEventEmit(event: Event): Unit = {
-    println(currentOutput)
     if (currentOutput.isDefined) currentOutput = Some(currentOutput.get + 1)
   }
 }
