@@ -33,6 +33,7 @@ trait BinaryNode extends Node {
   var bandwidthMonitor: BinaryNodeMonitor = bandwidthMonitorFactory.createBinaryNodeMonitor
   var nodeData: BinaryNodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
   var scheduledTask: Cancellable = _
+  var resetTask: Cancellable = _
 
   val lmonitor: PathLatencyBinaryNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyBinaryNodeMonitor]
   var fMonitor: AverageFrequencyBinaryNodeMonitor = frequencyMonitor.asInstanceOf[AverageFrequencyBinaryNodeMonitor]
@@ -80,12 +81,14 @@ trait BinaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
-    context.system.scheduler.schedule(
-      initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-      interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
-      runnable = () => {
-        emittedEvents = 0
-      })
+    if(resetTask != null){
+      resetTask = context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(100, TimeUnit.MILLISECONDS),
+        runnable = () => {
+          emittedEvents = 0
+        })
+    }
     lmonitor.childNode1 = childNode1
     lmonitor.childNode2 = childNode2
     //bmonitor.childNode1 = childNode1

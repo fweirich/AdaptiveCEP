@@ -23,49 +23,51 @@ trait AverageFrequencyMonitor {
     val callbackNodeData: NodeData = NodeData(name, requirements, context)
     currentOutput = Some(0)
     if (frequencyRequirements.nonEmpty) {
-      scheduledTask = context.system.scheduler.schedule(
-        initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
-        interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
-        runnable = () => {
-          frequencyRequirements.foreach(requirement => {
-            require(requirement.seconds <= interval)
-            // `divisor`, e.g., if `interval` == 30, and `requirement.seconds` == 10, then `divisor` == 3
-            val divisor: Int = interval / (requirement.seconds * 1000)
-            val frequency: Int = currentOutput.get / divisor
-            if (logging) println(
-              s"FREQUENCY:\tOn average, node `$name` emits $frequency events every ${requirement.seconds} seconds. " +
-              s"(Calculated every $interval seconds.)")
-            requirement.operator match {
-              case Equal =>        if (!(frequency == requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
+      if(scheduledTask != null){
+        scheduledTask = context.system.scheduler.schedule(
+          initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
+          interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
+          runnable = () => {
+            frequencyRequirements.foreach(requirement => {
+              require(requirement.seconds <= interval)
+              // `divisor`, e.g., if `interval` == 30, and `requirement.seconds` == 10, then `divisor` == 3
+              val divisor: Int = interval / (requirement.seconds * 1000)
+              val frequency: Int = currentOutput.get / divisor
+              if (logging) println(
+                s"FREQUENCY:\tOn average, node `$name` emits $frequency events every ${requirement.seconds} seconds. " +
+                  s"(Calculated every $interval seconds.)")
+              requirement.operator match {
+                case Equal =>        if (!(frequency == requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
+                case NotEqual =>     if (!(frequency != requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
+                case Greater =>      if (!(frequency >  requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
+                case GreaterEqual => if (!(frequency >= requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
+                case Smaller =>      if (!(frequency <  requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
+                case SmallerEqual => if (!(frequency <= requirement.instances)){
+                  met = false
+                  requirement.callback(callbackNodeData)
+                }
               }
-              case NotEqual =>     if (!(frequency != requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
-              }
-              case Greater =>      if (!(frequency >  requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
-              }
-              case GreaterEqual => if (!(frequency >= requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
-              }
-              case Smaller =>      if (!(frequency <  requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
-              }
-              case SmallerEqual => if (!(frequency <= requirement.instances)){
-                met = false
-                requirement.callback(callbackNodeData)
-              }
-            }
-          })
-          averageOutput = currentOutput
-          currentOutput = Some(0)
-        }
-      )
+            })
+            averageOutput = currentOutput
+            currentOutput = Some(0)
+          }
+        )
+      }
     }
   }
 
