@@ -101,6 +101,8 @@ trait BinaryNode extends Node {
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
         emittedEvents += 1
+        println(emittedEvents)
+        println(costs(parentNode))
         if(emittedEvents < costs(parentNode).bandwidth) {
           lmonitor.childNode1 = childNode1
           lmonitor.childNode2 = childNode2
