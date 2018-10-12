@@ -39,6 +39,7 @@ trait UnaryNode extends Node {
   var goodCounter: Int = 0
   var badCounter: Int = 0
   var failsafe: Int = 0
+  var resetTask: Cancellable = _
 
   var previousBandwidth : Int = 0
   var previousLatency : Duration = Duration.Zero
@@ -81,6 +82,14 @@ trait UnaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
+    if(resetTask != null){
+      resetTask = context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
+        runnable = () => {
+          emittedEvents = 0
+        })
+    }
     lmonitor.childNode = childNode
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
@@ -101,12 +110,5 @@ trait UnaryNode extends Node {
           bandwidthMonitor.onEventEmit(event, nodeData)
       }}
     )
-
   }
-  context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-    interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
-    runnable = () => {
-      emittedEvents = 0
-    })
 }
