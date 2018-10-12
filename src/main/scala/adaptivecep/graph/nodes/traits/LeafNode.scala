@@ -26,11 +26,11 @@ trait LeafNode extends Node {
   var nodeData: LeafNodeData = LeafNodeData(name, requirements, context, parentNode)
 
   var fMonitor: AverageFrequencyLeafNodeMonitor = frequencyMonitor.asInstanceOf[AverageFrequencyLeafNodeMonitor]
-  var resetTask: Cancellable = _
+  var resetTask: Cancellable = null
 
   private val monitor: PathLatencyLeafNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyLeafNodeMonitor]
 
-  def emitCreated(): Unit = {
+  override def preStart(): Unit = {
     if(resetTask == null){
       resetTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
@@ -39,7 +39,11 @@ trait LeafNode extends Node {
           emittedEvents = 0
         })
     }
-    if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
+  }
+
+
+  def emitCreated(): Unit = {
+    if (createdCallback.isDefined){createdCallback.get.apply()} //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
     latencyMonitor.onCreated(nodeData)
     bandwidthMonitor.onCreated(nodeData)

@@ -39,12 +39,21 @@ trait UnaryNode extends Node {
   var goodCounter: Int = 0
   var badCounter: Int = 0
   var failsafe: Int = 0
-  var resetTask: Cancellable = _
+  var resetTask: Cancellable = null
 
   var previousBandwidth : Int = 0
   var previousLatency : Duration = Duration.Zero
 
+
   override def preStart(): Unit = {
+    if(resetTask == null){
+      resetTask = context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
+        runnable = () => {
+          emittedEvents = 0
+        })
+    }
     if(scheduledTask == null){
       scheduledTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
@@ -82,14 +91,6 @@ trait UnaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
-    if(resetTask == null){
-      resetTask = context.system.scheduler.schedule(
-        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
-        runnable = () => {
-          emittedEvents = 0
-        })
-    }
     lmonitor.childNode = childNode
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
@@ -102,9 +103,7 @@ trait UnaryNode extends Node {
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
         lmonitor.childNode = childNode
-        println("1")
         if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
-          println("2")
           emittedEvents += 1
           if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
