@@ -12,6 +12,7 @@ import akka.actor.{ActorRef, PoisonPill}
 import com.espertech.esper.client._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.ExecutionContext.Implicits.global
 
 case class JoinNode(
     //query: JoinQuery,

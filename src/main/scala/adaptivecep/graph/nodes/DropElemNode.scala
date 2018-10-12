@@ -6,6 +6,7 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.remote.RemoteScope
+import scala.concurrent.ExecutionContext.Implicits.global
 
 case class DropElemNode(
     requirements: Set[Requirement],
