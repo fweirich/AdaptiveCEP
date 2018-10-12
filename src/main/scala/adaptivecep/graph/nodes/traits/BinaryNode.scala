@@ -104,8 +104,6 @@ trait BinaryNode extends Node {
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
-        println(emittedEvents)
-        println(costs(parentNode))
         lmonitor.childNode1 = childNode1
         lmonitor.childNode2 = childNode2
         println("1")
