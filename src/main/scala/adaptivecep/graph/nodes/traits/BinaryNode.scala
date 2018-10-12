@@ -51,6 +51,7 @@ trait BinaryNode extends Node {
           emittedEvents = 0
         })
     }
+    emitCreated()
     if(scheduledTask == null){
       scheduledTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),

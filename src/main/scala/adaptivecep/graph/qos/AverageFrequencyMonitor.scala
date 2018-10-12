@@ -63,7 +63,7 @@ trait AverageFrequencyMonitor {
                 }
               }
             })
-            averageOutput = currentOutput
+            averageOutput = Some(currentOutput.get)
             currentOutput = Some(0)
           }
         )

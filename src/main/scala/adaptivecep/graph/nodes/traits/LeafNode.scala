@@ -39,6 +39,7 @@ trait LeafNode extends Node {
           emittedEvents = 0
         })
     }
+    emitCreated()
   }
 
 
