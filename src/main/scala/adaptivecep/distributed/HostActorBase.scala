@@ -57,7 +57,7 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Duration](
       Duration.Undefined,
       min = 2.millis, max = 100.millis,
-      () => (5.millis - 10.milli * random.nextDouble, 1 + random.nextInt(10)))
+      () => (2.millis - 4.milli * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
       template copy (value = 5.milli + 95.millis * random.nextDouble)
@@ -69,7 +69,7 @@ trait HostActorBase extends Actor with ActorLogging{
     val template = ContinuousBoundedValue[Double](
       0,
       min = 5, max = 100,
-      () => (5 - 10 * random.nextDouble, 1 + random.nextInt(10)))
+      () => (2 - 4 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
       template copy (value = 20 + 80* random.nextDouble)
