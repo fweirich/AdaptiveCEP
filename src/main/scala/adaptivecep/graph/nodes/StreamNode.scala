@@ -26,11 +26,6 @@ case class StreamNode(
   publisher ! Subscribe
   println("subscribing to publisher", publisher.path)
 
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    parentNode ! ChildUpdate(self, a)
-  }
-
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq.empty)
@@ -51,9 +46,6 @@ case class StreamNode(
         created = true
         emitCreated()
       }
-    case Move(a) => {
-      moveTo(a)
-    }
     case KillMe => sender() ! PoisonPill
     case Kill =>
       self ! PoisonPill

@@ -1,5 +1,7 @@
 package adaptivecep.graph.nodes
 
+import java.util.concurrent.TimeUnit
+
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.JoinNode._
@@ -8,6 +10,8 @@ import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
 import com.espertech.esper.client._
+
+import scala.concurrent.duration.FiniteDuration
 
 case class JoinNode(
     //query: JoinQuery,
@@ -50,22 +54,36 @@ case class JoinNode(
     case Created if sender() == childNode2 =>
       childNode2Created = true
       //if (childNode1Created && parentReceived && !created) emitCreated()
-    case event: Event if sender() == childNode1 => event match {
-      case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
-      case Event2(e1, e2) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2)))
-      case Event3(e1, e2, e3) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3)))
-      case Event4(e1, e2, e3, e4) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4)))
-      case Event5(e1, e2, e3, e4, e5) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
-      case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
-    }
-    case event: Event if sender() == childNode2 => event match {
-      case Event1(e1) => sendEvent("sq2", Array(toAnyRef(e1)))
-      case Event2(e1, e2) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2)))
-      case Event3(e1, e2, e3) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3)))
-      case Event4(e1, e2, e3, e4) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4)))
-      case Event5(e1, e2, e3, e4, e5) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
-      case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
-    }
+    case event: Event if sender() == childNode1 =>
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
+        () => {
+          if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+            frequencyMonitor.onEventEmit(event, nodeData)
+            emittedEvents += 1
+            event match {
+              case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
+              case Event2(e1, e2) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2)))
+              case Event3(e1, e2, e3) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3)))
+              case Event4(e1, e2, e3, e4) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4)))
+              case Event5(e1, e2, e3, e4, e5) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
+              case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq1", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
+    }}})
+    case event: Event if sender() == childNode2 =>
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
+        () => {
+          if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+            frequencyMonitor.onEventEmit(event, nodeData)
+            emittedEvents += 1
+            event match {
+              case Event1(e1) => sendEvent("sq2", Array(toAnyRef(e1)))
+              case Event2(e1, e2) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2)))
+              case Event3(e1, e2, e3) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3)))
+              case Event4(e1, e2, e3, e4) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4)))
+              case Event5(e1, e2, e3, e4, e5) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
+              case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq2", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
+    }}})
     case CentralizedCreated =>
       if(!created){
         created = true

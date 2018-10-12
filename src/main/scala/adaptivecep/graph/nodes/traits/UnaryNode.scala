@@ -82,14 +82,6 @@ trait UnaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
-    lmonitor.childNode = childNode
-    if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
-    frequencyMonitor.onCreated(nodeData)
-    latencyMonitor.onCreated(nodeData)
-    bandwidthMonitor.onCreated(nodeData)
-  }
-
-  def emitEvent(event: Event): Unit = {
     if(resetTask != null){
       resetTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
@@ -98,6 +90,14 @@ trait UnaryNode extends Node {
           emittedEvents = 0
         })
     }
+    lmonitor.childNode = childNode
+    if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
+    frequencyMonitor.onCreated(nodeData)
+    latencyMonitor.onCreated(nodeData)
+    bandwidthMonitor.onCreated(nodeData)
+  }
+
+  def emitEvent(event: Event): Unit = {
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
