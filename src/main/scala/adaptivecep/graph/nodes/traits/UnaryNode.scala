@@ -21,7 +21,7 @@ trait UnaryNode extends Node {
   //val childNode: ActorRef = createChildNode(1, query.sq)
   var childNode: ActorRef = self
   var parentNode: ActorRef = self
-  val interval = 3
+  val interval = 10
 
   var scheduledTask: Cancellable = _
 

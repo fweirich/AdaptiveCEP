@@ -199,7 +199,7 @@ object AppRunnerCentralized extends App {
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
     query3,
     publishers, publisherOperators,
-    AverageFrequencyMonitorFactory(interval = 5000, logging = false),
+    AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
     PathBandwidthMonitorFactory(interval = 1000, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
 

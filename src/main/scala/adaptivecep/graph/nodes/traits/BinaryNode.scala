@@ -18,7 +18,7 @@ trait BinaryNode extends Node {
 
   val query: Query1[Int] = stream[Int]("A")
 
-  val interval = 3
+  val interval = 10
   var badCounter = 0
   var goodCounter = 0
   var failsafe = 0
