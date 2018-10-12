@@ -23,7 +23,7 @@ trait AverageFrequencyMonitor {
     val callbackNodeData: NodeData = NodeData(name, requirements, context)
     currentOutput = Some(0)
     if (frequencyRequirements.nonEmpty) {
-      if(scheduledTask != null){
+      if(scheduledTask == null){
         scheduledTask = context.system.scheduler.schedule(
           initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
           interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
