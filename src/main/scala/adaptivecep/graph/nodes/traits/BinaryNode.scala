@@ -107,7 +107,9 @@ trait BinaryNode extends Node {
         println(costs(parentNode))
         lmonitor.childNode1 = childNode1
         lmonitor.childNode2 = childNode2
+        println("1")
         if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+          println("2")
           emittedEvents += 1
           //bmonitor.childNode1 = childNode1
           //bmonitor.childNode2 = childNode2
