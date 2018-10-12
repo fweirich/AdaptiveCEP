@@ -102,7 +102,9 @@ trait UnaryNode extends Node {
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
         lmonitor.childNode = childNode
+        println("1")
         if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+          println("2")
           emittedEvents += 1
           if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
