@@ -82,14 +82,6 @@ trait UnaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
-    if(resetTask != null){
-      resetTask = context.system.scheduler.schedule(
-        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
-        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
-        runnable = () => {
-          emittedEvents = 0
-        })
-    }
     lmonitor.childNode = childNode
     if (createdCallback.isDefined) createdCallback.get.apply() //else parentNode ! Created
     frequencyMonitor.onCreated(nodeData)
@@ -98,6 +90,14 @@ trait UnaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
+    if(resetTask != null){
+      resetTask = context.system.scheduler.schedule(
+        initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+        interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
+        runnable = () => {
+          emittedEvents = 0
+        })
+    }
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
