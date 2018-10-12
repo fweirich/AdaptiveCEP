@@ -81,7 +81,7 @@ trait BinaryNode extends Node {
   }
 
   def emitCreated(): Unit = {
-    if(resetTask != null){
+    if(resetTask == null){
       resetTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),

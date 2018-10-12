@@ -31,7 +31,7 @@ trait LeafNode extends Node {
   private val monitor: PathLatencyLeafNodeMonitor = latencyMonitor.asInstanceOf[PathLatencyLeafNodeMonitor]
 
   def emitCreated(): Unit = {
-    if(resetTask != null){
+    if(resetTask == null){
       resetTask = context.system.scheduler.schedule(
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
