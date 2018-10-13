@@ -16,7 +16,7 @@ import scala.util.Random
 
 trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
-  val interval = 2
+  val interval = 1
   var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
@@ -157,7 +157,7 @@ trait HostActorBase extends Actor with ActorLogging{
       sender() ! LatencyResponse(t)
     case LatencyResponse(t) =>
       //println("Response", t)
-      costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
+      costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
       println(costs(sender()), hostPropsToMap(sender()))
     case StartThroughPutMeasurement =>
     case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
@@ -167,7 +167,7 @@ trait HostActorBase extends Actor with ActorLogging{
     case ThroughPutResponse(r) =>
       //println("response", r)
       costs += sender() -> Cost(costs(sender()).duration, r)
-      println(costs(sender()), hostPropsToMap(sender()))
+      //println(costs(sender()), hostPropsToMap(sender()))
     case _ =>
   }
 
