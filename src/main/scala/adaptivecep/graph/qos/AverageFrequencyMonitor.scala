@@ -34,7 +34,7 @@ trait AverageFrequencyMonitor {
               val divisor: Int = interval / (requirement.seconds * 1000)
               val frequency: Int = currentOutput.get / divisor
               averageOutput = Some(frequency)
-              println(currentOutput.get, divisor, frequency)
+              //println(currentOutput.get, divisor, frequency)
               if (logging) println(
                 s"FREQUENCY:\tOn average, node `$name` emits $frequency events every ${requirement.seconds} seconds. " +
                   s"(Calculated every $interval seconds.)")

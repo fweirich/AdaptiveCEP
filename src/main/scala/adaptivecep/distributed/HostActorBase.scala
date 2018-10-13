@@ -158,6 +158,7 @@ trait HostActorBase extends Actor with ActorLogging{
     case LatencyResponse(t) =>
       //println("Response", t)
       costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
+      println(costs(sender()), hostPropsToMap(sender()))
     case StartThroughPutMeasurement =>
     case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
     case EndThroughPutMeasurement =>
@@ -166,6 +167,7 @@ trait HostActorBase extends Actor with ActorLogging{
     case ThroughPutResponse(r) =>
       //println("response", r)
       costs += sender() -> Cost(costs(sender()).duration, r)
+      println(costs(sender()), hostPropsToMap(sender()))
     case _ =>
   }
 
