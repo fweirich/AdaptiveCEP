@@ -42,26 +42,38 @@ trait AverageFrequencyMonitor {
                 case Equal =>        if (!(frequency == requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
                 case NotEqual =>     if (!(frequency != requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
                 case Greater =>      if (!(frequency >  requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
                 case GreaterEqual => if (!(frequency >= requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
                 case Smaller =>      if (!(frequency <  requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
                 case SmallerEqual => if (!(frequency <= requirement.instances)){
                   met = false
                   requirement.callback(callbackNodeData)
+                } else {
+                  met = true
                 }
               }
             })
