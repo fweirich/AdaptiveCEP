@@ -119,14 +119,17 @@ trait HostActorDecentralizedBase extends HostActorBase{
     case StartThroughPutMeasurement =>
     case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
     case EndThroughPutMeasurement =>
+      send(sender(), ThroughPutResponse(throughputMeasureMap(sender())))
+      sendOutCostMessages()
+      throughputMeasureMap += sender() -> 0
+    case ThroughPutResponse(r) =>
       bandwidthResponses += sender()
       if(costs.contains(sender)){
-        costs += sender() -> Cost(costs(sender()).duration, throughputMeasureMap(sender()))
+        costs += sender() -> Cost(costs(sender()).duration, r)
       }else{
-        costs += sender() -> Cost(Duration.create(5, TimeUnit.DAYS), throughputMeasureMap(sender()))
+        costs += sender() -> Cost(Duration.create(5, TimeUnit.DAYS), r)
       }
-      throughputMeasureMap += sender() -> 0
-      sendOutCostMessages()
+      costs += sender() -> Cost(costs(sender()).duration, r)
     case gPE: GreedyPlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
     case _ =>

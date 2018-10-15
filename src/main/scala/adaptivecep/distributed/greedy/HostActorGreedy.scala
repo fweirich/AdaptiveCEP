@@ -10,6 +10,29 @@ import scala.concurrent.duration._
 
 class HostActorGreedy extends HostActorDecentralizedBase{
 
+  def calculateOptimumNodes() : Unit = {
+    if(optimizeFor == "latency"){
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Minimizing,
+        getChildAndTentatives(child._1))(childCosts(_)._1))
+    }else if(optimizeFor == "bandwidth"){
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
+        getChildAndTentatives(child._1))(childCosts(_)._2))
+    }else{
+      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
+        getChildAndTentatives(child._1))(childCosts(_)))
+    }
+
+    optimumHosts.foreach(host =>
+      if(childHost1.isDefined && getPreviousChild(host) == childHost1.get){
+        optimumChildHost1 = Some(host)
+      } else if(childHost2.isDefined && getPreviousChild(host) == childHost2.get){
+        optimumChildHost2 = Some(host)
+      } else {
+        println("ERROR: optimumHost does not belong to a child")
+      }
+    )
+  }
+
   def sendOutCostMessages() : Unit = {
     if(children.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
       parentHosts.foreach(parent => parent ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
@@ -40,36 +63,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
       }
     }
     //println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
-  }
-
-  def calculateOptimumNodes() : Unit = {
-    //println(childHost1)
-    //println(childHost2)
-
-    if(optimizeFor == "latency"){
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Minimizing,
-        getChildAndTentatives(child._1))(childCosts(_)._1))
-    }else if(optimizeFor == "bandwidth"){
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
-        getChildAndTentatives(child._1))(childCosts(_)._2))
-    }else{
-      children.toSeq.foreach(child => optimumHosts = optimumHosts :+ minmaxBy(Maximizing,
-        getChildAndTentatives(child._1))(childCosts(_)))
-    }
-
-    optimumHosts.foreach(host =>
-      if(childHost1.isDefined && getPreviousChild(host) == childHost1.get){
-        optimumChildHost1 = Some(host)
-        //println(optimumChildHost1)
-        //println(getPreviousChild(host))
-      } else if(childHost2.isDefined && getPreviousChild(host) == childHost2.get){
-        optimumChildHost2 = Some(host)
-        //println(optimumChildHost2)
-        //println(getPreviousChild(host))
-      } else {
-        println("ERROR: optimumHost does not belong to a child")
-      }
-    )
   }
 
   def resetAllData(deleteEverything: Boolean): Unit ={
