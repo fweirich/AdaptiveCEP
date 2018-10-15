@@ -110,11 +110,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
     case LatencyResponse(t) =>
       latencyResponses += sender()
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
-      if(costs.contains(sender)){
-        costs += sender() -> Cost(latency, costs(sender()).bandwidth)
-      }else{
-        costs += sender() -> Cost(latency, 0)
-      }
+      costs += sender() -> Cost(latency, costs(sender()).bandwidth)
       sendOutCostMessages()
     case StartThroughPutMeasurement =>
     case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
@@ -124,11 +120,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       bandwidthResponses += sender()
-      if(costs.contains(sender)){
-        costs += sender() -> Cost(costs(sender()).duration, r)
-      }else{
-        costs += sender() -> Cost(Duration.create(5, TimeUnit.DAYS), r)
-      }
       costs += sender() -> Cost(costs(sender()).duration, r)
     case gPE: GreedyPlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
