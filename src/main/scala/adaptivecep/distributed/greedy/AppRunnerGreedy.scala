@@ -70,7 +70,7 @@ object AppRunnerGreedy extends App{
       .and(stream[Float]("C").and(stream[String]("D")),
         /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },
         latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }*/
-        frequency > ratio(500.instances, 1.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") })
+        frequency > ratio(30.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
   override def main(args: Array[String]): Unit = {
     if (args.nonEmpty) {
@@ -205,7 +205,7 @@ object AppRunnerGreedy extends App{
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorGreedy(actorSystem,
     query3,
     publishers, publisherOperators,
-    AverageFrequencyMonitorFactory(interval = 15000, logging = false),
+    AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
     PathBandwidthMonitorFactory(interval = 1000, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
 
