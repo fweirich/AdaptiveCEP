@@ -42,8 +42,8 @@ trait HostActorBase extends Actor with ActorLogging{
   def reportCostsToNode(): Unit = {
     var result = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
     hostToNodeMap.foreach(host =>
-      if(costs.contains(host._1)){
-        result += host._2 -> costs(host._1)
+      if(hostPropsToMap.contains(host._1)){
+        result += host._2 -> hostPropsToMap(host._1)
       }
     )
     if(node.isDefined){
