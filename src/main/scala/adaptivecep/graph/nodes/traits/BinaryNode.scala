@@ -57,6 +57,7 @@ trait BinaryNode extends Node {
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
+          println(lmonitor.latency, fMonitor.averageOutput)
           if (lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined /*bmonitor.bandwidthForMonitoring.isDefined*/ ) {
             if (!lmonitor.met || !fMonitor.met) {
               lmonitor.met = true
