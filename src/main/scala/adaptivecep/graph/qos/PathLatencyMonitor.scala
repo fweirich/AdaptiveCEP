@@ -18,7 +18,7 @@ case class PathLatency(childNode: ActorRef, duration: Duration)
 
 trait PathLatencyMonitor {
 
-  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost] withDefaultValue(Cost(scala.concurrent.duration.Duration.Zero, 0))
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost] withDefaultValue(Cost(scala.concurrent.duration.FiniteDuration(0, TimeUnit.SECONDS), 100))
 
   def isRequirementNotMet(latency: Duration, lr: LatencyRequirement): Boolean = {
     val met: Boolean = lr.operator match {
@@ -90,11 +90,9 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
     message match {
       case HostPropsResponse(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
-        if(costs.contains(nodeData.parent)){
-          nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
-            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
-        }
+        nodeData.context.system.scheduler.scheduleOnce(
+          FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+          () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
       case ChildLatencyResponse(_, requestTime) =>
         childNodeLatency = Some((Duration.between(requestTime, clock.instant)).dividedBy(2))//Some(Duration.between(requestTime, clock.instant))
         if (childNodePathLatency.isDefined) {
@@ -179,11 +177,10 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
     message match {
       case HostPropsResponse(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
-        if(costs.contains(nodeData.parent)){
-          nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
-            () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
-        }
+        nodeData.context.system.scheduler.scheduleOnce(
+          FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+          () => {nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)})
+
 
 
        // nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time.minusMillis(costs(nodeData.parent)._1.toMillis * 2))
