@@ -83,7 +83,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     childCosts = Map.empty[ActorRef, (Duration, Double)]
 
     parentHosts = Seq.empty[ActorRef]
-    costs = Map.empty[ActorRef, Cost]
 
     optimumHosts = Seq.empty[ActorRef]
     tentativeHosts = Seq.empty[ActorRef]
