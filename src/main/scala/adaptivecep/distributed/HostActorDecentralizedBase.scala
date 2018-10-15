@@ -80,7 +80,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       } else {
         hostProps = hostProps.advance
       }
-      //measureCosts()
+      measureCosts()
       reportCostsToNode()
     })
 
