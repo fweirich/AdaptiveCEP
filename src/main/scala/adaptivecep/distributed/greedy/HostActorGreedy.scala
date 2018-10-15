@@ -34,7 +34,7 @@ class HostActorGreedy extends HostActorDecentralizedBase{
   }
 
   def sendOutCostMessages() : Unit = {
-    println(processedCostMessages, latencyResponses.size, bandwidthResponses.size)
+    //println(processedCostMessages, latencyResponses.size, bandwidthResponses.size)
     if(children.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
       parentHosts.foreach(parent => parent ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
     }
