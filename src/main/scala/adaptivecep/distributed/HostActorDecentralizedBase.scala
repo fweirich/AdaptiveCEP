@@ -69,7 +69,20 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def resetAllData(bool: Boolean): Unit
   def sendOutCostMessages(): Unit
 
-  override def startLatencyMonitoring(): Unit = {}
+  override def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+    interval = FiniteDuration(interval, TimeUnit.SECONDS),
+    runnable = () => {
+      if(optimizeFor == "latency"){
+        hostProps = hostProps.advanceLatency
+      } else if (optimizeFor == "bandwidth") {
+        hostProps = hostProps.advanceBandwidth
+      } else {
+        hostProps = hostProps.advance
+      }
+      //measureCosts()
+      reportCostsToNode()
+    })
 
   override def receive = {
     case MemberUp(member) =>
