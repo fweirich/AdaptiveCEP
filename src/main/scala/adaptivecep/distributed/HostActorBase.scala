@@ -28,7 +28,7 @@ trait HostActorBase extends Actor with ActorLogging{
   var hostProps: HostProps = HostProps(simulatedCosts)
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
   var throughputMeasureMap: Map[ActorRef, Int] = Map.empty[ActorRef, Int] withDefaultValue(0)
-  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
+  var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
 
   case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
     def advance = HostProps(
