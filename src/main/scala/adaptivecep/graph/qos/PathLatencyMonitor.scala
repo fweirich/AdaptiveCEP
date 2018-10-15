@@ -48,7 +48,7 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
       case ChildLatencyRequest(time) =>
         if(costs.contains(nodeData.parent)){
           nodeData.context.system.scheduler.scheduleOnce(
-            FiniteDuration(costs(nodeData.parent).duration.toMillis, TimeUnit.MILLISECONDS),
+            FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
             () => {
               nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
               nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)

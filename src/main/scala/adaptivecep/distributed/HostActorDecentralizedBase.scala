@@ -289,10 +289,16 @@ trait HostActorDecentralizedBase extends HostActorBase{
             FiniteDuration(100, TimeUnit.MILLISECONDS),
             () => {p ! EndThroughPutMeasurement})
           val now = clock.instant()
-          context.system.scheduler.scheduleOnce(
-            FiniteDuration(hostPropsToMap(sender).duration.toMillis * 2, TimeUnit.MILLISECONDS),
-            () => {p ! CostRequest(now)}
-        )}
+          if (hostPropsToMap.contains(p)) {
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+              () => {
+                p ! LatencyRequest(now)
+              })
+          } else {
+            p ! LatencyRequest(now)
+          }
+        }
         if (activeOperator.isDefined) {
           broadcastMessage(Start)
         }
