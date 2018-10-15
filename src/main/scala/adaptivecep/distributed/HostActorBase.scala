@@ -40,7 +40,7 @@ trait HostActorBase extends Actor with ActorLogging{
   }
 
   def reportCostsToNode(): Unit = {
-    var result = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
+    var result = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
     hostToNodeMap.foreach(host =>
       if(costs.contains(host._1)){
         result += host._2 -> costs(host._1)
@@ -82,6 +82,7 @@ trait HostActorBase extends Actor with ActorLogging{
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
+    startLatencyMonitoring()
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 
@@ -129,8 +130,6 @@ trait HostActorBase extends Actor with ActorLogging{
       measureCosts()
       reportCostsToNode()
     })
-
-  startLatencyMonitoring()
 
   def receive = {
     case MemberUp(member) =>
