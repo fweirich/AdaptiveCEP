@@ -12,55 +12,61 @@ object Events {
 
   case object Created
 
-  sealed trait GreedyPlacementEvent
+  sealed trait PlacementEvent
 
-  case class CostMessage(latency: Duration, bandwidth: Double) extends GreedyPlacementEvent
+  case object RequirementsMet extends PlacementEvent
+  case object RequirementsNotMet extends PlacementEvent
 
-  case class BecomeActiveOperator(operator: ActiveOperator) extends GreedyPlacementEvent
-  case class SetActiveOperator(operator: Props) extends GreedyPlacementEvent
+
+  //Tentative Operator Phase
+  case class CostMessage(latency: Duration, bandwidth: Double) extends PlacementEvent
+
+
+  //Cost Measurement Phase
+
+  //Migration Phase
+  case object MigrationComplete extends PlacementEvent
+
+
+  case class BecomeActiveOperator(operator: ActiveOperator) extends PlacementEvent
+  case class SetActiveOperator(operator: Props) extends PlacementEvent
 
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
-                                     childHost2: Option[ActorRef], temperature: Double) extends GreedyPlacementEvent
+                                     childHost2: Option[ActorRef], temperature: Double) extends PlacementEvent
 
-  case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends GreedyPlacementEvent
+  case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends PlacementEvent
 
-  case object OperatorRequest extends GreedyPlacementEvent
-  case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends GreedyPlacementEvent
+  case object OperatorRequest extends PlacementEvent
+  case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends PlacementEvent
 
-  case class ParentResponse(parent: Option[ActorRef]) extends GreedyPlacementEvent
+  case class ParentResponse(parent: Option[ActorRef]) extends PlacementEvent
 
-  case class ChildHost1(actorRef: ActorRef) extends GreedyPlacementEvent
-  case class ChildHost2(actorRef1: ActorRef, actorRef2: ActorRef) extends GreedyPlacementEvent
-  case class ChildResponse(childNode: ActorRef) extends GreedyPlacementEvent
+  case class ChildHost1(actorRef: ActorRef) extends PlacementEvent
+  case class ChildHost2(actorRef1: ActorRef, actorRef2: ActorRef) extends PlacementEvent
+  case class ChildResponse(childNode: ActorRef) extends PlacementEvent
 
-  case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends GreedyPlacementEvent
-  case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  GreedyPlacementEvent
+  case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends PlacementEvent
+  case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  PlacementEvent
 
-  case object Start extends GreedyPlacementEvent
+  case object Start extends PlacementEvent
 
-  case class CostRequest(instant: Instant) extends GreedyPlacementEvent
-  case class CostResponse(instant: Instant, bandwidth: Double) extends GreedyPlacementEvent
-  case class LatencyCostResponse(instant: Instant) extends GreedyPlacementEvent
-  case class BandwidthCostResponse(bandwidth: Double) extends GreedyPlacementEvent
+  case class CostRequest(instant: Instant) extends PlacementEvent
+  case class CostResponse(instant: Instant, bandwidth: Double) extends PlacementEvent
+  case class LatencyCostResponse(instant: Instant) extends PlacementEvent
+  case class BandwidthCostResponse(bandwidth: Double) extends PlacementEvent
 
-  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends GreedyPlacementEvent
+  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends PlacementEvent
+  case object TentativeAcknowledgement extends PlacementEvent
+  case object ContinueSearching extends PlacementEvent
 
-  case object MigrationComplete extends GreedyPlacementEvent
-
-  case object TentativeAcknowledgement extends GreedyPlacementEvent
-  case object ContinueSearching extends GreedyPlacementEvent
-
-  case object RequirementsNotMet extends GreedyPlacementEvent
-  case object RequirementsMet extends GreedyPlacementEvent
-
-  case object ResetTemperature extends GreedyPlacementEvent
+  case object ResetTemperature extends PlacementEvent
 
   case object CentralizedCreated
 
-  case object StartThroughPutMeasurement extends GreedyPlacementEvent
-  case object EndThroughPutMeasurement extends GreedyPlacementEvent
-  case object TestEvent extends GreedyPlacementEvent
+  case object StartThroughPutMeasurement extends PlacementEvent
+  case object EndThroughPutMeasurement extends PlacementEvent
+  case object TestEvent extends PlacementEvent
 
   case object InitializeQuery
   case class Delay(delay: Boolean)

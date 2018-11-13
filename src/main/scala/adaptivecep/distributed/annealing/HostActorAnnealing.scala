@@ -46,7 +46,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     }
   }
 
-  override def processEvent(event: GreedyPlacementEvent, sender: ActorRef): Unit ={
+  override def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
     event match {
       case m: CostMessage => processCostMessage(m, sender)
       case BecomeActiveOperator(operator) =>

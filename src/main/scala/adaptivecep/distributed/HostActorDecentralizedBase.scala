@@ -121,7 +121,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       bandwidthResponses += sender()
       costs += sender() -> Cost(costs(sender()).duration, r)
       sendOutCostMessages()
-    case gPE: GreedyPlacementEvent => processEvent(gPE, sender())
+    case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
     case _ =>
   }
@@ -162,7 +162,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
     neighbors.foreach(neighbor => send(neighbor, OperatorRequest))
   }
 
-  def processEvent(event: GreedyPlacementEvent, sender: ActorRef): Unit ={
+  def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
     event match {
       case m: CostMessage => processCostMessage(m, sender)
       case BecomeActiveOperator(operator) =>
@@ -348,7 +348,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
     }
   }
 
-  def broadcastMessage(message: GreedyPlacementEvent): Unit ={
+  def broadcastMessage(message: PlacementEvent): Unit ={
     children.foreach(child => {
       send(child._1, message)
       child._2.foreach(tentativeChild => send(tentativeChild, message))
