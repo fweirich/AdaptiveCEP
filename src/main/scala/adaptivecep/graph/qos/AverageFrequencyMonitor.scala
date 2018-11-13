@@ -82,6 +82,19 @@ trait AverageFrequencyMonitor {
         )
       }
     }
+    else{
+      if(scheduledTask == null){
+        scheduledTask = context.system.scheduler.schedule(
+          initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
+          interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
+          runnable = () => {
+            val divisor: Int = interval / (1 * 1000)
+            val frequency: Int = currentOutput.get / divisor
+            averageOutput = Some(frequency)
+            currentOutput = Some(0)
+          })
+      }
+    }
   }
 
   def onEventEmit(event: Event): Unit = {
