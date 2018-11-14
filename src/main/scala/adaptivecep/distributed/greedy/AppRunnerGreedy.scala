@@ -20,7 +20,7 @@ object AppRunnerGreedy extends App{
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "bandwidth"
+  var optimizeFor: String = "latency"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
   //val consumerHost: ActorRef = actorSystem.actorOf(Props[HostActor], "Host")
