@@ -10,6 +10,7 @@ import adaptivecep.distributed.operator.{NodeHost, Operator, TentativeOperator}
 import akka.actor.ActorRef
 
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class HostActorAnnealing extends HostActorDecentralizedBase {
 
