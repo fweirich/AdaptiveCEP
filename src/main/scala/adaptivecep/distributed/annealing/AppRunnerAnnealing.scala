@@ -19,7 +19,7 @@ object AppRunnerAnnealing extends App {
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "bandwidth"
+  var optimizeFor: String = "latencybandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 
@@ -73,8 +73,8 @@ object AppRunnerAnnealing extends App {
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/)
       .and(stream[Float]("C").and(stream[String]("D")),
         /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },*/
-        /*latency < timespan(150.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }*/
-        frequency > ratio(30.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
+        latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },
+        frequency > ratio(20.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
 
   val query4: Query3[Int, Int, Float] =
