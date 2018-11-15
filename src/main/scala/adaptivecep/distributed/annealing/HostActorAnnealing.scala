@@ -1,6 +1,8 @@
 package adaptivecep.distributed.annealing
 
 
+import java.util.concurrent.TimeUnit
+
 import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.distributed.HostActorDecentralizedBase
@@ -27,14 +29,14 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           val randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
           if(operators(randomNeighbor).isEmpty && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
-            randomNeighbor ! BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, temperature)
+            send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, temperature))
             chosen = true
           }
           timeout += 1
         }
         if(timeout >= 1000){
           //println("Not enough hosts available as tentative Operators. Continuing without...")
-          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+          send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
         }
         //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
       } else {
@@ -42,7 +44,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       }
     }
     else {
-      parentHosts.foreach(_ ! FinishedChoosing(tentativeHosts))
+      parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
     }
   }
 
@@ -64,7 +66,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       case TentativeAcknowledgement =>
         tentativeHosts = tentativeHosts :+ sender
         if(tentativeHosts.size == degree){
-          children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+          send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
         } else {
           chooseTentativeOperators()
         }
@@ -76,15 +78,15 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         if(parents.isEmpty){
           consumer = true
           //println(children)
-          children.toSeq.head._1 ! ChooseTentativeOperators(Seq(self))
+          send(children.toSeq.head._1, ChooseTentativeOperators(Seq(self)))
         } else if(children.isEmpty){
-          parentHosts.foreach(_ ! FinishedChoosing(Seq.empty[ActorRef]))
+          parentHosts.foreach(send(_, FinishedChoosing(Seq.empty[ActorRef])))
         } else {
           setup()
         }
       case OperatorRequest =>
         //println("Got Operator Request, Sending Response", isOperator, " to", sender)
-        sender ! OperatorResponse(activeOperator, tentativeOperator)
+        send(sender, OperatorResponse(activeOperator, tentativeOperator))
       case OperatorResponse(ao, to) =>
         receivedResponses += sender
         //println("Received Operator Response:")
@@ -123,14 +125,14 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       case ChildHost1(h) =>
         children += h -> Seq.empty[ActorRef]
         childHost1 = Some(h)
-        h ! ParentHost(self, node.get)
+        send(h, ParentHost(self, node.get))
       case ChildHost2(h1, h2) =>
         children += h1 -> Seq.empty[ActorRef]
         children += h2 -> Seq.empty[ActorRef]
         childHost1 = Some(h1)
         childHost2 = Some(h2)
-        h1 ! ParentHost(self, node.get)
-        h2 ! ParentHost(self, node.get)
+        send(h1, ParentHost(self, node.get))
+        send(h2, ParentHost(self, node.get))
       case ParentHost(p, ref) =>
         //println("Got Parent",p ,ref)
         hostToNodeMap += p -> ref
@@ -150,17 +152,37 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
               ready = true
               //println("READY TO CALCULATE NEW PLACEMENT!")
             } else {
-              parentHosts.foreach(_ ! FinishedChoosing(tentativeHosts))
+              parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
             }
           } else if (finishedChildren < children.size) {
-            children.toSeq(finishedChildren)._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+            send(children.toSeq(finishedChildren)._1, ChooseTentativeOperators(tentativeHosts :+ self))
           }
         }
       case Start =>
         if(temperature > minTemperature) {
           temperature = temperature * temperatureReductionFactor
         }
-        parentHosts.foreach(p => p ! CostRequest(clock.instant()))
+        for(p <- parentHosts){
+          p ! StartThroughPutMeasurement
+          for(i <- Range(0, hostPropsToMap(p).bandwidth.toInt)){
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(i, TimeUnit.MILLISECONDS),
+              () => {p ! TestEvent})
+          }
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(100, TimeUnit.MILLISECONDS),
+            () => {p ! EndThroughPutMeasurement})
+          val now = clock.instant()
+          if (hostPropsToMap.contains(p)) {
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+              () => {
+                p ! LatencyRequest(now)
+              })
+          } else {
+            p ! LatencyRequest(now)
+          }
+        }
         if (activeOperator.isDefined) {
           broadcastMessage(Start)
         }
@@ -168,7 +190,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         /*system.scheduler.scheduleOnce(
           FiniteDuration(hostPropsToMap(sender).duration.toMillis, TimeUnit.MILLISECONDS),
           () => {sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)})*/
-        sender ! CostResponse(t, hostPropsToMap(sender).bandwidth)
+        send(sender, CostResponse(t, hostPropsToMap(sender).bandwidth))
       case CostResponse(_, _) =>
         if (parentHosts.contains(sender)) {
           costs += sender -> Cost(hostPropsToMap(sender).duration, hostPropsToMap(sender).bandwidth)
@@ -207,13 +229,13 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         completedChildren += 1
         if(parent.isDefined){
           if (completedChildren == children.size) {
-            parent.get ! MigrationComplete
+            send(parent.get, MigrationComplete)
           }
         } else if(consumer){
           if (completedChildren == children.size) {
             updateChildren()
             resetAllData(false)
-            children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
+            send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts :+ self))
           }
         } else {
           println("ERROR: Something went terribly wrong")
@@ -221,6 +243,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       case _ =>
     }
   }
+
 
   def sendOutCostMessages() : Unit = {
     if(children.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
