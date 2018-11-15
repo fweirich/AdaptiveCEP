@@ -267,7 +267,8 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       optimumChildHost1 = None
       optimumChildHost2 = None
       //minmaxBy(Minimizing, costs)(_._2._1)._1
-      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent).duration), mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent).bandwidth)))
+      parentHosts.foreach(parent => parent ! CostMessage(mergeLatency(childCosts(bottleNeckNode)._1, costs(parent).duration),
+        mergeBandwidth(childCosts(bottleNeckNode)._2, costs(parent).bandwidth)))
       if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }

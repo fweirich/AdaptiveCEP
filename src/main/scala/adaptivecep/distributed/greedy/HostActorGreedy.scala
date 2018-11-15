@@ -34,7 +34,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
   }
 
   def sendOutCostMessages() : Unit = {
-    //println(processedCostMessages, latencyResponses.size, bandwidthResponses.size)
     if(children.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
       parentHosts.foreach(parent => parent ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
     }
@@ -49,8 +48,6 @@ class HostActorGreedy extends HostActorDecentralizedBase{
       }else{
         bottleNeckNode = minmaxBy(Minimizing, optimumHosts)(childCosts(_))
       }
-
-
       //println(bottleNeckNode)
       childHost1 = optimumChildHost1
       childHost2 = optimumChildHost2
