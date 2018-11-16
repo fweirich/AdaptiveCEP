@@ -19,7 +19,7 @@ object AppRunnerCentralized extends App {
   val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
-  var optimizeFor: String = "latency"
+  var optimizeFor: String = "latencybandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 
