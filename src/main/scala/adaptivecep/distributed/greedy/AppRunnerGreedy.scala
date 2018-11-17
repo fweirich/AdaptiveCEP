@@ -69,7 +69,7 @@ object AppRunnerGreedy extends App{
         /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/)
       .and(stream[Float]("C").and(stream[String]("D")),
         /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },*/
-        latency < timespan(100.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }//,
+        latency < timespan(150.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ }//,
         /*frequency > ratio(20.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }*/)
 
   override def main(args: Array[String]): Unit = {
