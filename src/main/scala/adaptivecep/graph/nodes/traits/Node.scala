@@ -4,10 +4,11 @@ import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Queries._
 import adaptivecep.graph.qos._
 import akka.actor.{Actor, ActorRef}
+import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
 
 import scala.concurrent.duration.Duration
 
-trait Node extends Actor {
+trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]{
 
   val name: String = self.path.name
   val requirements: Set[Requirement]
