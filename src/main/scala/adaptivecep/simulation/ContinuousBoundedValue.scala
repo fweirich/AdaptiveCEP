@@ -7,7 +7,7 @@ case class ContinuousBoundedValue[T: Ordering](
     nextStepAmountCount: () => (T, Int),
     progress: Option[(T, Int)] = None)(
     implicit add: (T, T) => T) {
-  /*def advance: ContinuousBoundedValue[T] = {
+  def advance: ContinuousBoundedValue[T] = {
     val (newValue, newChange, newSteps) = progress flatMap { case (stepAmount, stepCount) =>
       val (newValue, newStepCount) = (add(value, stepAmount), stepCount - 1)
       if (newValue < min || newValue > max || newStepCount < 0)
@@ -21,7 +21,7 @@ case class ContinuousBoundedValue[T: Ordering](
 
     copy(value = newValue, progress = Some((newChange, newSteps)))
   }
-  */
+  /*
   def advance: ContinuousBoundedValue[T] = {
     if (progress.isDefined) {
       var newValue = add(value, progress.get._1)
@@ -40,4 +40,5 @@ case class ContinuousBoundedValue[T: Ordering](
       ContinuousBoundedValue(value, min, max, nextStepAmountCount, Some(nextStepAmountCount())).advance
     }
   }
+  */
 }

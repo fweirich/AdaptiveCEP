@@ -68,11 +68,11 @@ trait HostActorBase extends Actor with ActorLogging{
 
     val template = ContinuousBoundedValue[Double](
       0,
-      min = 5, max = 100,
-      () => (4 - 8 * random.nextDouble, 1 + random.nextInt(10)))
+      min = 50, max = 1000,
+      () => (40 - 80 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
-      template copy (value = 20 + 80 * random.nextDouble)
+      template copy (value = 200 + 800 * random.nextDouble)
   }
 
   def hostPropsToMap: Map[ActorRef, Cost] = {
@@ -92,7 +92,7 @@ trait HostActorBase extends Actor with ActorLogging{
         neighbor ! StartThroughPutMeasurement
         for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)) {
           context.system.scheduler.scheduleOnce(
-            FiniteDuration(i*10, TimeUnit.MILLISECONDS),
+            FiniteDuration(i*(1000/hostPropsToMap(neighbor).bandwidth.toInt), TimeUnit.MILLISECONDS),
             () => {
               neighbor ! TestEvent
             })
