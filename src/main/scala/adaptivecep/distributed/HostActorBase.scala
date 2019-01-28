@@ -165,7 +165,7 @@ trait HostActorBase extends Actor with ActorLogging{
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       //println("response", r)
-      costs += sender() -> Cost(costs(sender()).duration, r)
+      costs += sender() -> Cost(costs(sender()).duration, r*10)
       //println(costs(sender()), hostPropsToMap(sender()))
     case _ =>
   }
