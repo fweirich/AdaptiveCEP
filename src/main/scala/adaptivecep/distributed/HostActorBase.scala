@@ -16,7 +16,7 @@ import scala.util.Random
 
 trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
-  val interval = 3
+  val interval = 2
   var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
@@ -90,9 +90,9 @@ trait HostActorBase extends Actor with ActorLogging{
     for (neighbor <- neighbors){
       if(hostPropsToMap.contains(neighbor)) {
         neighbor ! StartThroughPutMeasurement
-        for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt)) {
+        for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt/10)) {
           context.system.scheduler.scheduleOnce(
-            FiniteDuration(i*(1000/hostPropsToMap(neighbor).bandwidth.toInt), TimeUnit.MILLISECONDS),
+            FiniteDuration(i*10, TimeUnit.MILLISECONDS),
             () => {
               neighbor ! TestEvent
             })
