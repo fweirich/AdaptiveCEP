@@ -69,7 +69,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def resetAllData(bool: Boolean): Unit
   def sendOutCostMessages(): Unit
 
-  override def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
+  override def startSimulation(): Unit = context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {

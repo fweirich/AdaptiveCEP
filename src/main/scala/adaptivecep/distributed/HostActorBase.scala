@@ -18,7 +18,7 @@ import scala.util.Random
 
 trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
   val cluster = Cluster(context.system)
-  val interval = 1
+  val interval = 3
   var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
@@ -85,7 +85,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   override def preStart(): Unit = {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
-    startLatencyMonitoring()
+    startSimulation()
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 
@@ -120,8 +120,8 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     }
   }
 
-  def startLatencyMonitoring(): Unit = context.system.scheduler.schedule(
-    initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
+  def startSimulation(): Unit = context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
       if(optimizeFor == "latency"){
@@ -131,8 +131,14 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       } else {
         hostProps = hostProps.advance
       }
-      measureCosts()
       reportCostsToNode()
+    })
+
+  def startCostMeasurement(): Unit = context.system.scheduler.schedule(
+    initialDelay = FiniteDuration((random.nextDouble * 3000).toLong, TimeUnit.SECONDS),
+    interval = FiniteDuration(interval, TimeUnit.SECONDS),
+    runnable = () => {
+      measureCosts()
     })
 
   def receive = {
