@@ -102,7 +102,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
             })
         }
         context.system.scheduler.scheduleOnce(
-          FiniteDuration((bandwidth.template.max / hostPropsToMap(neighbor).bandwidth).toLong * 100, TimeUnit.MILLISECONDS)),
+          FiniteDuration((bandwidth.template.max / hostPropsToMap(neighbor).bandwidth).toLong * 100, TimeUnit.MILLISECONDS),
           () => {
             hostPropsToMap(neighbor).bandwidth.toInt
             neighbor ! EndThroughPutMeasurement(now.plusMillis(100), hostPropsToMap(neighbor).bandwidth.toInt)
