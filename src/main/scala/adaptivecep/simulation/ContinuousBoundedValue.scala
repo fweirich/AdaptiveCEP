@@ -23,6 +23,7 @@ case class ContinuousBoundedValue[T: Ordering](
   }
   */
   def advance: ContinuousBoundedValue[T] = {
+    if (progress.isDefined) {
       var newValue = add(value, progress.get._1)
       if (newValue < min) {
         newValue = min
@@ -30,11 +31,13 @@ case class ContinuousBoundedValue[T: Ordering](
       if (newValue > max) {
         newValue = max
       }
-      if(progress.get._2 > 1){
+      if (progress.get._2 > 1) {
         ContinuousBoundedValue(newValue, min, max, nextStepAmountCount, Some((progress.get._1, progress.get._2 - 1)))
       } else {
         ContinuousBoundedValue(newValue, min, max, nextStepAmountCount, Some(nextStepAmountCount()))
       }
+    }else {
+      ContinuousBoundedValue(value, min, max, nextStepAmountCount, Some(nextStepAmountCount())).advance
     }
-
+  }
 }
