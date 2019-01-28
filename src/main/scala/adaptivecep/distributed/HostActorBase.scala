@@ -18,7 +18,7 @@ import scala.util.Random
 
 trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
   val cluster = Cluster(context.system)
-  val interval = 2
+  val interval = 1
   var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
@@ -162,15 +162,18 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       //println("Response", t)
       costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
       //println(costs(sender()), hostPropsToMap(sender()))
-    case StartThroughPutMeasurement(instant) => throughputStartMap += sender() -> (instant, clock.instant())
-    case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
+    case StartThroughPutMeasurement(instant) =>
+      throughputStartMap += sender() -> (instant, clock.instant())
+      throughputMeasureMap += sender() -> 0
+    case TestEvent =>
+      throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
     case EndThroughPutMeasurement(instant, actual) =>
       val senderDiff = java.time.Duration.between(throughputStartMap(sender())._1, instant)
       val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
       val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * throughputMeasureMap(sender()))
       println("(" + senderDiff.toMillis + "/" + receiverDiff.toMillis +") * (( 1000" +  "/" + senderDiff.toMillis + ") * " + throughputMeasureMap(sender()) + "))")
       println(bandwidth, actual)
-      send(sender(), ThroughPutResponse(bandwidth.toInt))
+      sender() ! ThroughPutResponse(bandwidth.toInt)
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       //println("response", r)
