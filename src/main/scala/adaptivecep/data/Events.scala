@@ -5,6 +5,7 @@ import java.time.Instant
 import adaptivecep.data.Cost._
 import adaptivecep.distributed.operator.{ActiveOperator, TentativeOperator}
 import akka.actor.{ActorRef, Props}
+import akka.dispatch.ControlMessage
 
 import scala.concurrent.duration.Duration
 
@@ -12,7 +13,9 @@ object Events {
 
   case object Created
 
-  sealed trait PlacementEvent
+  trait CEPControlMessage extends ControlMessage
+
+  sealed trait PlacementEvent extends ControlMessage
 
   case object RequirementsMet extends PlacementEvent
   case object RequirementsNotMet extends PlacementEvent
@@ -64,46 +67,46 @@ object Events {
 
   case object CentralizedCreated
 
-  case object StartThroughPutMeasurement extends PlacementEvent
-  case object EndThroughPutMeasurement extends PlacementEvent
+  case class StartThroughPutMeasurement(instant: Instant) extends PlacementEvent
+  case class EndThroughPutMeasurement(instant: Instant, actual: Int) extends PlacementEvent
   case object TestEvent extends PlacementEvent
 
-  case object InitializeQuery
+  case object InitializeQuery extends CEPControlMessage
   case class Delay(delay: Boolean)
 
-  case object AllHosts
-  case class Hosts(h: Set[ActorRef])
+  case object AllHosts extends CEPControlMessage
+  case class Hosts(h: Set[ActorRef]) extends CEPControlMessage
 
-  case class HostToNodeMap(m: Map[ActorRef, ActorRef])
+  case class HostToNodeMap(m: Map[ActorRef, ActorRef]) extends CEPControlMessage
 
-  case class Node(actorRef: ActorRef)
+  case class Node(actorRef: ActorRef) extends CEPControlMessage
 
-  case class Neighbors(neighbors: Set[ActorRef], allHosts: Set[ActorRef])
+  case class Neighbors(neighbors: Set[ActorRef], allHosts: Set[ActorRef]) extends CEPControlMessage
 
-  case class Controller(controller: ActorRef)
-  case class OptimizeFor(optimizer: String)
+  case class Controller(controller: ActorRef) extends CEPControlMessage
+  case class OptimizeFor(optimizer: String) extends CEPControlMessage
 
-  sealed trait Child
-  case class Child1(c1: ActorRef)               extends Child
-  case class Child2(c1: ActorRef, c2: ActorRef) extends Child
+  sealed trait Child extends CEPControlMessage
+  case class Child1(c1: ActorRef)               extends Child with CEPControlMessage
+  case class Child2(c1: ActorRef, c2: ActorRef) extends Child with CEPControlMessage
 
-  case class ChildUpdate(old: ActorRef, newChild: ActorRef)
+  case class ChildUpdate(old: ActorRef, newChild: ActorRef) extends CEPControlMessage
 
-  case class Parent(p1: ActorRef)
+  case class Parent(p1: ActorRef) extends CEPControlMessage
 
-  case class Move(a: ActorRef)
+  case class Move(a: ActorRef) extends CEPControlMessage
 
-  case object KillMe
-  case object Kill
+  case object KillMe extends CEPControlMessage
+  case object Kill extends CEPControlMessage
 
-  case class LatencyRequest(instant: Instant)
-  case class LatencyResponse(instant: Instant)
-  case class ThroughPutResponse(eventsPerSecond: Int)
-  case object HostPropsRequest
-  case class HostPropsResponse(latencies: Map[ActorRef, Cost])
+  case class LatencyRequest(instant: Instant) extends CEPControlMessage
+  case class LatencyResponse(instant: Instant) extends CEPControlMessage
+  case class ThroughPutResponse(eventsPerSecond: Int) extends CEPControlMessage
+  case object HostPropsRequest extends CEPControlMessage
+  case class HostPropsResponse(latencies: Map[ActorRef, Cost]) extends CEPControlMessage
 
-  case object DependenciesRequest
-  case class DependenciesResponse(dependencies: Seq[ActorRef])
+  case object DependenciesRequest extends CEPControlMessage
+  case class DependenciesResponse(dependencies: Seq[ActorRef]) extends CEPControlMessage
 
   sealed trait Event
   case class Event1(e1: Any)                                              extends Event

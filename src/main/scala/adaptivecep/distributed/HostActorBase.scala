@@ -1,6 +1,7 @@
 package adaptivecep.distributed
 
-import java.time.Clock
+import java.time.temporal.TemporalUnit
+import java.time.{Clock, Instant}
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
@@ -9,12 +10,13 @@ import adaptivecep.simulation.ContinuousBoundedValue
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.Random
 
-trait HostActorBase extends Actor with ActorLogging{
+trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
   val cluster = Cluster(context.system)
   val interval = 2
   var optimizeFor: String = "latency"
@@ -28,6 +30,7 @@ trait HostActorBase extends Actor with ActorLogging{
   var hostProps: HostProps = HostProps(simulatedCosts)
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
   var throughputMeasureMap: Map[ActorRef, Int] = Map.empty[ActorRef, Int] withDefaultValue(0)
+  var throughputStartMap: Map[ActorRef, (Instant, Instant)] = Map.empty[ActorRef, (Instant, Instant)]
   var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
 
   case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
@@ -87,22 +90,23 @@ trait HostActorBase extends Actor with ActorLogging{
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   def measureCosts() = {
+    val now = clock.instant()
     for (neighbor <- neighbors){
       if(hostPropsToMap.contains(neighbor)) {
-        neighbor ! StartThroughPutMeasurement
-        for (i <- Range(0, hostPropsToMap(neighbor).bandwidth.toInt/10)) {
+        neighbor ! StartThroughPutMeasurement(now)
+        for (i <- Range(0, 100)) {
           context.system.scheduler.scheduleOnce(
-            FiniteDuration(i*10, TimeUnit.MILLISECONDS),
+            FiniteDuration(i, TimeUnit.MILLISECONDS),
             () => {
               neighbor ! TestEvent
             })
         }
         context.system.scheduler.scheduleOnce(
-          FiniteDuration(1000, TimeUnit.MILLISECONDS),
+          FiniteDuration((bandwidth.template.max.toInt / hostPropsToMap(neighbor).bandwidth.toInt) * 100, TimeUnit.MILLISECONDS),
           () => {
-            neighbor ! EndThroughPutMeasurement
+            hostPropsToMap(neighbor).bandwidth.toInt
+            neighbor ! EndThroughPutMeasurement(now.plusMillis(100), hostPropsToMap(neighbor).bandwidth.toInt)
           })
-        val now = clock.instant()
         if (hostPropsToMap.contains(neighbor)) {
           context.system.scheduler.scheduleOnce(
             FiniteDuration(hostPropsToMap(neighbor).duration.toMillis * 2, TimeUnit.MILLISECONDS),
@@ -158,10 +162,14 @@ trait HostActorBase extends Actor with ActorLogging{
       //println("Response", t)
       costs += sender() -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), costs(sender()).bandwidth)
       //println(costs(sender()), hostPropsToMap(sender()))
-    case StartThroughPutMeasurement =>
+    case StartThroughPutMeasurement(instant) => throughputStartMap += sender() -> (instant, clock.instant())
     case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
-    case EndThroughPutMeasurement =>
-      send(sender(), ThroughPutResponse(throughputMeasureMap(sender())))
+    case EndThroughPutMeasurement(instant, actual) =>
+      val senderDiff = java.time.Duration.between(throughputStartMap(sender())._1, instant)
+      val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
+      val bandwidth = (senderDiff.toMillis / receiverDiff.toMillis) * ((1000 / senderDiff.toMillis) * throughputMeasureMap(sender()))
+      println(bandwidth, actual)
+      send(sender(), ThroughPutResponse(bandwidth.toInt))
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       //println("response", r)
