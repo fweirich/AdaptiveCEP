@@ -30,7 +30,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   var hostProps: HostProps = HostProps(simulatedCosts)
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
   var throughputMeasureMap: Map[ActorRef, Int] = Map.empty[ActorRef, Int] withDefaultValue(0)
-  var throughputStartMap: Map[ActorRef, (Instant, Instant)] = Map.empty[ActorRef, (Instant, Instant)]
+  var throughputStartMap: Map[ActorRef, (Instant, Instant)] = Map.empty[ActorRef, (Instant, Instant)] withDefaultValue((clock.instant(), clock.instant()))
   var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
 
   case class HostProps(costs : Map[ActorRef, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
@@ -86,6 +86,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
     startSimulation()
+    startCostMeasurement()
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
 
