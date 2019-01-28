@@ -16,7 +16,7 @@ import scala.util.Random
 
 trait HostActorBase extends Actor with ActorLogging{
   val cluster = Cluster(context.system)
-  val interval = 1
+  val interval = 3
   var optimizeFor: String = "latency"
   var neighbors: Set[ActorRef] = Set.empty[ActorRef]
   var node: Option[ActorRef] = Some(self)
