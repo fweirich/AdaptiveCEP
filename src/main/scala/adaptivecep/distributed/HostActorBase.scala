@@ -121,7 +121,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     }
   }
 
-  def startSimulation(): Unit = context.system.scheduler.schedule(
+  def startSimulation(): Unit = { context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
@@ -134,9 +134,11 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       }
       reportCostsToNode()
     })
+    measureCosts()
+  }
 
   def startCostMeasurement(): Unit = context.system.scheduler.schedule(
-    initialDelay = FiniteDuration((random.nextDouble * 3000).toLong, TimeUnit.SECONDS),
+    initialDelay = FiniteDuration((random.nextDouble * 3000).toLong, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {
       measureCosts()
