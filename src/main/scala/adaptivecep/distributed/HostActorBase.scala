@@ -95,17 +95,16 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     for (neighbor <- neighbors){
       if(hostPropsToMap.contains(neighbor)) {
         neighbor ! StartThroughPutMeasurement(now)
-        for (i <- Range(0, 100)) {
+        /*for (i <- Range(0, 100)) {
           context.system.scheduler.scheduleOnce(
             FiniteDuration(i, TimeUnit.MILLISECONDS),
             () => {
               neighbor ! TestEvent
             })
-        }
+        }*/
         context.system.scheduler.scheduleOnce(
           FiniteDuration((bandwidth.template.max / hostPropsToMap(neighbor).bandwidth).toLong * 100, TimeUnit.MILLISECONDS),
           () => {
-            hostPropsToMap(neighbor).bandwidth.toInt
             neighbor ! EndThroughPutMeasurement(now.plusMillis(100), hostPropsToMap(neighbor).bandwidth.toInt)
           })
         if (hostPropsToMap.contains(neighbor)) {
@@ -179,7 +178,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     case EndThroughPutMeasurement(instant, actual) =>
       val senderDiff = java.time.Duration.between(throughputStartMap(sender())._1, instant)
       val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
-      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * throughputMeasureMap(sender()))
+      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
       println("(" + senderDiff.toMillis + "/" + receiverDiff.toMillis +") * (( 1000" +  "/" + senderDiff.toMillis + ") * " + throughputMeasureMap(sender()) + "))")
       println(bandwidth, actual)
       sender() ! ThroughPutResponse(bandwidth.toInt)
