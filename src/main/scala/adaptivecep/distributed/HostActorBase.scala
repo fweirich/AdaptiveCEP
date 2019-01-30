@@ -71,11 +71,11 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
 
     val template = ContinuousBoundedValue[Double](
       0,
-      min = 50, max = 1000,
-      () => (40 - 80 * random.nextDouble, 1 + random.nextInt(10)))
+      min = 500, max = 10000,
+      () => (400 - 800 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
-      template copy (value = 200 + 800 * random.nextDouble)
+      template copy (value = 2000 + 8000 * random.nextDouble)
   }
 
   def hostPropsToMap: Map[ActorRef, Cost] = {
