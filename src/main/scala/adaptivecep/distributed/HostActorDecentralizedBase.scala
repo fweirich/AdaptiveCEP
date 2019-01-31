@@ -120,13 +120,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
     case EndThroughPutMeasurement(instant, actual) =>
       val senderDiff = java.time.Duration.between(throughputStartMap(sender())._1, instant)
       val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
-      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
+      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 1000/*throughputMeasureMap(sender())*/)
       sender() ! ThroughPutResponse(bandwidth.toInt)
       println(bandwidth, actual)
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
-      println(r*100)
-      costs += sender() -> Cost(costs(sender()).duration, r*100)
+      costs += sender() -> Cost(costs(sender()).duration, r)
       sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
