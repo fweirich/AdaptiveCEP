@@ -263,7 +263,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case FinishedChoosing(tChildren) =>
         children += sender -> tChildren
         finishedChildren += 1
-        //println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
+        println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
         if(activeOperator.isDefined) {
           if (finishedChildren == children.size) {
             if (consumer) {
