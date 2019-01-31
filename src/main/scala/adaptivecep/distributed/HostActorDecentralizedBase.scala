@@ -316,12 +316,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
         //println(sender)
         if(consumer && ready){
           ready = false
-          //println("RECALCULATING")
+          println("RECALCULATING")
           broadcastMessage(Start)
         }
       case RequirementsMet =>
       case MigrationComplete =>
-        //println("A Child completed Migration", sender)
+        println("A Child completed Migration", sender)
         completedChildren += 1
         if(parent.isDefined){
           if (completedChildren == children.size) {
