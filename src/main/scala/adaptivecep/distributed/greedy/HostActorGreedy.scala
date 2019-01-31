@@ -60,7 +60,7 @@ class HostActorGreedy extends HostActorDecentralizedBase{
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }
     }
-    println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
+    //println(children.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
   }
 
   def resetAllData(deleteEverything: Boolean): Unit ={
