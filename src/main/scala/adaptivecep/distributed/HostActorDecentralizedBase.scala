@@ -112,14 +112,19 @@ trait HostActorDecentralizedBase extends HostActorBase{
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
       costs += sender() -> Cost(latency, costs(sender()).bandwidth)
       sendOutCostMessages()
-    case StartThroughPutMeasurement =>
-    case TestEvent => throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
-    case EndThroughPutMeasurement =>
-      send(sender(), ThroughPutResponse(throughputMeasureMap(sender())))
+    case StartThroughPutMeasurement(instant) =>
+      throughputStartMap += sender() -> (instant, clock.instant())
+      throughputMeasureMap += sender() -> 0
+    case TestEvent =>
+      throughputMeasureMap += sender() -> (throughputMeasureMap(sender()) + 1)
+    case EndThroughPutMeasurement(instant, actual) =>
+      val senderDiff = java.time.Duration.between(throughputStartMap(sender())._1, instant)
+      val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
+      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
+      sender() ! ThroughPutResponse(bandwidth.toInt)
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
-      bandwidthResponses += sender()
-      costs += sender() -> Cost(costs(sender()).duration, r)
+      costs += sender() -> Cost(costs(sender()).duration, r*10)
       sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
@@ -272,25 +277,24 @@ trait HostActorDecentralizedBase extends HostActorBase{
           }
         }
       case Start =>
-        for(p <- parentHosts){
-          p ! StartThroughPutMeasurement
-          for(i <- Range(0, hostPropsToMap(p).bandwidth.toInt)){
+        val now = clock.instant()
+        for (p <- parentHosts){
+          if(hostPropsToMap.contains(p)) {
+            p ! StartThroughPutMeasurement(now)
             context.system.scheduler.scheduleOnce(
-              FiniteDuration(i, TimeUnit.MILLISECONDS),
-              () => {p ! TestEvent})
-          }
-          context.system.scheduler.scheduleOnce(
-            FiniteDuration(100, TimeUnit.MILLISECONDS),
-            () => {p ! EndThroughPutMeasurement})
-          val now = clock.instant()
-          if (hostPropsToMap.contains(p)) {
-            context.system.scheduler.scheduleOnce(
-              FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+              FiniteDuration((bandwidth.template.max / hostPropsToMap(p).bandwidth).toLong * 100, TimeUnit.MILLISECONDS),
               () => {
-                p ! LatencyRequest(now)
+                p ! EndThroughPutMeasurement(now.plusMillis(100), hostPropsToMap(p).bandwidth.toInt)
               })
-          } else {
-            p ! LatencyRequest(now)
+            if (hostPropsToMap.contains(p)) {
+              context.system.scheduler.scheduleOnce(
+                FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+                () => {
+                  p ! LatencyRequest(now)
+                })
+            } else {
+              p ! LatencyRequest(now)
+            }
           }
         }
         if (activeOperator.isDefined) {
@@ -393,16 +397,6 @@ trait HostActorDecentralizedBase extends HostActorBase{
     if(parentNode.isDefined){
       node.get ! Parent(parentNode.get)
     }
-  }
-
-  override def preStart(): Unit = {
-    super.preStart()
-    ready = false
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(60, TimeUnit.SECONDS),
-      () => {
-        ready = true
-      })
   }
 
   def mergeLatency(latency1: Duration, latency2: Duration): Duration ={

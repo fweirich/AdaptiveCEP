@@ -1,5 +1,7 @@
 package adaptivecep.distributed.greedy
 
+import java.util.concurrent.TimeUnit
+
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Query
 import adaptivecep.distributed._
@@ -7,6 +9,9 @@ import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
+
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.ExecutionContext.Implicits.global
 
 case class PlacementActorGreedy (actorSystem: ActorSystem,
                            query: Query,
@@ -54,7 +59,11 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
         }
       }
     })
-    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(60, TimeUnit.SECONDS),
+      () => {
+        consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
+      })
     previousPlacement = map
   }
 
