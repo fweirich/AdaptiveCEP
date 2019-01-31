@@ -395,6 +395,16 @@ trait HostActorDecentralizedBase extends HostActorBase{
     }
   }
 
+  override def preStart(): Unit = {
+    super.preStart()
+    ready = false
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(60, TimeUnit.SECONDS),
+      () => {
+        ready = true
+      })
+  }
+
   def mergeLatency(latency1: Duration, latency2: Duration): Duration ={
     latency1.+(latency2)
   }
