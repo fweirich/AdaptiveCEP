@@ -163,25 +163,24 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         if(temperature > minTemperature) {
           temperature = temperature * temperatureReductionFactor
         }
-        for(p <- parentHosts){
-          p ! StartThroughPutMeasurement
-          for(i <- Range(0, hostPropsToMap(p).bandwidth.toInt)){
+        val now = clock.instant()
+        for (p <- parentHosts){
+          if(hostPropsToMap.contains(p)) {
+            p ! StartThroughPutMeasurement(now)
             context.system.scheduler.scheduleOnce(
-              FiniteDuration(i, TimeUnit.MILLISECONDS),
-              () => {p ! TestEvent})
-          }
-          context.system.scheduler.scheduleOnce(
-            FiniteDuration(100, TimeUnit.MILLISECONDS),
-            () => {p ! EndThroughPutMeasurement})
-          val now = clock.instant()
-          if (hostPropsToMap.contains(p)) {
-            context.system.scheduler.scheduleOnce(
-              FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+              FiniteDuration((bandwidth.template.max / hostPropsToMap(p).bandwidth).toLong * 100, TimeUnit.MILLISECONDS),
               () => {
-                p ! LatencyRequest(now)
+                p ! EndThroughPutMeasurement(now.plusMillis(100), hostPropsToMap(p).bandwidth.toInt)
               })
-          } else {
-            p ! LatencyRequest(now)
+            if (hostPropsToMap.contains(p)) {
+              context.system.scheduler.scheduleOnce(
+                FiniteDuration(hostPropsToMap(p).duration.toMillis * 2, TimeUnit.MILLISECONDS),
+                () => {
+                  p ! LatencyRequest(now)
+                })
+            } else {
+              p ! LatencyRequest(now)
+            }
           }
         }
         if (activeOperator.isDefined) {

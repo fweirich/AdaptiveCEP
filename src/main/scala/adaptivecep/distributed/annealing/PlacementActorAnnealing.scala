@@ -67,7 +67,11 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
         }
       }
     })
-    consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
+    context.system.scheduler.scheduleOnce(
+      FiniteDuration(60, TimeUnit.SECONDS),
+      () => {
+        consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
+      })
     previousPlacement = map
   }
 
