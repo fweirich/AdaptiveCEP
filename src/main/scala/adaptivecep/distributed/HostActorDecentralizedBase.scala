@@ -132,6 +132,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       costs += sender() -> Cost(costs(sender()).duration, r)
+      bandwidthResponses += sender()
       sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => send(sender(), HostPropsResponse(hostPropsToMap))
