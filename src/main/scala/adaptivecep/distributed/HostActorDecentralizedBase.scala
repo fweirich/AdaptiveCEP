@@ -128,7 +128,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       val receiverDiff = java.time.Duration.between(throughputStartMap(sender())._2, clock.instant())
       val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 1000/*throughputMeasureMap(sender())*/)
       sender() ! ThroughPutResponse(bandwidth.toInt)
-      println(bandwidth, actual)
+      //println(bandwidth, actual)
       throughputMeasureMap += sender() -> 0
     case ThroughPutResponse(r) =>
       costs += sender() -> Cost(costs(sender()).duration, r)
@@ -271,7 +271,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
       case FinishedChoosing(tChildren) =>
         children += sender -> tChildren
         finishedChildren += 1
-        println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
+        //println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
         if(activeOperator.isDefined) {
           if (finishedChildren == children.size) {
             if (consumer) {
@@ -324,12 +324,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
         //println(sender)
         if(consumer && ready){
           ready = false
-          println("RECALCULATING")
+          //println("RECALCULATING")
           broadcastMessage(Start)
         }
       case RequirementsMet =>
       case MigrationComplete =>
-        println("A Child completed Migration", sender)
+        //println("A Child completed Migration", sender)
         completedChildren += 1
         if(parent.isDefined){
           if (completedChildren == children.size) {
