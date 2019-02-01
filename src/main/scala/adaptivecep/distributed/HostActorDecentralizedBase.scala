@@ -69,6 +69,12 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def resetAllData(bool: Boolean): Unit
   def sendOutCostMessages(): Unit
 
+  override def preStart(): Unit = {
+    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
+      classOf[MemberEvent], classOf[UnreachableMember])
+    startSimulation()
+  }
+
   override def startSimulation(): Unit = context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
