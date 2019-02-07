@@ -169,23 +169,6 @@ object AppRunnerAnnealing extends App {
   val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
   val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
 */
-  /*
-  host1 ! Neighbors(neighborsOfHost1, hosts)
-  host2 ! Neighbors(neighborsOfHost2, hosts)
-  host3 ! Neighbors(neighborsOfHost3, hosts)
-  host4 ! Neighbors(neighborsOfHost4, hosts)
-  host5 ! Neighbors(neighborsOfHost5, hosts)
-  host6 ! Neighbors(neighborsOfHost6, hosts)
-  host7 ! Neighbors(neighborsOfHost7, hosts)
-  host8 ! Neighbors(neighborsOfHost8, hosts)
-  host9 ! Neighbors(neighborsOfHost9, hosts)
-  host10 ! Neighbors(neighborsOfHost10, hosts)
-  host11 ! Neighbors(neighborsOfHost11, hosts)
-  host12 ! Neighbors(neighborsOfHost12)
-  host13 ! Neighbors(neighborsOfHost13)
-  host14 ! Neighbors(neighborsOfHost14)
-  host15 ! Neighbors(neighborsOfHost15)
-  host16 ! Neighbors(neighborsOfHost16)*/
 
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
   val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
@@ -223,29 +206,5 @@ object AppRunnerAnnealing extends App {
   placement ! InitializeQuery
   Thread.sleep(10000)
   placement ! Start
-
-  var delayedHosts: Seq[ActorRef] = Seq.empty[ActorRef]
-/*
-  while (true){
-    Thread.sleep(20000)
-    //println("delaying Hosts")
-    delayedHosts.foreach(host => host ! Delay(false))
-    delayedHosts = Seq.empty[ActorRef]
-    var delayIds: Set[Int] = Set.empty[Int]
-
-    while (delayIds.size < 5){
-      val temp = r.nextInt(delayableHosts.size)
-      if(!delayIds.contains(temp)){
-        delayIds += temp
-      }
-    }
-    delayIds.foreach(index =>
-      delayedHosts = delayedHosts :+ delayableHosts(index)
-    )
-    //println(delayIds)
-    println(delayedHosts)
-    delayedHosts.foreach(host => host ! Delay(true))
-  }
-*/
 }
 

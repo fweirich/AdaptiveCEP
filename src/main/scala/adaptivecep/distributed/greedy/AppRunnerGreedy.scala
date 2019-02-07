@@ -100,19 +100,7 @@ object AppRunnerGreedy extends App{
   val address18 = Address("akka.tcp", "ClusterSystem", sys.env("HOST18"), 8000)
   val address19 = Address("akka.tcp", "ClusterSystem", sys.env("HOST19"), 8000)
   val address20 = Address("akka.tcp", "ClusterSystem", sys.env("HOST20"), 8000)
-  /*
-  val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
-  val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
-  val address3 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2553)
-  val address4 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2554)
-  val address5 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2555)
-  val address6 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2556)
-  val address7 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2557)
-  val address8 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2558)
-  val address9 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2559)
-  val address10 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2560)
-  val address11 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2561)
-*/
+
 
   val host1: ActorRef = actorSystem.actorOf(Props[HostActorGreedy].withDeploy(Deploy(scope = RemoteScope(address1))), "Host" + "1")
   val host2: ActorRef = actorSystem.actorOf(Props[HostActorGreedy].withDeploy(Deploy(scope = RemoteScope(address2))), "Host" + "2")
@@ -139,41 +127,8 @@ object AppRunnerGreedy extends App{
     host12, host13, host14, host15, host16, host17, host18, host19, host20)
 
   hosts.foreach(host => host ! Neighbors(hosts, hosts))
-/*
-  val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11 /*, host12, host16*/)
-  val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11 /*, host16*/)
-  val neighborsOfHost3: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11 /*, host16*/)
-  val neighborsOfHost4: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11 /*, host16*/)
-  val neighborsOfHost5: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host9, host11 /*, host12, host13, host16*/)
-  val neighborsOfHost6: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host7, host9, host10, host11 /*, host16*/)
-  val neighborsOfHost7: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host8, host9, host10, host11 /*, host14, host16*/)
-  val neighborsOfHost8: Set[ActorRef] = Set(host1, host2, host3, host4, host7, host9, host10, host11 /*, host14, host16*/)
-  val neighborsOfHost9: Set[ActorRef] = Set(host1, host2, host5, host6, host7, host8, host10, host11 /*, host12, host13, host14, host16*/)
-  val neighborsOfHost10: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11 /*, host12, host13, host14, host15, host16*/)
-  val neighborsOfHost11: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11 /*, host13, host14, host16*/)
-  val neighborsOfHost12: Set[ActorRef] = Set(host1, host5, host9, host10, host11 /*, host13, host16*/)
-  val neighborsOfHost13: Set[ActorRef] = Set(host5, host8, host9, host10, host11 /*host12, host13, host14, host15, host16*/)
-  val neighborsOfHost14: Set[ActorRef] = Set(host7, host8, host9, host10, host11 /*, host13, host14, host15, host16*/)
-  val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
-  val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
-*/
-/*
-  host1 ! Neighbors(neighborsOfHost1, hosts)
-  host2 ! Neighbors(neighborsOfHost2, hosts)
-  host3 ! Neighbors(neighborsOfHost3, hosts)
-  host4 ! Neighbors(neighborsOfHost4, hosts)
-  host5 ! Neighbors(neighborsOfHost5, hosts)
-  host6 ! Neighbors(neighborsOfHost6, hosts)
-  host7 ! Neighbors(neighborsOfHost7, hosts)
-  host8 ! Neighbors(neighborsOfHost8, hosts)
-  host9 ! Neighbors(neighborsOfHost9, hosts)
-  host10 ! Neighbors(neighborsOfHost10, hosts)
-  host11 ! Neighbors(neighborsOfHost11, hosts)
-  host12 ! Neighbors(neighborsOfHost12)
-  host13 ! Neighbors(neighborsOfHost13)
-  host14 ! Neighbors(neighborsOfHost14)
-  host15 ! Neighbors(neighborsOfHost15)
-  host16 ! Neighbors(neighborsOfHost16)*/
+
+  host16 ! Neighbors(neighborsOfHost16)
 
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
   val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")

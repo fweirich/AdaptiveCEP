@@ -24,9 +24,6 @@ object Events {
   //Tentative Operator Phase
   case class CostMessage(latency: Duration, bandwidth: Double) extends PlacementEvent
 
-
-  //Cost Measurement Phase
-
   //Migration Phase
   case object MigrationComplete extends PlacementEvent
 
@@ -93,8 +90,6 @@ object Events {
   case class ChildUpdate(old: ActorRef, newChild: ActorRef) extends CEPControlMessage
 
   case class Parent(p1: ActorRef) extends CEPControlMessage
-
-  case class Move(a: ActorRef) extends CEPControlMessage
 
   case object KillMe extends CEPControlMessage
   case object Kill extends CEPControlMessage
