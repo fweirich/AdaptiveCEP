@@ -72,6 +72,8 @@ trait PlacementActorBase extends Actor with ActorLogging {
   }
 
 
+
+
   def placeAll(map: Map[Operator, Host]): Unit
 
   def place(operator: Operator, host: Host): Unit

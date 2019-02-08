@@ -35,14 +35,6 @@ case class SelfJoinNode(
   var parentReceived: Boolean = false
   var childCreated: Boolean = false
 
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    a ! Child1(childNode)
-    childNode ! Parent(a)
-    parentNode ! ChildUpdate(self, a)
-    childNode ! KillMe
-  }
-
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode))
@@ -81,9 +73,6 @@ case class SelfJoinNode(
       childNode = c
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       emitCreated()
-    }
-    case Move(a) => {
-      moveTo(a)
     }
     case ChildUpdate(_, a) => {
       emitCreated()

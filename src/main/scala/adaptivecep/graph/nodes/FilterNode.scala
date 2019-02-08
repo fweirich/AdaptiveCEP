@@ -18,13 +18,6 @@ case class FilterNode(
     eventCallback: Option[(Event) => Any])
   extends UnaryNode {
 
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    a ! Child1(childNode)
-    childNode ! Parent(a)
-    parentNode ! ChildUpdate(self, a)
-    childNode ! KillMe
-  }
   var parentReceived: Boolean = false
   var childCreated: Boolean = false
 
@@ -59,9 +52,6 @@ case class FilterNode(
       emitCreated()
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
-    }
-    case Move(actorRef) => {
-      moveTo(actorRef)
     }
     case KillMe => sender() ! PoisonPill
     case Kill =>

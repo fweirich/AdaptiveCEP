@@ -1,6 +1,7 @@
 package adaptivecep.distributed.operator
 
 import akka.actor.{ActorRef, Props}
+import rescala.default.Signal
 
 trait Host
 

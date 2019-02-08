@@ -110,9 +110,6 @@ case class JoinNode(
       if(childNode2.eq(old)){childNode2 = a}
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
-    case Move(a) => {
-      moveTo(a)
-    }
     case KillMe => sender() ! PoisonPill
     case Kill =>
       scheduledTask.cancel()

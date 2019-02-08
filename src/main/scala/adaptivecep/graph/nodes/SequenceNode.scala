@@ -40,11 +40,6 @@ case class SequenceNode(
   var subscription2Acknowledged: Boolean = false
   var parentReceived: Boolean = false
 
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    parentNode ! ChildUpdate(self, a)
-  }
-
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq.empty)
@@ -97,9 +92,6 @@ case class SequenceNode(
       parentReceived = true
       nodeData = LeafNodeData(name, requirements, context, parentNode)
       //if (subscription1Acknowledged && subscription2Acknowledged) emitCreated()
-    }
-    case Move(a) => {
-      moveTo(a)
     }
     case KillMe => sender() ! PoisonPill
     case Kill =>

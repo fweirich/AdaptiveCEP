@@ -45,14 +45,6 @@ case class DropElemNode(
   var parentReceived: Boolean = false
   var childCreated: Boolean = false
 
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    a ! Child1(childNode)
-    childNode ! Parent(a)
-    parentNode ! ChildUpdate(self, a)
-    childNode ! KillMe
-  }
-
   def handleEvent2(e1: Any, e2: Any): Unit = elemToBeDropped match {
     case 1 => emitEvent(Event1(e2))
     case 2 => emitEvent(Event1(e1))
@@ -126,9 +118,6 @@ case class DropElemNode(
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
-    case Move(a) => {
-      moveTo(a)
-    }
     case KillMe => sender() ! PoisonPill
     case Kill =>
       scheduledTask.cancel()
@@ -136,10 +125,8 @@ case class DropElemNode(
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       self ! PoisonPill
-      //println("Shutting down....")
     case Controller(c) =>
       controller = c
-      //println("Got Controller", c)
     case HostPropsResponse(c) =>
       costs = c
       frequencyMonitor.onMessageReceive(HostPropsResponse(c), nodeData)

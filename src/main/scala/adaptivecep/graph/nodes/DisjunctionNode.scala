@@ -81,15 +81,6 @@ case class DisjunctionNode(
       emitEvent(Event6(filledArray(0), filledArray(1), filledArray(2), filledArray(3), filledArray(4), filledArray(5)))
   }
 */
-  def moveTo(a: ActorRef): Unit = {
-    a ! Parent(parentNode)
-    a ! Child2(childNode1, childNode2)
-    childNode1 ! Parent(a)
-    childNode2 ! Parent(a)
-    parentNode ! ChildUpdate(self, a)
-    childNode1 ! KillMe
-  }
-
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq(childNode1, childNode2))
@@ -133,9 +124,6 @@ case class DisjunctionNode(
       childNode2 = c2
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       emitCreated()
-    }
-    case Move(a) => {
-      moveTo(a)
     }
     case ChildUpdate(old, a) => {
       emitCreated()
