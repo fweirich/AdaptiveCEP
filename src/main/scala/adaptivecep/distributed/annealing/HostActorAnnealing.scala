@@ -12,6 +12,7 @@ import akka.actor.ActorRef
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
+/*
 class HostActorAnnealing extends HostActorDecentralizedBase {
 
   val minTemperature: Double = 0.01
@@ -244,3 +245,4 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     operators = Map.empty[ActorRef, Option[Operator]]
   }
 }
+*/

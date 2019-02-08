@@ -9,21 +9,25 @@ import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
+import rescala.default.Signal
+import rescala.default.Var
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.ExecutionContext.Implicits.global
 
+/*
 case class PlacementActorGreedy (actorSystem: ActorSystem,
-                           query: Query,
-                           publishers: Map[String, ActorRef],
-                           publisherOperators: Map[String, Operator],
-                           frequencyMonitorFactory: MonitorFactory,
-                           latencyMonitorFactory: MonitorFactory,
-                           bandwidthMonitorFactory: MonitorFactory,
-                           here: NodeHost,
-                           hosts: Set[ActorRef],
-                           optimizeFor: String)
+                                 query: Query,
+                                 publishers: Map[String, ActorRef],
+                                 publisherOperators: Map[String, Operator],
+                                 frequencyMonitorFactory: MonitorFactory,
+                                 latencyMonitorFactory: MonitorFactory,
+                                 bandwidthMonitorFactory: MonitorFactory,
+                                 here: NodeHost,
+                                 testHosts: Set[ActorRef],
+                                 optimizeFor: String)
   extends PlacementActorBase {
+
 
   def placeAll(map: Map[Operator, Host]): Unit ={
     map.foreach(pair => place(pair._1, pair._2))
@@ -86,3 +90,4 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
     }
   }
 }
+*/

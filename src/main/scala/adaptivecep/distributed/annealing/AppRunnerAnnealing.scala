@@ -12,7 +12,7 @@ import akka.actor.{ActorRef, ActorSystem, Address, Deploy, Props}
 import akka.remote.RemoteScope
 import com.typesafe.config.ConfigFactory
 
-
+/*
 object AppRunnerAnnealing extends App {
 
   val file = new File("application.conf")
@@ -208,3 +208,4 @@ object AppRunnerAnnealing extends App {
   placement ! Start
 }
 
+*/

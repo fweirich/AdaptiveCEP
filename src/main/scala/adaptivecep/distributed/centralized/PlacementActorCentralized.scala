@@ -7,6 +7,8 @@ import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy, PoisonPill}
 import akka.remote.RemoteScope
+import rescala.default.Signal
+import rescala.default.Var
 
 case class PlacementActorCentralized(actorSystem: ActorSystem,
                                      query: Query,
@@ -16,13 +18,13 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
                                      latencyMonitorFactory: MonitorFactory,
                                      bandwidthMonitorFactory: MonitorFactory,
                                      here: NodeHost,
-                                     hosts: Set[ActorRef],
+                                     testHosts: Set[ActorRef],
                                      optimizeFor: String)
   extends PlacementActorBase{
 
   def placeAll(map: Map[Operator, Host]): Unit ={
     map.foreach(pair => place(pair._1, pair._2))
-    hosts.foreach(host => host ! HostToNodeMap(hostToNodeMap))
+    testHosts.foreach(host => host ! HostToNodeMap(hostToNodeMap))
     map.keys.foreach(operator => {
       if (operator.props != null) {
         val actorRef = propsActors(operator.props)

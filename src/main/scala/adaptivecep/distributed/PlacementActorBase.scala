@@ -14,6 +14,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, 
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.remote.RemoteScope
+import rescala.default
+import rescala.default.Signal
+import rescala.default.Var
+import rescala.default.Evt
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -22,7 +26,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.Random
 
-trait PlacementActorBase extends Actor with ActorLogging {
+trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val actorSystem: ActorSystem
   val query: Query
@@ -32,7 +36,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   val latencyMonitorFactory: MonitorFactory
   val bandwidthMonitorFactory: MonitorFactory
   val here: NodeHost
-  val hosts: Set[ActorRef]
+  val testHosts: Set[ActorRef]
   val optimizeFor: String
 
   case class HostId(id: Int) extends Host
@@ -55,10 +59,14 @@ trait PlacementActorBase extends Actor with ActorLogging {
   var consumers: Seq[Operator] = Seq.empty[Operator]
   var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]]
   var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
-  var delayedHosts: Set[Host] = Set.empty[Host]
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
 
   val interval = 500
+
+  val qos = Var(costsMap)
+  val hosts = Var(hostMap.toSet.collect{case(_, host) => host})
+  val operators = Var(Set.empty[Operator])
+  val demandViolated: default.Event[Requirement] = Evt[Requirement]
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
@@ -79,6 +87,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
   def place(operator: Operator, host: Host): Unit
 
   override def preStart(): Unit = {
+    demandViolated += {_ => adapt()}
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
@@ -86,12 +95,14 @@ trait PlacementActorBase extends Actor with ActorLogging {
     //here = NodeHost(sender())
     var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
     var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
-    hosts.foreach(host => {
+    testHosts.foreach(host => {
       val nodeHost = NodeHost(host)
       hostMap += host -> nodeHost
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
       bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
     })
+
+    hosts.set(hostMap.toSet.collect{case(_, host) => host})
     /*
     if(!hostProps.contains(NoHost)){
       hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
@@ -124,6 +135,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
           hostMap.foreach{
             host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
             //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
+            hosts.set(hostMap.toSet.collect{case(_, host) => host})
           }
         })
       initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, Some(eventCallback), consumer = true)
@@ -138,38 +150,20 @@ trait PlacementActorBase extends Actor with ActorLogging {
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      //if(sender() == consumerActor){
-      adapt()
-      //println("adapting")
-      //}
+      demandViolated()
     case Start =>
       println("PLACEMENT ACTOR: starting")
       adapt()
     case HostPropsResponse(costMap) =>
-      //println("PLACEMENT ACTOR: got HostPropsResponse from", sender())
-      //println(hosts)
-      //println(latencies)
       costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
-      /*
-      var latencies = Seq.empty[(Host, Duration)]
-      var dataRates = Seq.empty[(Host, Double)]
-      costMap.foreach(tuple =>
-        if(hosts.contains(tuple._1)) {
-          //println(tuple._1, tuple._2.bandwidth)
-          latencies = latencies :+ (hostMap(tuple._1), tuple._2.duration)
-          dataRates = dataRates :+ (hostMap(tuple._1), tuple._2.bandwidth)
-        }
-      )
-      if (hosts.contains(sender())) {
-        hostProps += hostMap(sender()) -> HostProps(latencies, dataRates)
-      }*/
+      qos.set(costsMap)
     case _ =>
   }
 
   def hostProps: Map[Host, HostProps] = {
     var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
     var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
-    hosts.foreach(host => {
+    testHosts.foreach(host => {
       val nodeHost = NodeHost(host)
       hostMap += host -> nodeHost
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
@@ -496,7 +490,9 @@ trait PlacementActorBase extends Actor with ActorLogging {
         bandwidthMonitorFactory,
         None,
         callback))
-    propsOperators += props -> ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
+    val operator = ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
+    operators.set(operators.apply().+(operator))
+    propsOperators += props -> operator
     props
   }
 
@@ -665,7 +661,9 @@ trait PlacementActorBase extends Actor with ActorLogging {
         bandwidthMonitorFactory,
         None,
         callback))
-    propsOperators += props -> ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
+    val operator = ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
+    operators.set(operators.apply().+(operator))
+    propsOperators += props -> operator
     props
   }
 
@@ -685,6 +683,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
       consumers = consumers :+ operator
     }
     operator = ActiveOperator(NoHost, props, Seq(childOperator))
+    operators.set(operators.apply().+(operator))
     propsOperators += props -> operator
     parents += childOperator -> Some(propsOperators(props))
 
@@ -701,7 +700,7 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val child1 = initialize(query1, publishers,
       frequencyMonitorFactory,
       latencyMonitorFactory,
-      bandwidthMonitorFactory,None, consumer = false)
+      bandwidthMonitorFactory, None, consumer = false)
     val child2 = initialize(query2, publishers,
       frequencyMonitorFactory,
       latencyMonitorFactory,
@@ -709,15 +708,16 @@ trait PlacementActorBase extends Actor with ActorLogging {
     val child1Operator = propsOperators(child1)
     val child2Operator = propsOperators(child2)
     var operator: ActiveOperator = null
-    if(consumer){
+    if (consumer) {
       operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
       consumers = consumers :+ operator
     } else {
       operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
+      operators.set(operators.apply().+(operator))
+      propsOperators += props -> operator
+      parents += child1Operator -> Some(propsOperators(props))
+      parents += child2Operator -> Some(propsOperators(props))
     }
-    propsOperators += props -> operator
-    parents += child1Operator -> Some(propsOperators(props))
-    parents += child2Operator -> Some(propsOperators(props))
   }
 
   def getQueryLength(query: Query): Int = query match {

@@ -13,7 +13,7 @@ import akka.actor.{ActorRef, ActorSystem, Address, Deploy, Props}
 import akka.remote.RemoteScope
 import com.typesafe.config.ConfigFactory
 
-
+/*
 object AppRunnerGreedy extends App{
 
   val file = new File("application.conf")
@@ -170,3 +170,4 @@ object AppRunnerGreedy extends App{
   placement ! Start
 }
 
+*/

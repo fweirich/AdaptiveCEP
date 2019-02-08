@@ -8,6 +8,7 @@ import akka.actor.ActorRef
 
 import scala.concurrent.duration._
 
+/*
 class HostActorGreedy extends HostActorDecentralizedBase{
 
   def calculateOptimumNodes() : Unit = {
@@ -96,3 +97,4 @@ class HostActorGreedy extends HostActorDecentralizedBase{
     operators = Map.empty[ActorRef, Option[Operator]]
   }
 }
+*/

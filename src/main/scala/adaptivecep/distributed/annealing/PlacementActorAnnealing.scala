@@ -21,6 +21,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.Random
 
+/*
 case class PlacementActorAnnealing(actorSystem: ActorSystem,
                                    query: Query,
                                    publishers: Map[String, ActorRef],
@@ -29,7 +30,7 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
                                    latencyMonitorFactory: MonitorFactory,
                                    bandwidthMonitorFactory: MonitorFactory,
                                    here: NodeHost,
-                                   hosts: Set[ActorRef],
+                                   testHosts: Set[ActorRef],
                                    optimizeFor: String)
   extends PlacementActorBase {
 
@@ -93,5 +94,5 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
       }
     }
   }
-
 }
+*/
