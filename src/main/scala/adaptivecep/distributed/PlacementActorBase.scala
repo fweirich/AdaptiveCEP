@@ -56,7 +56,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   var parents: Map[Operator, Option[Operator]] = Map.empty[Operator, Option[Operator]] withDefaultValue None
 
   //var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
-  var consumers: Seq[Operator] = Seq.empty[Operator]
+  var consumers1: Seq[Operator] = Seq.empty[Operator]
   var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]]
   var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
   var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
@@ -65,6 +65,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val qos = Var(costsMap)
   val hosts = Var(hostMap.toSet.collect{case(_, host) => host})
+  val consumers = Var(Set.empty[Operator])
+  val producers = Var(Set.empty[Operator])
   val operators = Var(Set.empty[Operator])
   val demandViolated: default.Event[Requirement] = Evt[Requirement]
 
@@ -258,7 +260,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
           merge(measure(dependentOperator), selector(hostProps(host(operator)), host(dependentOperator)))
         })
 
-    avg(consumers map measure)
+    avg(consumers() map measure)
   }
 
   def placeOptimizingLatency(): Unit = {
@@ -355,8 +357,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       placements += operator -> host
     }
 
-    consumers foreach { placeProducersConsumers(_, consumer = true) }
-    consumers foreach { placeIntermediates(_, consumer = true) }
+    consumers() foreach { placeProducersConsumers(_, consumer = true) }
+    consumers() foreach { placeIntermediates(_, consumer = true) }
     //println("PLACEMENT ACTOR: HeuristicA - ", placements)
     placements
   }
@@ -371,7 +373,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     def allOperators(operator: Operator, parent: Option[Operator]): Seq[(Operator, Option[Operator])] =
       (operator -> parent) +: (operator.dependencies flatMap { allOperators(_, Some(operator)) })
 
-    val operators = consumers flatMap { allOperators(_, None) }
+    val operators = consumers() flatMap { allOperators(_, None) }
     operators foreach { case (operator, _) =>
       placements += operator -> previousPlacement(operator)//operator.host
       previousPlacements += operator -> mutable.Set(operator.host)
@@ -491,6 +493,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
+    producers.set(producers().+(operator))
     operators.set(operators.apply().+(operator))
     propsOperators += props -> operator
     props
@@ -662,6 +665,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
+    producers.set(producers().+(operator))
     operators.set(operators.apply().+(operator))
     propsOperators += props -> operator
     props
@@ -680,7 +684,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     val childOperator = propsOperators(child)
     var operator = distributed.operator.ActiveOperator(here, props, Seq(childOperator))
     if(consumer){
-      consumers = consumers :+ operator
+      //consumers = consumers :+ operator
+      consumers.set(consumers().+(operator))
     }
     operator = ActiveOperator(NoHost, props, Seq(childOperator))
     operators.set(operators.apply().+(operator))
@@ -710,7 +715,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     var operator: ActiveOperator = null
     if (consumer) {
       operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
-      consumers = consumers :+ operator
+      //consumers = consumers :+ operator
+      consumers.set(consumers().+(operator))
     } else {
       operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
       operators.set(operators.apply().+(operator))
