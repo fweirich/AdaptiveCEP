@@ -186,7 +186,6 @@ case class PlacementActor (actorSystem: ActorSystem,
     val oldActor = propsActors(props)
     val migratedActor = actorSystem.actorOf(props.withDeploy(Deploy(scope = RemoteScope(address))))
     propsActors += props -> migratedActor
-    oldActor ! Move(migratedActor)
   }
 
 

@@ -4,7 +4,6 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.distributed.greedy.AppRunnerGreedy.{hosts, optimizeFor}
 import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._

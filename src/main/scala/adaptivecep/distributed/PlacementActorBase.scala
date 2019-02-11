@@ -18,6 +18,7 @@ import rescala.default
 import rescala.default.Signal
 import rescala.default.Var
 import rescala.default.Evt
+import rescala._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -63,8 +64,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val interval = 500
 
-  val qos = Var(costsMap)
-  val hosts = Var(hostMap.toSet.collect{case(_, host) => host})
+  //val qos = Var(costsMap)
+  val hosts = Var(HostId(1).asInstanceOf[Host])
   val consumers = Var(Set.empty[Operator])
   val producers = Var(Set.empty[Operator])
   val operators = Var(Set.empty[Operator])
@@ -89,7 +90,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   def place(operator: Operator, host: Host): Unit
 
   override def preStart(): Unit = {
-    demandViolated += {_ => adapt()}
+    //demandViolated += {_ => adapt()}
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
@@ -104,7 +105,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
     })
 
-    hosts.set(hostMap.toSet.collect{case(_, host) => host})
+    //hosts.set(hostMap.toSet.collect{case(_, host) => host})
     /*
     if(!hostProps.contains(NoHost)){
       hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
@@ -137,7 +138,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
           hostMap.foreach{
             host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
             //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
-            hosts.set(hostMap.toSet.collect{case(_, host) => host})
+            //hosts.set(hostMap.toSet.collect{case(_, host) => host})
           }
         })
       initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, Some(eventCallback), consumer = true)
@@ -158,7 +159,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       adapt()
     case HostPropsResponse(costMap) =>
       costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
-      qos.set(costsMap)
+      //qos.set(costsMap)
     case _ =>
   }
 

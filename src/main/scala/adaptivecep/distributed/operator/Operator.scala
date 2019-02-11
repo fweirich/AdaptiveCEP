@@ -19,7 +19,7 @@ trait Operator {
 }
 
 trait  CEPSystem {
-  val hosts: Signal[Set[Host]]
+  val hosts: Signal[Host]
   val operators: Signal[Set[Operator]]
 }
 
