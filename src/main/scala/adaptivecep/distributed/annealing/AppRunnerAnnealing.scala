@@ -151,24 +151,6 @@ object AppRunnerAnnealing extends App {
     host12, host13, host14, host15, host16, host17, host18, host19, host20)
 
   hosts.foreach(host => host ! Neighbors(hosts, hosts))
-/*
-  val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
-  val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
-  val neighborsOfHost3: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host16*/)
-  val neighborsOfHost4: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
-  val neighborsOfHost5: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host9, host11/*, host12, host13, host16*/)
-  val neighborsOfHost6: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host7, host9, host10, host11/*, host16*/)
-  val neighborsOfHost7: Set[ActorRef] = Set(host1, host2, host3, host4, host6, host8, host9, host10, host11/*, host14, host16*/)
-  val neighborsOfHost8: Set[ActorRef] = Set(host1, host2, host3, host4, host7, host9, host10, host11/*, host14, host16*/)
-  val neighborsOfHost9: Set[ActorRef] = Set(host1, host2, host5, host6, host7, host8, host10, host11/*, host12, host13, host14, host16*/)
-  val neighborsOfHost10: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host13, host14, host15, host16*/)
-  val neighborsOfHost11: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host10, host11/*, host13, host14, host16*/)
-  val neighborsOfHost12: Set[ActorRef] = Set(host1, host5, host9, host10, host11/*, host13, host16*/)
-  val neighborsOfHost13: Set[ActorRef] = Set(host5, host8, host9, host10, host11 /*host12, host13, host14, host15, host16*/)
-  val neighborsOfHost14: Set[ActorRef] = Set(host7, host8, host9, host10, host11/*, host13, host14, host15, host16*/)
-  val neighborsOfHost15: Set[ActorRef] = Set(host10 /*host13, host14, host16*/)
-  val neighborsOfHost16: Set[ActorRef] = Set(host10 /*host13, host14, host15*/)
-*/
 
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
   val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
