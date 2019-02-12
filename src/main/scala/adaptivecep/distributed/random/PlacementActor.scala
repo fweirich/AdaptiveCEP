@@ -29,7 +29,7 @@ case class PlacementActor (actorSystem: ActorSystem,
   extends Actor with ActorLogging{
 
 
-  case class HostId(id: Int) extends Host
+  //case class HostId(id: Int) extends Host
 
   case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
 

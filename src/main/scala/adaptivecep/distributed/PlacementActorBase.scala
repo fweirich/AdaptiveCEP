@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
+import adaptivecep.data.Events.Event
 import adaptivecep.data.Queries.{Operator => _, _}
 import adaptivecep.distributed
 import adaptivecep.distributed.operator.Operator
@@ -14,11 +15,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, 
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.remote.RemoteScope
-import rescala.default
-import rescala.default.Signal
-import rescala.default.Var
-import rescala.default.Evt
+import rescala.default._
 import rescala._
+import rescala.core.ReSerializable
+import rescala.default.{Evt, Signal, Var}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -39,8 +39,6 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   val here: NodeHost
   val testHosts: Set[ActorRef]
   val optimizeFor: String
-
-  case class HostId(id: Int) extends Host
 
   case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
 
@@ -64,12 +62,12 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val interval = 500
 
-  //val qos = Var(costsMap)
-  val hosts = Var(HostId(1).asInstanceOf[Host])
-  val consumers = Var(Set.empty[Operator])
-  val producers = Var(Set.empty[Operator])
-  val operators = Var(Set.empty[Operator])
-  val demandViolated: default.Event[Requirement] = Evt[Requirement]
+  val qos = Var(costsMap)(ReSerializable.doNotSerialize, null)
+  val hosts = Var(Set.empty[Host])(ReSerializable.doNotSerialize, null)
+  val consumers = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, null)
+  val producers = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, null)
+  val operators = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, null)
+  val demandViolated = Evt[Requirement]()
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
@@ -103,9 +101,10 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       hostMap += host -> nodeHost
       latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
       bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
+      hosts.set(hosts.now + nodeHost)
     })
 
-    //hosts.set(hostMap.toSet.collect{case(_, host) => host})
+
     /*
     if(!hostProps.contains(NoHost)){
       hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
@@ -153,13 +152,13 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      demandViolated()
+      demandViolated.fire(null)
     case Start =>
       println("PLACEMENT ACTOR: starting")
       adapt()
     case HostPropsResponse(costMap) =>
       costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
-      //qos.set(costsMap)
+      qos.set(costsMap)
     case _ =>
   }
 
@@ -173,7 +172,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
     })
     var result: Map[Host, HostProps] = Map.empty
-    for(h <- hosts){
+    for(h <-testHosts){
       var latencies: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
       var dataRates: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
       costsMap.foreach(host =>
@@ -261,7 +260,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
           merge(measure(dependentOperator), selector(hostProps(host(operator)), host(dependentOperator)))
         })
 
-    avg(consumers() map measure)
+    avg(consumers.now map measure)
   }
 
   def placeOptimizingLatency(): Unit = {
@@ -358,8 +357,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       placements += operator -> host
     }
 
-    consumers() foreach { placeProducersConsumers(_, consumer = true) }
-    consumers() foreach { placeIntermediates(_, consumer = true) }
+    consumers.now foreach { placeProducersConsumers(_, consumer = true) }
+    consumers.now foreach { placeIntermediates(_, consumer = true) }
     //println("PLACEMENT ACTOR: HeuristicA - ", placements)
     placements
   }
@@ -374,7 +373,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     def allOperators(operator: Operator, parent: Option[Operator]): Seq[(Operator, Option[Operator])] =
       (operator -> parent) +: (operator.dependencies flatMap { allOperators(_, Some(operator)) })
 
-    val operators = consumers() flatMap { allOperators(_, None) }
+    val operators = consumers.now flatMap { allOperators(_, None) }
     operators foreach { case (operator, _) =>
       placements += operator -> previousPlacement(operator)//operator.host
       previousPlacements += operator -> mutable.Set(operator.host)
@@ -494,8 +493,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
-    producers.set(producers().+(operator))
-    operators.set(operators.apply().+(operator))
+    producers.set(producers.now.+(operator))
+    operators.set(operators.now.+(operator))
     propsOperators += props -> operator
     props
   }
@@ -666,8 +665,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
-    producers.set(producers().+(operator))
-    operators.set(operators.apply().+(operator))
+    producers.set(producers.now.+(operator))
+    operators.set(operators.now.+(operator))
     propsOperators += props -> operator
     props
   }
@@ -686,10 +685,10 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     var operator = distributed.operator.ActiveOperator(here, props, Seq(childOperator))
     if(consumer){
       //consumers = consumers :+ operator
-      consumers.set(consumers().+(operator))
+      consumers.set(consumers.now:+operator)
     }
     operator = ActiveOperator(NoHost, props, Seq(childOperator))
-    operators.set(operators.apply().+(operator))
+    operators.set(operators.now.+(operator))
     propsOperators += props -> operator
     parents += childOperator -> Some(propsOperators(props))
 
@@ -717,10 +716,10 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     if (consumer) {
       operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
       //consumers = consumers :+ operator
-      consumers.set(consumers().+(operator))
+      consumers.set(consumers.now:+(operator))
     } else {
       operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
-      operators.set(operators.apply().+(operator))
+      operators.set(operators.now.+(operator))
       propsOperators += props -> operator
       parents += child1Operator -> Some(propsOperators(props))
       parents += child2Operator -> Some(propsOperators(props))

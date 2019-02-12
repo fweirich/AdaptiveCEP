@@ -8,7 +8,7 @@ import rescala.default.Event
 
 import scala.concurrent.duration.Duration
 
-trait Host
+sealed trait Host
 
 object NoHost extends Host
 
@@ -19,7 +19,7 @@ trait Operator {
 }
 
 trait  CEPSystem {
-  val hosts: Signal[Host]
+  val hosts: Signal[Set[Host]]
   val operators: Signal[Set[Operator]]
 }
 
