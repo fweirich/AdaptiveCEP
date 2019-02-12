@@ -139,6 +139,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
             //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
             //hosts.set(hostMap.toSet.collect{case(_, host) => host})
           }
+          println(consumers.now, producers.now, hosts.now, operators.now, qos.now)
         })
       initialize(query, publishers, frequencyMonitorFactory, latencyMonitorFactory, bandwidthMonitorFactory, Some(eventCallback), consumer = true)
     //context.system.actorSelection(self.path.address + "/user/Host-14") ! AllHosts
