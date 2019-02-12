@@ -17,7 +17,7 @@ import akka.cluster.ClusterEvent._
 import akka.remote.RemoteScope
 import rescala.default._
 import rescala._
-import rescala.core.ReSerializable
+import rescala.core.{CreationTicket, ReSerializable}
 import rescala.default.{Evt, Signal, Var}
 
 import scala.annotation.tailrec
@@ -62,11 +62,11 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val interval = 500
 
-  val qos = Var(costsMap)(ReSerializable.doNotSerialize, null)
-  val hosts = Var(Set.empty[Host])(ReSerializable.doNotSerialize, null)
-  val consumers = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, null)
-  val producers = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, null)
-  val operators = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, null)
+  val qos = Var(costsMap)(ReSerializable.doNotSerialize, "qos")
+  val hosts = Var(Set.empty[Host])(ReSerializable.doNotSerialize, "hosts")
+  val consumers = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
+  val producers = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
+  val operators = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
   val demandViolated = Evt[Requirement]()
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
