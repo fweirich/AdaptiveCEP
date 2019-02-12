@@ -88,7 +88,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   def place(operator: Operator, host: Host): Unit
 
   override def preStart(): Unit = {
-    //demandViolated += {_ => adapt()}
+    demandViolated += {_ => adapt()}
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
