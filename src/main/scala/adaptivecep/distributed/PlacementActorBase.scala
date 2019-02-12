@@ -681,18 +681,18 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     val child = initialize(query, publishers,
       frequencyMonitorFactory,
       latencyMonitorFactory,
-      bandwidthMonitorFactory,None, consumer = false)
+      bandwidthMonitorFactory, None, consumer = false)
     val childOperator = propsOperators(child)
     var operator = distributed.operator.ActiveOperator(here, props, Seq(childOperator))
-    if(consumer){
+    if (consumer) {
       //consumers = consumers :+ operator
-      consumers.set(consumers.now:+operator)
+      consumers.set(consumers.now :+ operator)
+    } else {
+      operator = ActiveOperator(NoHost, props, Seq(childOperator))
     }
-    operator = ActiveOperator(NoHost, props, Seq(childOperator))
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
     parents += childOperator -> Some(propsOperators(props))
-
   }
 
   private def connectBinaryNode(publishers: Map[String, ActorRef],
@@ -720,11 +720,11 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       consumers.set(consumers.now:+(operator))
     } else {
       operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
-      operators.set(operators.now.+(operator))
-      propsOperators += props -> operator
-      parents += child1Operator -> Some(propsOperators(props))
-      parents += child2Operator -> Some(propsOperators(props))
     }
+    operators.set(operators.now.+(operator))
+    propsOperators += props -> operator
+    parents += child1Operator -> Some(propsOperators(props))
+    parents += child2Operator -> Some(propsOperators(props))
   }
 
   def getQueryLength(query: Query): Int = query match {
