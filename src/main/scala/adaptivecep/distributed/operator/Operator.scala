@@ -24,9 +24,13 @@ trait  CEPSystem {
 }
 
 trait QoSSystem{
-  val qos: Signal[Map[Host, Map[Host, Cost]]] //can be extracted from the query
+  val qos: Signal[Map[Host, HostProps]] //can be extracted from the query
   val demandViolated: Event[Requirement] // currently the node reports this via Requirements not met (could be changed to firing an event)
 }
+
+
+case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
+
 
 trait System extends CEPSystem with QoSSystem
 

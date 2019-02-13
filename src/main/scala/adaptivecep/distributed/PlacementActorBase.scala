@@ -16,7 +16,7 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.remote.RemoteScope
 import rescala.default._
-import rescala._
+import rescala.{default, _}
 import rescala.core.{CreationTicket, ReSerializable}
 import rescala.default.{Evt, Signal, Var}
 
@@ -40,8 +40,6 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   val testHosts: Set[ActorRef]
   val optimizeFor: String
 
-  case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Double)])
-
   sealed trait Optimizing
   case object Maximizing extends Optimizing
   case object Minimizing extends Optimizing
@@ -62,12 +60,13 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val interval = 500
 
-  val qos = Var(costsMap)(ReSerializable.doNotSerialize, "qos")
-  val hosts = Var(Set.empty[Host])(ReSerializable.doNotSerialize, "hosts")
-  val consumers = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
-  val producers = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
-  val operators = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
-  val demandViolated = Evt[Requirement]()
+  val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(costsMap)(ReSerializable.doNotSerialize, "cost")
+  val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal())}
+  val hosts: Var[Set[Host]] = Var(Set.empty[Host])(ReSerializable.doNotSerialize, "hosts")
+  val consumers: Var[Seq[Operator]] = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
+  val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
+  val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
+  val demandViolated: default.Evt[Requirement] = Evt[Requirement]()
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
@@ -159,11 +158,11 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       adapt()
     case HostPropsResponse(costMap) =>
       costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
-      qos.set(costsMap)
+      costSignal.set(costsMap)
     case _ =>
   }
 
-  def hostProps: Map[Host, HostProps] = {
+  def hostProps(costsMap: Map[Host, Map[Host, Cost]]): Map[Host, HostProps] = {
     var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
     var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
     testHosts.foreach(host => {
@@ -258,7 +257,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         zero
       else
         minmax(optimizing, operator.dependencies map { dependentOperator =>
-          merge(measure(dependentOperator), selector(hostProps(host(operator)), host(dependentOperator)))
+          merge(measure(dependentOperator), selector(qos.now.apply(host(operator)), host(dependentOperator)))
         })
 
     avg(consumers.now map measure)
@@ -337,7 +336,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       val host =
         if (!consumer && operator.dependencies.nonEmpty) {
           val valuesForHosts =
-            hostProps.toSeq collect { case (host, props) if !(placements.values exists { _== host }) =>
+            qos.now.toSeq collect { case (host, props) if !(placements.values exists { _== host }) =>
               val propValues =
                 operator.dependencies map { dependentOperator =>
                   selector(props, placements(dependentOperator))
@@ -384,22 +383,22 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       val changed = operators map {
         case (operator, Some(parent)) if operator.dependencies.nonEmpty =>
           val valuesForHosts =
-            hostProps.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
+            qos.now.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
               merge(
                 minmax(optimizing, operator.dependencies map { dependentOperator =>
                   selector(props, placements(dependentOperator))
                 }),
-                selector(hostProps(placements(parent)), host)) -> host
+                selector(qos.now.apply(placements(parent)), host)) -> host
             }
           val currentValue =
             merge(
               minmax(optimizing, operator.dependencies map { dependency =>
-                selector(hostProps(placements(operator)), placements(dependency))
+                selector(qos.now.apply(placements(operator)), placements(dependency))
               }),
-              selector(hostProps(placements(parent)), placements(operator)))
+              selector(qos.now.apply(placements(parent)), placements(operator)))
           val noPotentialPlacements =
             if (valuesForHosts.isEmpty) {
-              if ((hostProps.keySet -- placements.values --previousPlacements(operator)).isEmpty)
+              if ((qos.now.keySet -- placements.values --previousPlacements(operator)).isEmpty)
                 true
               else
                 throw new UnsupportedOperationException("not enough hosts")
