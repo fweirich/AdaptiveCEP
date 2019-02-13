@@ -152,7 +152,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet =>
-      //demandViolated.fire(null)
+      demandViolated.fire(null)
     case Start =>
       println("PLACEMENT ACTOR: starting")
       adapt()
@@ -493,7 +493,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(props, Seq.empty[Operator])
-    placement.set(placement.now. + (operator -> publisherHosts(streamQuery.publisherName)))
+    placement.set(placement.now + (operator -> publisherHosts(streamQuery.publisherName)))
     producers.set(producers.now.+(operator))
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
@@ -677,7 +677,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
                                frequencyMonitorFactory: MonitorFactory,
                                latencyMonitorFactory: MonitorFactory,
                                bandwidthMonitorFactory: MonitorFactory,
-                               query: Query, props: Props,
+                               query: Query,
+                               props: Props,
                                consumer: Boolean) : Unit = {
     val child = initialize(query, publishers,
       frequencyMonitorFactory,
@@ -688,7 +689,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     if (consumer) {
       //consumers = consumers :+ operator
       consumers.set(consumers.now :+ operator)
-      placement.set(placement.now. + (operator -> here))
+      placement.set(placement.now + (operator -> here))
     } else {
       operator = ActiveOperator(props, Seq(childOperator))
     }
@@ -719,8 +720,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     if (consumer) {
       operator = distributed.operator.ActiveOperator(props, Seq(child1Operator, child2Operator))
       //consumers = consumers :+ operator
-      consumers.set(consumers.now:+(operator))
-      placement.set(placement.now. + (operator -> here))
+      consumers.set(consumers.now :+ operator)
+      placement.set(placement.now + (operator -> here))
     } else {
       operator = ActiveOperator(props, Seq(child1Operator, child2Operator))
     }

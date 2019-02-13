@@ -63,7 +63,7 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
         propsActors(operator.props) ! Kill
         //println("killing old actor", propsActors(operator.props))
       }
-      if (moved || placement.now.isEmpty){
+      if (moved || placement.now.apply(operator) == NoHost){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
         propsActors += operator.props -> ref
