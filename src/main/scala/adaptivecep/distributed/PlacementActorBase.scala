@@ -666,7 +666,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         None,
         callback))
     val operator = ActiveOperator(props, Seq.empty[Operator])
-    placement.set(placement.now. + (operator -> publisherHosts(sequenceQuery.s1.publisherName)))
+    placement.set(placement.now + (operator -> publisherHosts(sequenceQuery.s1.publisherName)))
     producers.set(producers.now.+(operator))
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
