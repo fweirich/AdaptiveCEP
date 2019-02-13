@@ -7,13 +7,12 @@ import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy, PoisonPill}
 import akka.remote.RemoteScope
-import rescala.default.Signal
-import rescala.default.Var
+import rescala.default._
 
 case class PlacementActorCentralized(actorSystem: ActorSystem,
                                      query: Query,
                                      publishers: Map[String, ActorRef],
-                                     publisherOperators: Map[String, Operator],
+                                     publisherHosts: Map[String, Host],
                                      frequencyMonitorFactory: MonitorFactory,
                                      latencyMonitorFactory: MonitorFactory,
                                      bandwidthMonitorFactory: MonitorFactory,
@@ -53,18 +52,18 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
         }
       }
     })
-    previousPlacement = map
+    placement.set(map)
   }
 
   def place(operator: Operator, host: Host): Unit = {
     if(host != NoHost && operator.props != null){
-      operator.host = host
-      val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
+      //operator.host = host
+      val moved = placement.now.contains(operator) && placement.now.apply(operator) != host
       if(moved) {
         propsActors(operator.props) ! Kill
         //println("killing old actor", propsActors(operator.props))
       }
-      if (moved || previousPlacement.isEmpty){
+      if (moved || placement.now.isEmpty){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
         propsActors += operator.props -> ref

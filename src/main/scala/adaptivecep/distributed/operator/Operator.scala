@@ -13,7 +13,6 @@ sealed trait Host
 object NoHost extends Host
 
 trait Operator {
-  var host: Host
   val props: Props
   val dependencies: Seq[Operator]
 }
@@ -21,6 +20,7 @@ trait Operator {
 trait  CEPSystem {
   val hosts: Signal[Set[Host]]
   val operators: Signal[Set[Operator]]
+  val placement: Signal[Map[Operator, Host]]
 }
 
 trait QoSSystem{
@@ -34,6 +34,6 @@ case class HostProps(latency: Seq[(Host, Duration)], bandwidth: Seq[(Host, Doubl
 
 trait System extends CEPSystem with QoSSystem
 
-case class ActiveOperator(var host: Host, props: Props, dependencies: Seq[Operator]) extends Operator
-case class TentativeOperator(var host: Host, props: Props, dependencies: Seq[Operator]) extends Operator
+case class ActiveOperator(props: Props, dependencies: Seq[Operator]) extends Operator
+case class TentativeOperator(props: Props, dependencies: Seq[Operator]) extends Operator
 case class NodeHost(actorRef: ActorRef) extends Host

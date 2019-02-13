@@ -175,7 +175,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
         while (tentativeHosts.size < degree && timeout < 1000 && !chosen){
           val randomNeighbor =  neighborSeq(random.nextInt(neighborSeq.size))
           if(operators(randomNeighbor).isEmpty && !tentativeHosts.contains(randomNeighbor)){
-            val tenOp = TentativeOperator(NodeHost(randomNeighbor), activeOperator.get.props, activeOperator.get.dependencies)
+            val tenOp = TentativeOperator(activeOperator.get.props, activeOperator.get.dependencies)
             send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0))
             chosen = true
           }
@@ -461,7 +461,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
 
   def setActiveOperator(props: Props): Unit ={
     if(!isOperator){
-      activeOperator = Some(ActiveOperator(null, props, null))
+      activeOperator = Some(ActiveOperator(props, null))
     }else{
       println("ERROR: Host already has an Operator")
     }
@@ -496,7 +496,7 @@ trait HostActorDecentralizedBase extends HostActorBase{
   def activate() : Unit = {
     //println("ACTIVATING...")
     if(tentativeOperator.isDefined){
-      activeOperator = Some(ActiveOperator(tentativeOperator.get.host, tentativeOperator.get.props, tentativeOperator.get.dependencies))
+      activeOperator = Some(ActiveOperator(tentativeOperator.get.props, tentativeOperator.get.dependencies))
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
       //println(temp)
       node = Some(temp)

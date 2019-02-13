@@ -4,7 +4,7 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
-import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
+import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._
@@ -139,10 +139,10 @@ object AppRunnerCentralized extends App {
   val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
   val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
 
-  val operatorA = ActiveOperator(NodeHost(host1), null, Seq.empty[Operator])
-  val operatorB = ActiveOperator(NodeHost(host2), null, Seq.empty[Operator])
-  val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
-  val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
+  val operatorA = ActiveOperator(null, Seq.empty[Operator])
+  val operatorB = ActiveOperator(null, Seq.empty[Operator])
+  val operatorC = ActiveOperator(null, Seq.empty[Operator])
+  val operatorD = ActiveOperator(null, Seq.empty[Operator])
 
 
   val publishers: Map[String, ActorRef] = Map(
@@ -151,11 +151,11 @@ object AppRunnerCentralized extends App {
     "C" -> publisherC,
     "D" -> publisherD)
 
-  val publisherOperators: Map[String, Operator] = Map(
-    "A" -> operatorA,
-    "B" -> operatorB,
-    "C" -> operatorC,
-    "D" -> operatorD)
+  val publisherHosts: Map[String, Host] = Map(
+    "A" -> NodeHost(host1),
+    "B" -> NodeHost(host2),
+    "C" -> NodeHost(host3),
+    "D" -> NodeHost(host4))
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
@@ -163,7 +163,7 @@ object AppRunnerCentralized extends App {
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
     query3,
-    publishers, publisherOperators,
+    publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
     PathBandwidthMonitorFactory(interval = 1000, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")

@@ -32,7 +32,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   val actorSystem: ActorSystem
   val query: Query
   val publishers: Map[String, ActorRef]
-  val publisherOperators: Map[String, Operator]
+  val publisherHosts: Map[String, Host]
   val frequencyMonitorFactory: MonitorFactory
   val latencyMonitorFactory: MonitorFactory
   val bandwidthMonitorFactory: MonitorFactory
@@ -45,7 +45,6 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   case object Minimizing extends Optimizing
 
   val cluster = Cluster(context.system)
-  var previousPlacement: Map[Operator, Host] = Map.empty[Operator, Host] withDefaultValue(NoHost)
   val r: Random = scala.util.Random
 
   var propsOperators: Map[Props, Operator] = Map.empty[Props, Operator]
@@ -66,6 +65,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   val consumers: Var[Seq[Operator]] = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
   val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
   val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
+  val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host] withDefaultValue NoHost)(ReSerializable.doNotSerialize, "placement")
   val demandViolated: default.Evt[Requirement] = Evt[Requirement]()
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
@@ -327,7 +327,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     def placeProducersConsumers(operator: Operator, consumer: Boolean): Unit = {
       operator.dependencies foreach { placeProducersConsumers(_, consumer = false) }
       if (consumer || operator.dependencies.isEmpty)
-        placements += operator -> operator.host
+        placements += operator -> placement.now.apply(operator)
     }
 
     def placeIntermediates(operator: Operator, consumer: Boolean): Unit = {
@@ -352,7 +352,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
           host
         }
         else
-          operator.host
+          placement.now.apply(operator)
 
       placements += operator -> host
     }
@@ -375,8 +375,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
     val operators = consumers.now flatMap { allOperators(_, None) }
     operators foreach { case (operator, _) =>
-      placements += operator -> previousPlacement(operator)//operator.host
-      previousPlacements += operator -> mutable.Set(operator.host)
+      placements += operator -> placement.now.apply(operator)//operator.host
+      previousPlacements += operator -> mutable.Set(placement.now.apply(operator))
     }
 
     @tailrec def placeOperators(): Unit = {
@@ -492,7 +492,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         bandwidthMonitorFactory,
         None,
         callback))
-    val operator = ActiveOperator(publisherOperators(streamQuery.publisherName).host, props, Seq.empty[Operator])
+    val operator = ActiveOperator(props, Seq.empty[Operator])
+    placement.set(placement.now. + (operator -> publisherHosts(streamQuery.publisherName)))
     producers.set(producers.now.+(operator))
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
@@ -664,7 +665,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         bandwidthMonitorFactory,
         None,
         callback))
-    val operator = ActiveOperator(publisherOperators(sequenceQuery.s1.publisherName).host, props, Seq.empty[Operator])
+    val operator = ActiveOperator(props, Seq.empty[Operator])
+    placement.set(placement.now. + (operator -> publisherHosts(sequenceQuery.s1.publisherName)))
     producers.set(producers.now.+(operator))
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
@@ -682,12 +684,13 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       latencyMonitorFactory,
       bandwidthMonitorFactory, None, consumer = false)
     val childOperator = propsOperators(child)
-    var operator = distributed.operator.ActiveOperator(here, props, Seq(childOperator))
+    var operator = distributed.operator.ActiveOperator(props, Seq(childOperator))
     if (consumer) {
       //consumers = consumers :+ operator
       consumers.set(consumers.now :+ operator)
+      placement.set(placement.now. + (operator -> here))
     } else {
-      operator = ActiveOperator(NoHost, props, Seq(childOperator))
+      operator = ActiveOperator(props, Seq(childOperator))
     }
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
@@ -714,11 +717,12 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     val child2Operator = propsOperators(child2)
     var operator: ActiveOperator = null
     if (consumer) {
-      operator = distributed.operator.ActiveOperator(here, props, Seq(child1Operator, child2Operator))
+      operator = distributed.operator.ActiveOperator(props, Seq(child1Operator, child2Operator))
       //consumers = consumers :+ operator
       consumers.set(consumers.now:+(operator))
+      placement.set(placement.now. + (operator -> here))
     } else {
-      operator = ActiveOperator(NoHost, props, Seq(child1Operator, child2Operator))
+      operator = ActiveOperator(props, Seq(child1Operator, child2Operator))
     }
     operators.set(operators.now.+(operator))
     propsOperators += props -> operator
