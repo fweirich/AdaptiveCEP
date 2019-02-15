@@ -19,6 +19,7 @@ import rescala.default._
 import rescala.{default, _}
 import rescala.core.{CreationTicket, ReSerializable}
 import rescala.default.{Evt, Signal, Var}
+import helper._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -60,13 +61,16 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   val interval = 500
 
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(costsMap)(ReSerializable.doNotSerialize, "cost")
-  val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal())}
   val hosts: Var[Set[Host]] = Var(Set.empty[Host])(ReSerializable.doNotSerialize, "hosts")
+  val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal(), hosts())}
   val consumers: Var[Seq[Operator]] = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
   val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
   val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
   val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host] withDefaultValue NoHost)(ReSerializable.doNotSerialize, "placement")
-  val demandViolated: default.Evt[Requirement] = Evt[Requirement]()
+  val demandViolated: default.Evt[Set[Requirement]] = Evt[Set[Requirement]]()
+
+
+
 
   //val createdCallback: Option[() => Any] = () => println("STATUS:\t\tGraph has been created.")
   val eventCallback: Event => Any = {
@@ -79,20 +83,21 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     case _                             => //println("what the hell")
   }
 
-
-
-
   def placeAll(map: Map[Operator, Host]): Unit
 
   def place(operator: Operator, host: Host): Unit
 
+
+  val adaption = demandViolated map { _ =>
+    adapt(qos(), consumers(), placement()): Map[Operator, Host]
+  }
+
   override def preStart(): Unit = {
-    demandViolated += {_ => adapt()}
+    adaption observe placeAll
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
 
-    //here = NodeHost(sender())
     var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
     var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
     testHosts.foreach(host => {
@@ -102,29 +107,21 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
       hosts.set(hosts.now + nodeHost)
     })
-
-
-    /*
-    if(!hostProps.contains(NoHost)){
-      hostProps += NoHost -> HostProps(latencyStub, bandwidthStub)
-    }
-    hostProps(NoHost).latency ++ latencyStub
-    hostProps(NoHost).bandwidth ++ bandwidthStub
-    */
   }
 
   override def postStop(): Unit ={
-    propsActors.keys.foreach(key => propsActors(key) ! PoisonPill)
+    propsActors.keys.foreach(key => propsActors(key) ! Kill)
     cluster.unsubscribe(self)
   }
 
-  def adapt(): Unit = {
+  def adapt(qos: Map[Host, HostProps], consumers: Seq[Operator], placement: Map[Operator, Host]): Map[Operator, Host] = {
     optimizeFor match {
-      case "latency" => placeOptimizingLatency()
-      case "bandwidth" => placeOptimizingBandwidth()
-      case "latencybandwidth" => placeOptimizingLatencyAndBandwidth()
+      case "latency" => return placeOptimizingLatency(qos, consumers, placement)
+      case "bandwidth" => return placeOptimizingBandwidth(qos, consumers, placement)
+      case "latencybandwidth" => return placeOptimizingLatencyAndBandwidth(qos, consumers, placement)
       case _ => println("ERROR: Typo in optimizeFor Parameter", optimizeFor)
     }
+    Map.empty[Operator, Host]
   }
 
   override def receive: Receive = {
@@ -133,8 +130,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(interval, TimeUnit.MILLISECONDS),
         runnable = () => {
-          hostMap.foreach{
-            host => host._2.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
+          hosts.now.foreach{
+            host => host.asInstanceOf[NodeHost].actorRef ! HostPropsRequest
             //println("PLACEMENT ACTOR: sending HostPropsRequest to", host)
             //hosts.set(hostMap.toSet.collect{case(_, host) => host})
           }
@@ -151,44 +148,15 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         member.address, previousStatus)
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
-    case RequirementsNotMet =>
-      demandViolated.fire(null)
+    case RequirementsNotMet(requirements) =>
+      demandViolated.fire(requirements)
     case Start =>
       println("PLACEMENT ACTOR: starting")
-      adapt()
+      demandViolated.fire(null)
     case HostPropsResponse(costMap) =>
       costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
       costSignal.set(costsMap)
     case _ =>
-  }
-
-  def hostProps(costsMap: Map[Host, Map[Host, Cost]]): Map[Host, HostProps] = {
-    var latencyStub: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
-    var bandwidthStub: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
-    testHosts.foreach(host => {
-      val nodeHost = NodeHost(host)
-      hostMap += host -> nodeHost
-      latencyStub = latencyStub :+ (nodeHost, Duration.Inf)
-      bandwidthStub = bandwidthStub :+ (nodeHost, 0.0)
-    })
-    var result: Map[Host, HostProps] = Map.empty
-    for(h <-testHosts){
-      var latencies: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
-      var dataRates: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
-      costsMap.foreach(host =>
-        if(host._1 != host._2(hostMap(h))){
-          latencies = latencies :+ (host._1, host._2(hostMap(h)).duration)
-        }
-      )
-      costsMap.foreach(host =>
-        if(host._1 != host._2(hostMap(h))){
-          dataRates = dataRates :+ (host._1, host._2(hostMap(h)).bandwidth)
-        }
-      )
-      result += hostMap(h) -> HostProps(latencies, dataRates)
-    }
-    result += NoHost -> HostProps(latencyStub, bandwidthStub)
-    result
   }
 
   private def latencySelector(props: HostProps, host: Host): Duration = {
@@ -248,7 +216,10 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   private def measure[T: Ordering](
                                     selector: (HostProps, Host) => T,
                                     optimizing: Optimizing,
-                                    zero: T)(
+                                    zero: T,
+                                    qos: Map[Host, HostProps],
+                                    consumers: Seq[Operator],
+                                    placement: Map[Operator, Host])(
                                     merge: (T, T) => T)(
                                     avg: Seq[T] => T)(
                                     host: Operator => Host): T = {
@@ -257,38 +228,40 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
         zero
       else
         minmax(optimizing, operator.dependencies map { dependentOperator =>
-          merge(measure(dependentOperator), selector(qos.now.apply(host(operator)), host(dependentOperator)))
+          merge(measure(dependentOperator), selector(qos.apply(host(operator)), host(dependentOperator)))
         })
 
-    avg(consumers.now map measure)
+    avg(consumers map measure)
   }
 
-  def placeOptimizingLatency(): Unit = {
-    val measureLatency = measure(latencySelector, Minimizing, Duration.Zero) { _ + _ } { avg } _
+  def placeOptimizingLatency(qos: Map[Host, HostProps], consumers: Seq[Operator], placement: Map[Operator, Host]): Map[Operator, Host] = {
+    val measureLatency = measure(latencySelector, Minimizing, Duration.Zero, qos, consumers, placement) { _ + _ } { avg } _
 
-    val placementsA = placeOptimizingHeuristicA(latencySelector, Minimizing)
+    val placementsA = placeOptimizingHeuristicA(latencySelector, Minimizing, qos, consumers, placement)
     val durationA = measureLatency { placementsA(_) }
 
-    val placementsB = placeOptimizingHeuristicB(latencySelector, Minimizing) { _ + _ }
+    val placementsB = placeOptimizingHeuristicB(latencySelector, Minimizing, qos, consumers, placement) { _ + _ }
     val durationB = measureLatency { placementsB(_) }
 
-    placeAll((if (durationA < durationB) placementsA else placementsB).toMap)
+    //placeAll((if (durationA < durationB) placementsA else placementsB).toMap)
+    (if (durationA < durationB) placementsA else placementsB).toMap
 
   }
 
-  def placeOptimizingBandwidth(): Unit = {
-    val measureBandwidth = measure(bandwidthSelector, Maximizing, Double.MaxValue) { math.min } { avg } _
+  def placeOptimizingBandwidth(qos: Map[Host, HostProps], consumers: Seq[Operator], placement: Map[Operator, Host]): Map[Operator, Host] = {
+    val measureBandwidth = measure(bandwidthSelector, Maximizing, Double.MaxValue, qos, consumers, placement) { math.min } { avg } _
 
-    val placementsA = placeOptimizingHeuristicA(bandwidthSelector, Maximizing)
+    val placementsA = placeOptimizingHeuristicA(bandwidthSelector, Maximizing, qos, consumers, placement)
     val bandwidthA = measureBandwidth { placementsA(_) }
 
-    val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing) { math.min }
+    val placementsB = placeOptimizingHeuristicB(bandwidthSelector, Maximizing, qos, consumers, placement) { math.min }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
-    placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
+    //placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
+    (if (bandwidthA > bandwidthB) placementsA else placementsB).toMap
   }
 
-  def placeOptimizingLatencyAndBandwidth(): Unit = {
+  def placeOptimizingLatencyAndBandwidth(qos: Map[Host, HostProps], consumers: Seq[Operator], placement: Map[Operator, Host]): Map[Operator, Host] = {
     def average(durationNumerics: Seq[(Duration, Double)]): (Duration, Double) =
       durationNumerics.unzip match { case (latencies, bandwidths) => (avg(latencies), avg(bandwidths)) }
 
@@ -308,26 +281,29 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       }
     }
 
-    val measureBandwidth = measure(latencyBandwidthSelector, Maximizing, (Duration.Zero, Double.MaxValue)) { merge } { average } _
+    val measureBandwidth = measure(latencyBandwidthSelector, Maximizing, (Duration.Zero, Double.MaxValue) , qos, consumers, placement) { merge } { average } _
 
-    val placementsA = placeOptimizingHeuristicA(latencyBandwidthSelector, Maximizing)
+    val placementsA = placeOptimizingHeuristicA(latencyBandwidthSelector, Maximizing, qos, consumers, placement)
     val bandwidthA = measureBandwidth { placementsA(_) }
 
-    val placementsB = placeOptimizingHeuristicB(latencyBandwidthSelector, Maximizing) { merge }
+    val placementsB = placeOptimizingHeuristicB(latencyBandwidthSelector, Maximizing, qos, consumers, placement) { merge }
     val bandwidthB = measureBandwidth { placementsB(_) }
 
-    placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
+    (if (bandwidthA > bandwidthB) placementsA else placementsB).toMap
+    //placeAll((if (bandwidthA > bandwidthB) placementsA else placementsB).toMap)
   }
 
-  private def placeOptimizingHeuristicA[T: Ordering](
-                                                      selector: (HostProps, Host) => T,
-                                                      optimizing: Optimizing): collection.Map[Operator, Host] = {
+  private def placeOptimizingHeuristicA[T: Ordering](selector: (HostProps, Host) => T,
+                                                     optimizing: Optimizing,
+                                                     qos: Map[Host, HostProps],
+                                                     consumers: Seq[Operator],
+                                                     placement: Map[Operator, Host]): collection.Map[Operator, Host] = {
     val placements = mutable.Map.empty[Operator, Host]
 
     def placeProducersConsumers(operator: Operator, consumer: Boolean): Unit = {
       operator.dependencies foreach { placeProducersConsumers(_, consumer = false) }
       if (consumer || operator.dependencies.isEmpty)
-        placements += operator -> placement.now.apply(operator)
+        placements += operator -> placement.apply(operator)
     }
 
     def placeIntermediates(operator: Operator, consumer: Boolean): Unit = {
@@ -336,7 +312,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       val host =
         if (!consumer && operator.dependencies.nonEmpty) {
           val valuesForHosts =
-            qos.now.toSeq collect { case (host, props) if !(placements.values exists { _== host }) =>
+            qos.toSeq collect { case (host, props) if !(placements.values exists { _== host }) =>
               val propValues =
                 operator.dependencies map { dependentOperator =>
                   selector(props, placements(dependentOperator))
@@ -352,20 +328,22 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
           host
         }
         else
-          placement.now.apply(operator)
+          placement.apply(operator)
 
       placements += operator -> host
     }
 
-    consumers.now foreach { placeProducersConsumers(_, consumer = true) }
-    consumers.now foreach { placeIntermediates(_, consumer = true) }
+    consumers foreach { placeProducersConsumers(_, consumer = true) }
+    consumers foreach { placeIntermediates(_, consumer = true) }
     //println("PLACEMENT ACTOR: HeuristicA - ", placements)
     placements
   }
 
-  private def placeOptimizingHeuristicB[T: Ordering](
-                                                      selector: (HostProps, Host) => T,
-                                                      optimizing: Optimizing)(
+  private def placeOptimizingHeuristicB[T: Ordering](selector: (HostProps, Host) => T,
+                                                     optimizing: Optimizing,
+                                                     qos: Map[Host, HostProps],
+                                                     consumers: Seq[Operator],
+                                                     placement: Map[Operator, Host])(
                                                       merge: (T, T) => T): collection.Map[Operator, Host] = {
     val previousPlacements = mutable.Map.empty[Operator, mutable.Set[Host]]
     val placements = mutable.Map.empty[Operator, Host]
@@ -373,32 +351,32 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     def allOperators(operator: Operator, parent: Option[Operator]): Seq[(Operator, Option[Operator])] =
       (operator -> parent) +: (operator.dependencies flatMap { allOperators(_, Some(operator)) })
 
-    val operators = consumers.now flatMap { allOperators(_, None) }
+    val operators = consumers. flatMap { allOperators(_, None) }
     operators foreach { case (operator, _) =>
-      placements += operator -> placement.now.apply(operator)//operator.host
-      previousPlacements += operator -> mutable.Set(placement.now.apply(operator))
+      placements += operator -> placement.apply(operator)//operator.host
+      previousPlacements += operator -> mutable.Set(placement.apply(operator))
     }
 
     @tailrec def placeOperators(): Unit = {
       val changed = operators map {
         case (operator, Some(parent)) if operator.dependencies.nonEmpty =>
           val valuesForHosts =
-            qos.now.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
+            qos.toSeq collect { case (host, props) if !(placements.values exists { _ == host }) && !(previousPlacements(operator) contains host) =>
               merge(
                 minmax(optimizing, operator.dependencies map { dependentOperator =>
                   selector(props, placements(dependentOperator))
                 }),
-                selector(qos.now.apply(placements(parent)), host)) -> host
+                selector(qos.apply(placements(parent)), host)) -> host
             }
           val currentValue =
             merge(
               minmax(optimizing, operator.dependencies map { dependency =>
-                selector(qos.now.apply(placements(operator)), placements(dependency))
+                selector(qos.apply(placements(operator)), placements(dependency))
               }),
-              selector(qos.now.apply(placements(parent)), placements(operator)))
+              selector(qos.apply(placements(parent)), placements(operator)))
           val noPotentialPlacements =
             if (valuesForHosts.isEmpty) {
-              if ((qos.now.keySet -- placements.values --previousPlacements(operator)).isEmpty)
+              if ((qos.keySet -- placements.values --previousPlacements(operator)).isEmpty)
                 true
               else
                 throw new UnsupportedOperationException("not enough hosts")
