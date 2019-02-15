@@ -121,11 +121,11 @@ case class JoinNode(
     case Controller(c) =>
       controller = c
       //println("Got Controller", c)
-    case HostPropsResponse(c) =>
+    case CostReport(c) =>
       costs = c
-      frequencyMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
-      latencyMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
-      bandwidthMonitor.onMessageReceive(HostPropsResponse(c), nodeData)
+      frequencyMonitor.onMessageReceive(CostReport(c), nodeData)
+      latencyMonitor.onMessageReceive(CostReport(c), nodeData)
+      bandwidthMonitor.onMessageReceive(CostReport(c), nodeData)
     case _: Event =>
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)

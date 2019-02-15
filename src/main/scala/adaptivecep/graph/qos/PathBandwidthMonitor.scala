@@ -3,7 +3,7 @@ package adaptivecep.graph.qos
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
-import adaptivecep.data.Events.HostPropsResponse
+import adaptivecep.data.Events.{CostReport, HostPropsResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -46,7 +46,7 @@ case class PathBandwidthLeafNodeMonitor() extends PathBandwidthMonitor with Leaf
           nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
         }
         nodeData.parent ! PathBandwidth(nodeData.context.self, Double.MaxValue)
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case _ =>
     }
   }
@@ -78,7 +78,7 @@ case class PathBandwidthUnaryNodeMonitor(interval: Int, logging: Boolean)
     val bandwidthRequirements: Set[BandwidthRequirement] =
       nodeData.requirements.collect { case br: BandwidthRequirement => br }
     message match {
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case ChildBandwidthRequest =>
         if(costs.contains(nodeData.parent)){
           nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)
@@ -164,7 +164,7 @@ case class PathBandwidthBinaryNodeMonitor(interval: Int, logging: Boolean)
     val bandwidthRequirements: Set[BandwidthRequirement] =
       nodeData.requirements.collect { case br: BandwidthRequirement => br }
     message match {
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case ChildBandwidthRequest =>
         if(costs.contains(nodeData.parent)){
           nodeData.parent ! ChildBandwidthResponse(nodeData.context.self, costs(nodeData.parent).bandwidth)

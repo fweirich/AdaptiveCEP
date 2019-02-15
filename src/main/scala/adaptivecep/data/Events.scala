@@ -3,7 +3,8 @@ package adaptivecep.data
 import java.time.Instant
 
 import adaptivecep.data.Cost._
-import adaptivecep.distributed.operator.{ActiveOperator, TentativeOperator}
+import adaptivecep.data.Queries.Requirement
+import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, TentativeOperator}
 import akka.actor.{ActorRef, Props}
 import akka.dispatch.ControlMessage
 
@@ -18,7 +19,7 @@ object Events {
   sealed trait PlacementEvent extends ControlMessage
 
   case object RequirementsMet extends PlacementEvent
-  case object RequirementsNotMet extends PlacementEvent
+  case class RequirementsNotMet(requirements: Set[Requirement]) extends PlacementEvent
 
 
   //Tentative Operator Phase
@@ -32,10 +33,10 @@ object Events {
   case class SetActiveOperator(operator: Props) extends PlacementEvent
 
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
-                                     parentHosts: Seq[ActorRef], childHost1: Option[ActorRef],
+                                     parentHosts: Set[NodeHost], childHost1: Option[ActorRef],
                                      childHost2: Option[ActorRef], temperature: Double) extends PlacementEvent
 
-  case class ChooseTentativeOperators(tentativeParents: Seq[ActorRef]) extends PlacementEvent
+  case class ChooseTentativeOperators(tentativeParents: Set[NodeHost]) extends PlacementEvent
 
   case object OperatorRequest extends PlacementEvent
   case class OperatorResponse(active: Option[ActiveOperator], tentative: Option[TentativeOperator]) extends PlacementEvent
@@ -47,7 +48,7 @@ object Events {
   case class ChildResponse(childNode: ActorRef) extends PlacementEvent
 
   case class ParentHost(parentHost: ActorRef, parentNode: ActorRef) extends PlacementEvent
-  case class FinishedChoosing(tentativeChildren: Seq[ActorRef]) extends  PlacementEvent
+  case class FinishedChoosing(tentativeChildren: Set[NodeHost]) extends  PlacementEvent
 
   case object Start extends PlacementEvent
 
@@ -56,7 +57,7 @@ object Events {
   case class LatencyCostResponse(instant: Instant) extends PlacementEvent
   case class BandwidthCostResponse(bandwidth: Double) extends PlacementEvent
 
-  case class StateTransferMessage(optimumHosts: Seq[ActorRef], parentNode: ActorRef) extends PlacementEvent
+  case class StateTransferMessage(optimumHosts: Set[NodeHost], parentNode: ActorRef) extends PlacementEvent
   case object TentativeAcknowledgement extends PlacementEvent
   case object ContinueSearching extends PlacementEvent
 
@@ -69,16 +70,16 @@ object Events {
   case object TestEvent extends PlacementEvent
 
   case object InitializeQuery extends CEPControlMessage
-  case class Delay(delay: Boolean)
 
-  case object AllHosts extends CEPControlMessage
   case class Hosts(h: Set[ActorRef]) extends CEPControlMessage
 
-  case class HostToNodeMap(m: Map[ActorRef, ActorRef]) extends CEPControlMessage
+  case class HostToNodeMap(m: Map[NodeHost, ActorRef]) extends CEPControlMessage
 
   case class Node(actorRef: ActorRef) extends CEPControlMessage
 
-  case class Neighbors(neighbors: Set[ActorRef], allHosts: Set[ActorRef]) extends CEPControlMessage
+  case class CostReport(costs: Map[ActorRef, Cost]) extends CEPControlMessage
+
+  //case class Neighbors(neighbors: Set[ActorRef], allHosts: Set[ActorRef]) extends CEPControlMessage
 
   case class Controller(controller: ActorRef) extends CEPControlMessage
   case class OptimizeFor(optimizer: String) extends CEPControlMessage
@@ -98,7 +99,7 @@ object Events {
   case class LatencyResponse(instant: Instant) extends CEPControlMessage
   case class ThroughPutResponse(eventsPerSecond: Int) extends CEPControlMessage
   case object HostPropsRequest extends CEPControlMessage
-  case class HostPropsResponse(latencies: Map[ActorRef, Cost]) extends CEPControlMessage
+  case class HostPropsResponse(cost: Map[Host, Cost]) extends CEPControlMessage
 
   case object DependenciesRequest extends CEPControlMessage
   case class DependenciesResponse(dependencies: Seq[ActorRef]) extends CEPControlMessage

@@ -55,14 +55,14 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   //var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
   var consumers1: Seq[Operator] = Seq.empty[Operator]
   var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]]
-  var hostMap: Map[ActorRef, Host] = Map(here.actorRef -> here)
-  var hostToNodeMap: Map[ActorRef, ActorRef] = Map.empty[ActorRef, ActorRef]
+  var hostMap: Map[ActorRef, NodeHost] = Map(here.actorRef -> here)
+  var hostToNodeMap: Map[NodeHost, ActorRef] = Map.empty[NodeHost, ActorRef]
 
   val interval = 500
 
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(costsMap)(ReSerializable.doNotSerialize, "cost")
-  val hosts: Var[Set[Host]] = Var(Set.empty[Host])(ReSerializable.doNotSerialize, "hosts")
-  val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal(), hosts())}
+  val hosts: Var[Set[NodeHost]] = Var(Set.empty[NodeHost])(ReSerializable.doNotSerialize, "hosts")
+  val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal(), hosts().map(h => h.asInstanceOf[Host]))}
   val consumers: Var[Seq[Operator]] = Var(Seq.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
   val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
   val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
@@ -154,7 +154,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
       println("PLACEMENT ACTOR: starting")
       demandViolated.fire(null)
     case HostPropsResponse(costMap) =>
-      costsMap += hostMap(sender()) -> costMap.map(h => hostMap(h._1) -> h._2)
+      costsMap += hostMap(sender()) -> costMap.map(h => h._1 -> h._2)
       costSignal.set(costsMap)
     case _ =>
   }

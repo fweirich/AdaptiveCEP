@@ -131,7 +131,7 @@ object AppRunnerCentralized extends App {
   val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11,
     host12, host13, host14, host15, host16, host17, host18, host19, host20)
 
-  hosts.foreach(host => host ! Neighbors(hosts, hosts))
+  hosts.foreach(host => host ! Hosts(hosts))
 
 
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")

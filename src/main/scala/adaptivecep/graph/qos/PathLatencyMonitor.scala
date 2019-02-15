@@ -4,7 +4,7 @@ import java.time._
 import java.util.concurrent.TimeUnit
 
 import adaptivecep.data.Cost.Cost
-import adaptivecep.data.Events.{HostPropsResponse, LatencyResponse}
+import adaptivecep.data.Events.{CostReport, HostPropsResponse, LatencyResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.{ActorRef, Cancellable}
@@ -52,7 +52,7 @@ case class PathLatencyLeafNodeMonitor() extends PathLatencyMonitor with LeafNode
             nodeData.parent ! ChildLatencyResponse(nodeData.context.self, time)
             nodeData.parent ! PathLatency(nodeData.context.self, Duration.ZERO)
           })
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case _ =>
     }
   }
@@ -63,7 +63,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
 
   val clock: Clock = Clock.systemDefaultZone
   var scheduledTask: Cancellable = null
-  var met: Boolean = true
+  var violatedRequirements: Set[Requirement] = Set.empty[Requirement]
   //var delay: Boolean = true
   var latency: Option[Duration] = None
   var childNode: ActorRef = null
@@ -86,7 +86,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
     val latencyRequirements: Set[LatencyRequirement] =
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
         nodeData.context.system.scheduler.scheduleOnce(
           FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
@@ -101,12 +101,12 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
             println(
               s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency. " +
               s"(Calculated every $interval seconds.)")
-          met = true
+          violatedRequirements = Set.empty[Requirement]
           latencyRequirements.foreach(
             lr =>{
               if (isRequirementNotMet(pathLatency, lr)) {
                 lr.callback(callbackNodeData)
-                met = false
+                violatedRequirements += lr
               }
             })
           childNodeLatency = None
@@ -122,12 +122,12 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
             println(
               s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency. " +
               s"(Calculated every $interval seconds.)")
-          met = true
+          violatedRequirements = Set.empty[Requirement]
           latencyRequirements.foreach(
             lr =>
               if (isRequirementNotMet(pathLatency, lr)){
                 lr.callback(callbackNodeData)
-                met = false
+                violatedRequirements += lr
               }
             )
           childNodeLatency = None
@@ -142,7 +142,7 @@ case class PathLatencyUnaryNodeMonitor(interval: Int, logging: Boolean)
 case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
   extends PathLatencyMonitor with BinaryNodeMonitor {
 
-  var met: Boolean = true
+  var violatedRequirements: Set[Requirement] = Set.empty[Requirement]
   //var delay: Boolean = true
   var latency: Option[Duration] = None
   var scheduledTask: Cancellable = null
@@ -173,7 +173,7 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
     val latencyRequirements: Set[LatencyRequirement] =
       nodeData.requirements.collect { case lr: LatencyRequirement => lr }
     message match {
-      case HostPropsResponse(costMap) => costs = costMap
+      case CostReport(costMap) => costs = costMap
       case ChildLatencyRequest(time) =>
         nodeData.context.system.scheduler.scheduleOnce(
           FiniteDuration(costs(nodeData.parent).duration.toMillis * 2, TimeUnit.MILLISECONDS),
@@ -208,10 +208,10 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency1. " +
                 s"(Calculated every $interval seconds.)")
-            met = true
+            violatedRequirements = Set.empty[Requirement]
             latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency1, lr)){
               lr.callback(callbackNodeData)
-              met = false
+              violatedRequirements += lr
             })
           } else {
             latency = Some(pathLatency2)
@@ -220,10 +220,10 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency2. " +
                 s"(Calculated every $interval seconds.)")
-            met = true
+            violatedRequirements = Set.empty[Requirement]
             latencyRequirements.foreach(lr => if (isRequirementNotMet(pathLatency2, lr)){
               lr.callback(callbackNodeData)
-              met = false
+              violatedRequirements += lr
             })
           }
           childNode1Latency = None
@@ -250,11 +250,11 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency1. " +
                 s"(Calculated every $interval seconds.)")
-            met = true
+            violatedRequirements = Set.empty[Requirement]
             latencyRequirements.foreach(lr =>
               if (isRequirementNotMet(pathLatency1, lr)){
                 lr.callback(callbackNodeData)
-                met = false
+                violatedRequirements += lr
               }
             )
           } else {
@@ -264,11 +264,11 @@ case class PathLatencyBinaryNodeMonitor(interval: Int, logging: Boolean)
               println(
                 s"LATENCY:\tEvents reach node `${nodeData.name}` after $pathLatency2. " +
                 s"(Calculated every $interval seconds.)")
-            met = true
+            violatedRequirements = Set.empty[Requirement]
             nodeData.requirements.collect { case lr: LatencyRequirement => lr }.foreach(lr =>
               if (isRequirementNotMet(pathLatency2, lr)){
                 lr.callback(callbackNodeData)
-                met = false
+                violatedRequirements += lr
               }
             )
           }

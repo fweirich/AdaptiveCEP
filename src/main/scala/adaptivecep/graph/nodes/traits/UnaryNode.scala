@@ -61,14 +61,14 @@ trait UnaryNode extends Node {
         interval = FiniteDuration(interval, TimeUnit.SECONDS),
         runnable = () => {
           if (lmonitor.latency.isDefined && fMonitor.averageOutput.isDefined /*bmonitor.bandwidthForMonitoring.isDefined*/ ) {
-            if (!lmonitor.met || !fMonitor.met) {
-              lmonitor.met = true
+            if (lmonitor.violatedRequirements.nonEmpty || fMonitor.violatedRequirements.nonEmpty) {
+              controller ! RequirementsNotMet(lmonitor.violatedRequirements.++(fMonitor.violatedRequirements))
+              lmonitor.violatedRequirements = Set.empty[Requirement]
               //bmonitor.met = true
-              fMonitor.met = true
-              controller ! RequirementsNotMet
+              fMonitor.violatedRequirements = Set.empty[Requirement]
             }
 
-            if (lmonitor.met && fMonitor.met) {
+            if (fMonitor.violatedRequirements.isEmpty && fMonitor.violatedRequirements.isEmpty) {
               controller ! RequirementsMet
             }
             println(lmonitor.latency.get.toNanos / 1000000.0 + ", " + fMonitor.averageOutput.get /*bmonitor.bandwidthForMonitoring.get*/)

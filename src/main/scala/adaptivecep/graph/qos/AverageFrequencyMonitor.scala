@@ -15,7 +15,7 @@ trait AverageFrequencyMonitor {
 
   var currentOutput: Option[Int] = None
   var averageOutput: Option[Int] = None
-  var met = true
+  var violatedRequirements: Set[Requirement] = Set.empty[Requirement]
   var scheduledTask: Cancellable = null
 
   def onCreated(name: String, requirements: Set[Requirement], context: ActorContext): Unit = {
@@ -40,40 +40,40 @@ trait AverageFrequencyMonitor {
                   s"(Calculated every $interval seconds.)")
               requirement.operator match {
                 case Equal =>        if (!(frequency == requirement.instances)){
-                  met = false
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
-                case NotEqual =>     if (!(frequency != requirement.instances)){
-                  met = false
+                case NotEqual =>     if (frequency == requirement.instances){
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
                 case Greater =>      if (!(frequency >  requirement.instances)){
-                  met = false
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
                 case GreaterEqual => if (!(frequency >= requirement.instances)){
-                  met = false
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
                 case Smaller =>      if (!(frequency <  requirement.instances)){
-                  met = false
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
                 case SmallerEqual => if (!(frequency <= requirement.instances)){
-                  met = false
+                  violatedRequirements += requirement
                   requirement.callback(callbackNodeData)
                 } else {
-                  met = true
+                  violatedRequirements -= requirement
                 }
               }
             })
