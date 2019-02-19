@@ -159,7 +159,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       log.info("Member is Removed: {} after {}",
         member.address, previousStatus)
     case Hosts(h)=>
-      hosts.set(h.map(host => NodeHost(host)))
+      h.foreach(host => hostMap = hostMap + (host -> NodeHost(host)))
+      hosts.set(hostMap.values.toSet)
       hosts.now.foreach(host => simulatedCosts += host -> (latency(), bandwidth()))
       hostProps = HostPropsSimulator(simulatedCosts)
     case Node(actorRef) =>
