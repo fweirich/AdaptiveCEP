@@ -34,8 +34,6 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[NodeHost, scala.concurrent.duration.Duration] = Map.empty[NodeHost, scala.concurrent.duration.Duration]
 
-
-  var hostProps: HostPropsSimulator = HostPropsSimulator(simulatedCosts)
   var hostToNodeMap: Map[NodeHost, ActorRef] = Map.empty[NodeHost, ActorRef]
   var throughputMeasureMap: Map[Host, Int] = Map.empty[Host, Int] withDefaultValue(0)
   var throughputStartMap: Map[Host, (Instant, Instant)] = Map.empty[Host, (Instant, Instant)] withDefaultValue((clock.instant(), clock.instant()))
@@ -49,11 +47,15 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   var simulatedCosts: Map[NodeHost, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])] =
     Map.empty[NodeHost, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
 
+  var hostProps: HostPropsSimulator = HostPropsSimulator(simulatedCosts)
+
   case class HostPropsSimulator(costs : Map[NodeHost, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]) {
     def advance = HostPropsSimulator(
       costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth.advance)) })
-    def advanceLatency = HostPropsSimulator(
-      costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth)) })
+    def advanceLatency = {
+      println(costs)
+      HostPropsSimulator(costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth)) })
+    }
     def advanceBandwidth = HostPropsSimulator(
       costs map { case (host, (latency, bandwidth)) => (host, (latency, bandwidth.advance)) })
   }
@@ -137,7 +139,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     }
   }
 
-  def startSimulation(): Unit = { context.system.scheduler.schedule(
+  def startSimulation(): Unit = {context.system.scheduler.schedule(
     initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(interval, TimeUnit.SECONDS),
     runnable = () => {

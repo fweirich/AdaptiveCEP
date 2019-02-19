@@ -61,6 +61,7 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
         }
       }
     })
+    consumers.now.foreach(consumer => consumer.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Set.empty[NodeHost]))
     placement.set(map)
   }
 
