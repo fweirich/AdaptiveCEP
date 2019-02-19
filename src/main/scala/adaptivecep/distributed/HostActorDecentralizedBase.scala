@@ -189,12 +189,12 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
-    case gPE: PlacementEvent => processEvent(gPE, hostMap(sender()))
+    case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>
   }
 
-  def processEvent(event: PlacementEvent, sender: NodeHost): Unit ={
+  def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
     event match {
 
       /**Phase 0: Setup*/
@@ -206,23 +206,23 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
       /**Phase 1: Tentative Operator Selection*/
       case ChooseTentativeOperators(parents) => setUpTentatives(parents)
-      case OperatorRequest => send(sender, OperatorResponse(activeOperator, tentativeOperator))
-      case OperatorResponse(ao, to) => processOperatorResponse(sender, ao, to)
+      case OperatorRequest => send(hostMap(sender), OperatorResponse(activeOperator, tentativeOperator))
+      case OperatorResponse(ao, to) => processOperatorResponse(hostMap(sender), ao, to)
 
-      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, _) => becomeTentativeOperator(operator, sender, p, pHosts, c1, c2)
+      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, _) => becomeTentativeOperator(operator, hostMap(sender), p, pHosts, c1, c2)
 
-      case TentativeAcknowledgement => processAcknowledgement(sender)
+      case TentativeAcknowledgement => processAcknowledgement(hostMap(sender))
       case ContinueSearching => collectOperatorInformation(hosts.now)
 
-      case FinishedChoosing(tChildren) => childFinishedChoosingTentatives(sender, tChildren)
+      case FinishedChoosing(tChildren) => childFinishedChoosingTentatives(hostMap(sender), tChildren)
 
       /**Phase 2: Measurement*/
-      case m: CostMessage => processCostMessage(m, sender)
+      case m: CostMessage => processCostMessage(m, hostMap(sender))
       case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
 
       /**Phase 3: Migration*/
       case StateTransferMessage(o, p) => processStateTransferMessage(o, p)
-      case MigrationComplete => completeMigration(sender)
+      case MigrationComplete => completeMigration(hostMap(sender))
       case _ =>
 
       //case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
