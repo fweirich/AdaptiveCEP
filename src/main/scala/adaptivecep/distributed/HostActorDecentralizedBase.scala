@@ -69,14 +69,14 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   /**
     * Required to Calculate new Placement
     */
-  val stage: Var[Stage] = Var(Stage.TentativeOperatorSelection)
-  val optimumHosts: Var[Seq[NodeHost]] = Var(Seq.empty[NodeHost])
+  val stage: Var[Stage] = Var(Stage.TentativeOperatorSelection)(ReSerializable.doNotSerialize, "cost")
+  val optimumHosts: Var[Seq[NodeHost]] = Var(Seq.empty[NodeHost])(ReSerializable.doNotSerialize, "cost")
 
-  val children: Var[Map[NodeHost, Set[NodeHost]]] = Var(Map.empty[NodeHost, Set[NodeHost]])
+  val children: Var[Map[NodeHost, Set[NodeHost]]] = Var(Map.empty[NodeHost, Set[NodeHost]])(ReSerializable.doNotSerialize, "cost")
   val numberOfChildren: Signal[Int] = Signal{children().keys.size + children().values.foldLeft(0){(x,y) => x + y.size}}
-  val accumulatedCost: Var[Map[NodeHost, Cost]] = Var(Map.empty[NodeHost, Cost])
+  val accumulatedCost: Var[Map[NodeHost, Cost]] = Var(Map.empty[NodeHost, Cost])(ReSerializable.doNotSerialize, "cost")
 
-  val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host])
+  val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host])(ReSerializable.doNotSerialize, "cost")
   val reversePlacement: Signal[Map[Host, Operator]] = Signal{placement().map(_.swap)}
 
   val operators: Signal[Set[Operator]] = Var(Set.empty[Operator])//is not being filled correctly as of now
@@ -84,7 +84,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   val demandViolated: default.Evt[Set[Requirement]] = Evt[Set[Requirement]]()
 
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost") //information is unavailable due to decentralized nature
-  val qos: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
+  val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}//Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
 
   val adaptation: Event[Seq[NodeHost], ParRP] = accumulatedCost.changed map { _ =>
     if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
