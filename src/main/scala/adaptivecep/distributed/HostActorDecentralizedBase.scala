@@ -94,7 +94,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     } : Seq[NodeHost]
   }
 
-  val ready: Signal[Boolean] = Signal{adaptation.latest().now.nonEmpty}
+  val ready: Signal[Boolean] = Signal{accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement}
 
   /**
     * Unused
