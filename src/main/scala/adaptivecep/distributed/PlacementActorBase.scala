@@ -46,7 +46,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   case object Maximizing extends Optimizing
   case object Minimizing extends Optimizing
 
-  val cluster = Cluster(context.system)
+  val cluster: Cluster = Cluster(context.system)
   val r: Random = scala.util.Random
 
   var propsOperators: Map[Props, Operator] = Map.empty[Props, Operator]
