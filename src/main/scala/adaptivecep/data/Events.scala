@@ -33,8 +33,8 @@ object Events {
   case class SetActiveOperator(operator: Props) extends PlacementEvent
 
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
-                                     parentHosts: Set[NodeHost], childHost1: Option[ActorRef],
-                                     childHost2: Option[ActorRef], temperature: Double) extends PlacementEvent
+                                     parentHosts: Set[NodeHost], childHost1: Option[NodeHost],
+                                     childHost2: Option[NodeHost], temperature: Double) extends PlacementEvent
 
   case class ChooseTentativeOperators(tentativeParents: Set[NodeHost]) extends PlacementEvent
 
@@ -57,7 +57,7 @@ object Events {
   case class LatencyCostResponse(instant: Instant) extends PlacementEvent
   case class BandwidthCostResponse(bandwidth: Double) extends PlacementEvent
 
-  case class StateTransferMessage(optimumHosts: Set[NodeHost], parentNode: ActorRef) extends PlacementEvent
+  case class StateTransferMessage(optimumHosts: Seq[NodeHost], parentNode: ActorRef) extends PlacementEvent
   case object TentativeAcknowledgement extends PlacementEvent
   case object ContinueSearching extends PlacementEvent
 

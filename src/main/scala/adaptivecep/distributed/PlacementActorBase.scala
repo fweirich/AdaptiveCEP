@@ -20,6 +20,7 @@ import rescala.{default, _}
 import rescala.core.{CreationTicket, ReSerializable}
 import rescala.default.{Evt, Signal, Var}
 import helper._
+import rescala.parrp.ParRP
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -88,7 +89,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   def place(operator: Operator, host: Host): Unit
 
 
-  val adaption = demandViolated map { _ =>
+  val adaption: reactives.Event[Map[Operator, Host], ParRP] = demandViolated map { _ =>
     adapt(qos(), consumers(), placement()): Map[Operator, Host]
   }
 

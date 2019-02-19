@@ -5,18 +5,22 @@ import java.util.concurrent.TimeUnit
 import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Requirement
+import adaptivecep.distributed.Stage.Stage
 import adaptivecep.distributed.operator._
 import adaptivecep.distributed.operator.{ActiveOperator, Host, HostProps, NodeHost, Operator, TentativeOperator, helper}
-import akka.actor.{ActorRef, ActorSystem, Deploy, Props}
+import akka.actor.{ActorRef, ActorSystem, Cancellable, Deploy, Props}
 import akka.cluster.ClusterEvent._
 import akka.remote
 import rescala.default._
 import rescala.{default, _}
 import rescala.core.{CreationTicket, ReSerializable}
 import rescala.default.{Evt, Signal, Var}
+import rescala.parrp.ParRP
+import rescala.reactives.Event
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+
 
 trait HostActorDecentralizedBase extends HostActorBase with System{
 
@@ -24,58 +28,80 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   case object Maximizing extends Optimizing
   case object Minimizing extends Optimizing
 
+  /**
+    * Constant Values throughout the run
+    */
   val degree: Int = 2
   val system: ActorSystem = context.system
+  var consumer: Boolean = false
 
-
+  /**
+    * Hidden by implementation. No Need for reactives.
+    */
   var activeOperator: Option[ActiveOperator] = None
   var tentativeOperator: Option[TentativeOperator] = None
 
   var tentativeHosts: Set[NodeHost] = Set.empty[NodeHost]
 
-  var childHost1: Option[ActorRef] = None
-  var childHost2: Option[ActorRef] = None
-  var childNode1: Option[ActorRef] = None
+  var childrenCompletedChoosingTentatives: Set[ActorRef] = Set.empty[ActorRef]
+  var childrenMigrated: Set[ActorRef] = Set.empty[ActorRef]
+  var processedCostMessages: Set[ActorRef] = Set.empty[ActorRef]
+
+  var operatorResponses: Set[ActorRef] = Set.empty[ActorRef]
+  var latencyResponses: Set[ActorRef] = Set.empty[ActorRef]
+  var bandwidthResponses: Set[ActorRef] = Set.empty[ActorRef]
+
+  var childHost1: Option[NodeHost] = None
+  var childHost2: Option[NodeHost] = None
+  var childNode1: Option[ActorRef] = None //these 2 need to remain actoref since they are not hostactors
   var childNode2: Option[ActorRef] = None
-  var optimumChildHost1: Option[ActorRef] = None
-  var optimumChildHost2: Option[ActorRef] = None
+  //var optimumChildHost1: Var[Option[NodeHost]] = Var(None)
+  //var optimumChildHost2: Var[Option[NodeHost]] = Var(None)
 
-  var finishedChildren: Int = 0
-  var completedChildren: Int = 0
-  var processedCostMessages: Int = 0
-  var children: Map[NodeHost, Set[NodeHost]] = Map.empty[NodeHost, Set[NodeHost]]
-  var childCosts: Map[NodeHost, (Duration, Double)] = Map.empty[NodeHost, (Duration, Double)]
+  val thisHost: NodeHost = NodeHost(self)
+
   var parent: Option[NodeHost] = None
-  var consumer: Boolean = false
-
-
-  var optimumHosts: Set[NodeHost] = Set.empty[NodeHost]
-
-  var receivedResponses: Var[Set[ActorRef]] = Var(Set.empty[ActorRef])(ReSerializable.doNotSerialize, "consumers")
-  var latencyResponses: Var[Set[ActorRef]] = Var(Set.empty[ActorRef])(ReSerializable.doNotSerialize, "consumers")
-  var bandwidthResponses: Var[Set[ActorRef]] = Var(Set.empty[ActorRef])(ReSerializable.doNotSerialize, "consumers")
-
-  var ready: Signal[Boolean] = Signal{(finishedChildren == children.size) && consumer}
 
   var parentNode: Option[ActorRef] = None
   var parentHosts: Set[NodeHost] = Set.empty[NodeHost]
 
-  //var operators: Map[ActorRef, Option[Operator]] = Map.empty[ActorRef, Option[Operator]]
 
-  val thisHost: Signal[NodeHost] = Signal{NodeHost(self)}
+  /**
+    * Required to Calculate new Placement
+    */
+  val stage: Var[Stage] = Var(Stage.TentativeOperatorSelection)
+  val optimumHosts: Var[Seq[NodeHost]] = Var(Seq.empty[NodeHost])
+
+  val children: Var[Map[NodeHost, Set[NodeHost]]] = Var(Map.empty[NodeHost, Set[NodeHost]])
+  val numberOfChildren: Signal[Int] = Signal{children().keys.size + children().values.foldLeft(0){(x,y) => x + y.size}}
+  val accumulatedCost: Var[Map[NodeHost, Cost]] = Var(Map.empty[NodeHost, Cost])
 
   val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host])
   val reversePlacement: Signal[Map[Host, Operator]] = Signal{placement().map(_.swap)}
 
+  val operators: Signal[Set[Operator]] = Var(Set.empty[Operator])//is not being filled correctly as of now
 
-  val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost")
-  val qos: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
-  val consumers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
-  val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
-  //val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
   val demandViolated: default.Evt[Set[Requirement]] = Evt[Set[Requirement]]()
 
-  val migrationComplete: default.Evt[Unit] = Evt[Unit]()
+  val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost") //information is unavailable due to decentralized nature
+  val qos: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
+
+  val adaptation: Event[Seq[NodeHost], ParRP] = accumulatedCost.changed map { _ =>
+    if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
+      calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2)
+    else {
+      Seq.empty[NodeHost]
+    } : Seq[NodeHost]
+  }
+
+  val ready: Signal[Boolean] = Signal{adaptation.latest().now.nonEmpty}
+
+  /**
+    * Unused
+    */
+  //val consumers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "consumers")
+  //val producers: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "producers")
+  //val operators: Var[Set[Operator]] = Var(Set.empty[Operator])(ReSerializable.doNotSerialize, "operators")
 
   implicit val ordering: Ordering[(Duration, Double)] = new Ordering[(Duration, Double)] {
     def abs(x: Duration) = if (x < Duration.Zero) -x else x
@@ -89,15 +115,23 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     }
   }
 
-  def resetAllData(bool: Boolean): Unit
-  def adapt(): Unit
+  def calculateOptimumHosts(children: Map[NodeHost, Set[NodeHost]],
+                            accumulatedCost: Map[NodeHost, Cost],
+                            childHost1: Option[NodeHost],
+                            childHost2: Option[NodeHost]): Seq[NodeHost]
+  //def applyAdaptation(optimumHosts: Seq[NodeHost]): Unit
 
   override def preStart(): Unit = {
-    tick += {_ => measureCosts(hosts.now)}
-    migrationComplete += {_ => completeMigration}
+    tick += {_ => {measureCosts(parentHosts)}}
+    demandViolated observe {_ => if(ready.now){applyAdaptation(adaptation.latest().now)}}
+
+
+
+
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
     startSimulation()
+    startCostMeasurement()
   }
 
   override def startSimulation(): Unit = context.system.scheduler.schedule(
@@ -128,24 +162,23 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       hosts.set(h.map(host => NodeHost(host)))
       hosts.now.foreach(host => simulatedCosts += host -> (latency(), bandwidth()))
       hostProps = HostPropsSimulator(simulatedCosts)
-    case Node(actorRef) =>{
+    case Node(actorRef) =>
       node = Some(actorRef)
       reportCostsToNode()
-    }
     case OptimizeFor(o) => optimizeFor = o
     case LatencyRequest(t)=>
       sender() ! LatencyResponse(t)
     case LatencyResponse(t) =>
-      latencyResponses.set(latencyResponses.now + sender())
+      latencyResponses += sender()
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
       costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
-      //sendOutCostMessages()
+      costSignal.set(Map(thisHost -> costs))
     case StartThroughPutMeasurement(instant) =>
       throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
       throughputMeasureMap += hostMap(sender()) -> 0
     case TestEvent =>
       throughputMeasureMap += hostMap(sender()) -> (throughputMeasureMap(hostMap(sender())) + 1)
-    case EndThroughPutMeasurement(instant, actual) =>
+    case EndThroughPutMeasurement(instant, _) =>
       val senderDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._1, instant)
       val receiverDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._2, clock.instant())
       val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 1000/*throughputMeasureMap(sender())*/)
@@ -154,57 +187,147 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       throughputMeasureMap += hostMap(sender()) -> 0
     case ThroughPutResponse(r) =>
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
-      bandwidthResponses.set(bandwidthResponses.now + sender())
-      //sendOutCostMessages()
-    case gPE: PlacementEvent => processEvent(gPE, sender())
+      costSignal.set(Map(thisHost -> costs))
+      bandwidthResponses += sender()
+    case gPE: PlacementEvent => processEvent(gPE, hostMap(sender()))
     case HostPropsRequest => send(hostMap(sender()), HostPropsResponse(hostPropsToMap))
     case _ =>
   }
 
-  def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
+  def processEvent(event: PlacementEvent, sender: NodeHost): Unit ={
     event match {
-      case m: CostMessage => processCostMessage(m, sender)
+
+      /**Phase 0: Setup*/
       case BecomeActiveOperator(operator) => becomeActiveOperator(operator)
       case SetActiveOperator(operator) => setActiveOperator(operator)
-      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, _) => becomeTentativeOperator(operator, sender, p, pHosts, c1, c2)
-      case TentativeAcknowledgement => processAcknowledgement(sender)
-
-      case ContinueSearching => setup(hosts.now)
-
-      case ChooseTentativeOperators(parents) => setUpTentatives(parents)
-      case OperatorRequest => send(hostMap(sender), OperatorResponse(activeOperator, tentativeOperator))
-      case OperatorResponse(ao, to) => processOperatorResponse(sender, ao, to)
-      case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
-      case ChildResponse(c) => processChildResponse(sender, c)
       case ChildHost1(h) => receiveChildHost(hostMap(h))
-      case ChildHost2(h1, h2) => receiveChildHosts(h1, h2)
-      case ParentHost(p, ref) => receiveParentHost(p, ref)
+      case ChildHost2(h1, h2) => receiveChildHosts(hostMap(h1), hostMap(h2))
+      case ParentHost(p, ref) => receiveParentHost(hostMap(p), ref)
+
+      /**Phase 1: Tentative Operator Selection*/
+      case ChooseTentativeOperators(parents) => setUpTentatives(parents)
+      case OperatorRequest => send(sender, OperatorResponse(activeOperator, tentativeOperator))
+      case OperatorResponse(ao, to) => processOperatorResponse(sender, ao, to)
+
+      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, _) => becomeTentativeOperator(operator, sender, p, pHosts, c1, c2)
+
+      case TentativeAcknowledgement => processAcknowledgement(sender)
+      case ContinueSearching => collectOperatorInformation(hosts.now)
+
       case FinishedChoosing(tChildren) => childFinishedChoosingTentatives(sender, tChildren)
-      //   case StateTransferMessage(o, p) => processStateTransferMessage(o, p)
+
+      /**Phase 2: Measurement*/
+      case m: CostMessage => processCostMessage(m, sender)
       case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
-      case MigrationComplete => migrationComplete.fire()
+
+      /**Phase 3: Migration*/
+      case StateTransferMessage(o, p) => processStateTransferMessage(o, p)
+      case MigrationComplete => completeMigration(sender)
       case _ =>
+
+      //case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
+      //case ChildResponse(c) => processChildResponse(sender, c)
     }
   }
 
+  /**
+  *
+  * Phase 0: Setup
+  *
+  */
 
-  def chooseTentativeOperators(hosts: Set[NodeHost],
-                               children : Map[NodeHost, Set[NodeHost]],
-                               parent: Option[NodeHost],
-                               activeOperator: Option[ActiveOperator],
-                               tentativeHosts: Set[NodeHost],
-                               operators: Map[Host, Operator],
-                               degree: Int,
-                               thisHost: NodeHost,
-                               parentHosts: Set[NodeHost]) : Unit = {
-    //println("CHOOSING TENTATIVE OPERATORS")
-    if (children.nonEmpty || parent.isDefined){
+  def becomeActiveOperator(operator: ActiveOperator): Unit ={
+    if(!isOperator){
+      activeOperator = Some(operator)
+      val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
+      node = Some(temp)
+      node.get ! Controller(self)
+
+    }else{
+      println("ERROR: Host already has an Operator")
+    }
+  }
+
+  def setActiveOperator(props: Props): Unit ={
+    if(!isOperator){
+      activeOperator = Some(ActiveOperator(props, null))
+    }else{
+      println("ERROR: Host already has an Operator")
+    }
+  }
+
+  def receiveChildHost(h: NodeHost): Unit = {
+    children.transform(_ + (h -> Set.empty[NodeHost]))
+    childHost1 = Some(h)
+    send(h, ParentHost(self, node.get))
+  }
+
+  def receiveChildHosts(h1: NodeHost, h2: NodeHost): Unit = {
+    children.transform(_ + (h1 -> Set.empty[NodeHost]))
+    children.transform(_ + (h2 -> Set.empty[NodeHost]))
+    childHost1 = Some(h1)
+    childHost2 = Some(h2)
+    send(h1, ParentHost(self, node.get))
+    send(h2, ParentHost(self, node.get))
+  }
+
+  def receiveParentHost(p: NodeHost, ref: ActorRef): Unit = {
+    hostToNodeMap += p -> ref
+    if (node.isDefined) {
+      reportCostsToNode()
+      node.get ! Parent(ref)
+      parentNode = Some(ref)
+      parent = Some(p)
+    }
+  }
+
+  /**
+  *
+  * Phase 1: Tentative Operator Selection
+  *
+  */
+
+  def collectOperatorInformation(hosts: Set[NodeHost]) : Unit = {
+    //println("setting UP", neighbors)
+    operatorResponses = Set.empty[ActorRef]
+    hosts.foreach(neighbor => send(neighbor, OperatorRequest))
+  }
+
+  def processOperatorResponse(sender: NodeHost, ao: Option[ActiveOperator], to: Option[TentativeOperator]): Unit = {
+    operatorResponses += sender.actorRef
+    if (ao.isDefined) {
+      placement.transform(_ + (ao.get -> sender))
+    } else {
+      placement.transform(_ + (to.get -> sender))
+    }
+    if (operatorResponses.size == hosts.now.size) {
+      chooseTentativeOperators()
+    }
+  }
+
+  def setUpTentatives(parents: Set[NodeHost]): Unit = {
+    stage.set(Stage.TentativeOperatorSelection)
+    parentHosts = parents
+    if (parents.isEmpty) {
+      consumer = true
+      send(children.now.toSeq.head._1, ChooseTentativeOperators(Set(thisHost)))
+    } else if (children.now.isEmpty) {
+      parentHosts.foreach(send(_, FinishedChoosing(Set.empty[NodeHost])))
+      stage.set(Stage.Measurement)
+    } else {
+      collectOperatorInformation(hosts.now)
+    }
+  }
+
+  def chooseTentativeOperators() : Unit = {
+    println("CHOOSING TENTATIVE OPERATORS")
+    if (children.now.nonEmpty || parent.isDefined){
       if(activeOperator.isDefined){
         var timeout = 0
         var chosen: Boolean = false
         while (tentativeHosts.size < degree && timeout < 1000 && !chosen){
-          val randomNeighbor =  hosts.toVector(random.nextInt(hosts.size))
-          if(operators.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
+          val randomNeighbor =  hosts.now.toVector(random.nextInt(hosts.now.size))
+          if(reversePlacement.now.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(activeOperator.get.props, activeOperator.get.dependencies)
             send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0))
             chosen = true
@@ -213,7 +336,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         }
         if(timeout >= 1000){
           //println("Not enough hosts available as tentative Operators. Continuing without...")
-          send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
+          send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
         }
         //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
       } else {
@@ -221,134 +344,58 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       }
     }
     else {
+      stage.set(Stage.Measurement)
       parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
     }
   }
 
-  def setup(hosts: Set[NodeHost]) : Unit = {
-    //println("setting UP", neighbors)
-    receivedResponses.set(Set.empty[ActorRef])
-    hosts.foreach(neighbor => send(neighbor, OperatorRequest))
-  }
-
-  /*def adapt: Unit = {
-    if (consumer && ready) {
-      ready = false
-      broadcastMessage(Start)
-    }
-  }*/
-
-  def receiveChildHost(h: NodeHost): Unit = {
-    children += h -> Set.empty[NodeHost]
-    childHost1 = Some(h.actorRef)
-    send(h, ParentHost(self, node.get))
-  }
-
-  def processOperatorResponse(sender: ActorRef, ao: Option[ActiveOperator], to: Option[TentativeOperator]): Unit = {
-    receivedResponses.set(receivedResponses.now + sender)
-    if (ao.isDefined) {
-      placement.set(placement.now + (ao.get -> hostMap(sender)))
+  def becomeTentativeOperator(operator: TentativeOperator, sender: NodeHost, p: ActorRef, pHosts: Set[NodeHost], c1 : Option[NodeHost], c2: Option[NodeHost]): Unit ={
+    parentNode = Some(p)
+    parentHosts = pHosts
+    childHost1 = c1
+    childHost2 = c2
+    if(!isOperator){
+      tentativeOperator = Some(operator)
+      send(sender, TentativeAcknowledgement)
     } else {
-      placement.set(placement.now + (to.get -> hostMap(sender)))
-    }
-    if (receivedResponses.now.size == hosts.now.size) {
-      chooseTentativeOperators(hosts.now, children, parent, activeOperator, tentativeHosts, reversePlacement.now, degree, thisHost.now, parentHosts)
+      //println("ERROR: Host already has an Operator")
+      send(sender, ContinueSearching)
     }
   }
 
-  def receiveParentHost(p: ActorRef, ref: ActorRef): Unit = {
-    hostToNodeMap += hostMap(p) -> ref
-    if (node.isDefined) {
-      reportCostsToNode()
-      node.get ! Parent(ref)
-      parentNode = Some(ref)
-      parent = Some(hostMap(p))
-    }
-  }
-
-  def receiveChildHosts(h1: ActorRef, h2: ActorRef): Unit = {
-    children += hostMap(h1) -> Set.empty[NodeHost]
-    children += hostMap(h2) -> Set.empty[NodeHost]
-    childHost1 = Some(h1)
-    childHost2 = Some(h2)
-    send(hostMap(h1), ParentHost(self, node.get))
-    send(hostMap(h2), ParentHost(self, node.get))
-  }
-
-  def completeMigration = {
-    completedChildren += 1
-    if (parent.isDefined) {
-      if (completedChildren == children.size) {
-        send(parent.get, MigrationComplete)
-      }
-    } else if (consumer) {
-      if (completedChildren == children.size) {
-        updateChildren()
-        resetAllData(false)
-        send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost.now))
-      }
-    } else {
-      println("ERROR: Something went terribly wrong")
-    }
-  }
-
-  def setUpTentatives(parents: Set[NodeHost]) = {
-    parentHosts = parents
-    if (parents.isEmpty) {
-      consumer = true
-      send(children.toSeq.head._1, ChooseTentativeOperators(Set(thisHost.now)))
-    } else if (children.isEmpty) {
-      parentHosts.foreach(send(_, FinishedChoosing(Set.empty[NodeHost])))
-    } else {
-      setup(hosts.now)
-    }
-  }
-
-  def processAcknowledgement(sender: ActorRef) = {
-    tentativeHosts = tentativeHosts + hostMap(sender)
+  def processAcknowledgement(sender: NodeHost): Unit = {
+    tentativeHosts = tentativeHosts + sender
     if (tentativeHosts.size == degree) {
-      send(children.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost.now))
+      send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
     } else {
-      chooseTentativeOperators(hosts.now, children, parent, activeOperator, tentativeHosts, reversePlacement.now, degree, thisHost.now, parentHosts)
+      chooseTentativeOperators()
     }
   }
 
-  def processChildResponse(sender: ActorRef, c: ActorRef) = {
-    if (childHost1.isDefined && sender.equals(childHost1.get)) {
-      childNode1 = Some(c)
-    } else if (childHost2.isDefined && sender.equals(childHost2.get)) {
-      childNode2 = Some(c)
-    } else {
-      println("ERROR: Got Child Response from non child")
-    }
-    if (childNodes.size == children.size) {
-      childNodes.size match {
-        case 1 => node.get ! Child1(childNode1.get)
-        case 2 => node.get ! Child2(childNode1.get, childNode2.get)
-        case _ => println("ERROR: Got a Child Response but Node has no children")
-      }
-      childNode1 = None
-      childNode2 = None
-    }
-  }
-
-  def childFinishedChoosingTentatives(sender: ActorRef, tChildren: Set[NodeHost]) = {
-    children += hostMap(sender) -> tChildren
-    finishedChildren += 1
-    //println("A child finished choosing tentative operators", finishedChildren, "/", children.size)
+  def childFinishedChoosingTentatives(sender: NodeHost, tChildren: Set[NodeHost]): Unit = {
+    children.transform(_ + (sender -> tChildren))
+    childrenCompletedChoosingTentatives += sender.actorRef
+    println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives, "/", children.now.size)
     if (activeOperator.isDefined) {
-      if (finishedChildren == children.size) {
+      if (childrenCompletedChoosingTentatives.size == children.now.size) {
+        stage.set(Stage.Measurement)
         if (consumer) {
           //ready = true
-          //println("READY TO CALCULATE NEW PLACEMENT!")
+          println("READY TO CALCULATE NEW PLACEMENT!")
         } else {
           parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
         }
-      } else if (finishedChildren < children.size) {
-        children.toSeq(finishedChildren)._1.actorRef ! ChooseTentativeOperators(tentativeHosts + thisHost.now)
+      } else if (childrenCompletedChoosingTentatives.size < children.now.size) {
+        children.now.toSeq(childrenCompletedChoosingTentatives.size)._1.actorRef ! ChooseTentativeOperators(tentativeHosts + thisHost)
       }
     }
   }
+
+  /**
+    *
+    * Phase 2: Measurement
+    *
+    * */
 
   override def measureCosts(hosts: Set[NodeHost]):Unit = {
     val now = clock.instant()
@@ -371,86 +418,70 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         }
       }
     }
-    /*if (activeOperator.isDefined) {
-      broadcastMessage(Start)
-    }*/
   }
 
-  def childNodes : Seq[ActorRef] = {
-    if(childNode1.isDefined && childNode2.isDefined){
-      Seq(childNode1.get, childNode2.get)
-    } else if(childNode1.isDefined){
-      Seq(childNode1.get)
-    } else if(childNode2.isDefined){
-      Seq(childNode2.get)
-    }else {
-      Seq.empty[ActorRef]
+  def sendOutCostMessages() : Unit = {
+    if(children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
+      parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
     }
+    else if (processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
+      //println(optimumHosts)
+      var bottleNeckNode = thisHost
+      if(optimizeFor == "latency"){
+        bottleNeckNode = minmaxBy(Maximizing, optimumHosts.now)(accumulatedCost.now.apply(_).duration)
+      }else if(optimizeFor == "bandwidth"){
+        bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(accumulatedCost.now.apply(_).bandwidth)
+      }else{
+        bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+      }
+      parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
+        mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
+      /*if (consumer) {
+        broadcastMessage(StateTransferMessage(optimumHosts, node.get))
+      }*/
+    }
+    println(children.now.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
   }
 
-  def broadcastMessage(message: PlacementEvent): Unit ={
-    children.foreach(child => {
-      send(child._1, message)
-      child._2.foreach(tentativeChild => send(tentativeChild, message))
-    })
-  }
-
-  def processCostMessage(m: CostMessage, sender: ActorRef): Unit = {
+  def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
     if(isOperator && isChild(sender)){
-      childCosts += hostMap(sender) -> (m.latency, m.bandwidth)
+      accumulatedCost.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
       //println(m.latency, m.bandwidth)
     }
     else {
       println("ERROR: Cost Message arrived at Host without Operator")
     }
-    processedCostMessages += 1
+    processedCostMessages += sender.actorRef
     //sendOutCostMessages()
   }
 
-  private def isChild(actorRef: ActorRef): Boolean ={
-    var isChild = false
-    children.foreach(child =>
-      if(child._1.equals(hostMap(actorRef)) || child._2.contains(hostMap(actorRef))){
-        isChild = true
-      })
-    isChild
-  }
+  /**
+    *
+    * Phase 3: Migration
+    *
+    */
 
-  def mergeBandwidth(b1: Double, b2: Double): Double = {
-    Math.min(b1,b2)
-  }
-
-  def getPreviousChild(actorRef: ActorRef): ActorRef = {
-    children.foreach(child => if(child._1.equals(hostMap(actorRef)) || child._2.contains(hostMap(actorRef))) return child._1.actorRef)
-    null
-  }
-
-  def getChildAndTentatives(actorRef: ActorRef): Set[NodeHost] = {
-    Set(hostMap(actorRef)) ++ children(hostMap(actorRef))
-  }
-
-  def setNode(actorRef: ActorRef): Unit = {
-    node = Some(actorRef)
-    if(parentNode.isDefined){
-      node.get ! Parent(parentNode.get)
+  def applyAdaptation(optimumHosts: Seq[NodeHost]): Unit = {
+    childHost1 = Option(optimumHosts.head)
+    childHost2 = Option(optimumHosts.apply(1))
+    stage.set(Stage.Migration)
+    if (consumer) {
+      broadcastMessage(StateTransferMessage(optimumHosts, node.get))
     }
   }
 
-  def mergeLatency(latency1: Duration, latency2: Duration): Duration ={
-    latency1.+(latency2)
-  }
-
-  def processStateTransferMessage(oHosts: Seq[ActorRef], p: ActorRef): Unit ={
-    //println("PROCESSING STATE TRANSFER....")
+  def processStateTransferMessage(oHosts: Seq[NodeHost], p: ActorRef): Unit ={
+    println("PROCESSING STATE TRANSFER....")
+    stage.set(Stage.Migration)
     hostToNodeMap += hostMap(sender) -> p
     parent = Some(hostMap(sender))
     parentNode = Some(p)
-    if(oHosts.contains(self)){
+    if(oHosts.contains(thisHost)){
       if(activeOperator.isDefined){
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
-        if(children.nonEmpty){
-          broadcastMessage(StateTransferMessage(optimumHosts, node.get))
+        if(children.now.nonEmpty){
+          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -460,8 +491,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         activate()
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
-        if(children.nonEmpty) {
-          broadcastMessage(StateTransferMessage(optimumHosts, node.get))
+        if(children.now.nonEmpty) {
+          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -477,55 +508,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     }
   }
 
-  def updateChildren(): Unit = {
-    children = Map.empty[NodeHost, Set[NodeHost]]
-    optimumHosts.foreach(host => children += host -> Set.empty[NodeHost])
-  }
-
-  /*def setOperators(sender: ActorRef, activeOperator: Option[ActiveOperator], tentativeOperator: Option[TentativeOperator]): Unit = {
-    if (activeOperator.isDefined){
-      operators += sender -> activeOperator
-    }
-    else
-      operators += sender -> tentativeOperator
-  }*/
-
-  def setActiveOperator(props: Props): Unit ={
-    if(!isOperator){
-      activeOperator = Some(ActiveOperator(props, null))
-    }else{
-      println("ERROR: Host already has an Operator")
-    }
-  }
-
-  def becomeActiveOperator(operator: ActiveOperator): Unit ={
-    if(!isOperator){
-      activeOperator = Some(operator)
-      val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
-      node = Some(temp)
-      node.get ! Controller(self)
-
-    }else{
-      println("ERROR: Host already has an Operator")
-    }
-  }
-
-  def becomeTentativeOperator(operator: TentativeOperator, sender: ActorRef, p: ActorRef, pHosts: Set[NodeHost], c1 : Option[ActorRef], c2: Option[ActorRef]): Unit ={
-    parentNode = Some(p)
-    parentHosts = pHosts
-    childHost1 = c1
-    childHost2 = c2
-    if(!isOperator){
-      tentativeOperator = Some(operator)
-      send(hostMap(sender), TentativeAcknowledgement)
-    } else {
-      //println("ERROR: Host already has an Operator")
-      send(hostMap(sender), ContinueSearching)
-    }
-  }
-
   def activate() : Unit = {
-    //println("ACTIVATING...")
+    println("ACTIVATING...")
     if(tentativeOperator.isDefined){
       activeOperator = Some(ActiveOperator(tentativeOperator.get.props, tentativeOperator.get.dependencies))
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
@@ -538,10 +522,119 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     }
   }
 
-  def numberOfChildren: Int ={
-    var count = 0
-    children.foreach(child => count += (child._2.size + 1))
-    count
+  def resetAllData(deleteEverything: Boolean): Unit ={
+    if(deleteEverything){
+      if(node.isDefined){
+        node.get ! Kill
+      }
+      node = None
+      parent = None
+      activeOperator = None
+      tentativeOperator = None
+      children.set(Map.empty[NodeHost, Set[NodeHost]])
+      childHost1 = None
+      childHost2 = None
+    }
+
+    accumulatedCost.set(Map.empty[NodeHost, Cost])
+
+    parentHosts = Set.empty[NodeHost]
+
+    optimumHosts.set(Seq.empty[NodeHost])
+    tentativeHosts = Set.empty[NodeHost]
+
+    placement.set(Map.empty[Operator, Host])
+
+    childrenCompletedChoosingTentatives = Set.empty[ActorRef]
+    childrenMigrated = Set.empty[ActorRef]
+    processedCostMessages = Set.empty[ActorRef]
+    operatorResponses = Set.empty[ActorRef]
+    latencyResponses = Set.empty[ActorRef]
+    bandwidthResponses = Set.empty[ActorRef]
+
+    //ready = false
+
+    //operators = Map.empty[ActorRef, Option[Operator]]
+  }
+
+  def completeMigration(sender: NodeHost): Unit = {
+    childrenMigrated += sender.actorRef
+    if (parent.isDefined) {
+      if (childrenMigrated.size == children.now.size) {
+        send(parent.get, MigrationComplete)
+      }
+    } else if (consumer) {
+      if (childrenMigrated.size == children.now.size) {
+        updateChildren()
+        resetAllData(false)
+        send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
+      }
+    } else {
+      println("ERROR: Something went terribly wrong")
+    }
+  }
+
+  /**
+    *
+    * Helper Methods
+    *
+    */
+
+  def childNodes : Seq[ActorRef] = {
+    if(childNode1.isDefined && childNode2.isDefined){
+      Seq(childNode1.get, childNode2.get)
+    } else if(childNode1.isDefined){
+      Seq(childNode1.get)
+    } else if(childNode2.isDefined){
+      Seq(childNode2.get)
+    }else {
+      Seq.empty[ActorRef]
+    }
+  }
+
+  def broadcastMessage(message: PlacementEvent): Unit ={
+    children.now.foreach(child => {
+      send(child._1, message)
+      child._2.foreach(tentativeChild => send(tentativeChild, message))
+    })
+  }
+
+  private def isChild(host: NodeHost): Boolean ={
+    var isChild = false
+    children.now.foreach(child =>
+      if(child._1.equals(host) || child._2.contains(host)){
+        isChild = true
+      })
+    isChild
+  }
+
+  def mergeBandwidth(b1: Double, b2: Double): Double = {
+    Math.min(b1,b2)
+  }
+
+  def getPreviousChild(host: NodeHost, children: Map[NodeHost, Set[NodeHost]]): NodeHost= {
+    children.foreach(child => if(child._1.equals(host) || child._2.contains(host)) return child._1)
+    null
+  }
+
+  def getChildAndTentatives(host: NodeHost, children: Map[NodeHost, Set[NodeHost]]): Set[NodeHost] = {
+    Set(host) ++ children(host)
+  }
+
+  def setNode(actorRef: ActorRef): Unit = {
+    node = Some(actorRef)
+    if(parentNode.isDefined){
+      node.get ! Parent(parentNode.get)
+    }
+  }
+
+  def mergeLatency(latency1: Duration, latency2: Duration): Duration ={
+    latency1.+(latency2)
+  }
+
+  def updateChildren(): Unit = {
+    children.set(Map.empty[NodeHost, Set[NodeHost]])
+    optimumHosts.now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
   }
 
   def isOperator: Boolean ={
@@ -567,4 +660,35 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     case Maximizing => traversable maxBy f
     case Minimizing => traversable minBy f
   }
+
+  /*def setOperators(sender: ActorRef, activeOperator: Option[ActiveOperator], tentativeOperator: Option[TentativeOperator]): Unit = {
+    if (activeOperator.isDefined){
+      operators += sender -> activeOperator
+    }
+    else
+      operators += sender -> tentativeOperator
+  }*/
+  /*
+  def processChildResponse(sender: NodeHost, c: ActorRef) = {
+    if (childHost1.isDefined && sender.equals(childHost1.get)) {
+      childNode1 = Some(c)
+    } else if (childHost2.isDefined && sender.equals(childHost2.get)) {
+      childNode2 = Some(c)
+    } else {
+      println("ERROR: Got Child Response from non child")
+    }
+    if (childNodes.size == children.size) {
+      childNodes.size match {
+        case 1 => node.get ! Child1(childNode1.get)
+        case 2 => node.get ! Child2(childNode1.get, childNode2.get)
+        case _ => println("ERROR: Got a Child Response but Node has no children")
+      }
+      childNode1 = None
+      childNode2 = None
+    }
+  }
+  */
+
+
+
 }

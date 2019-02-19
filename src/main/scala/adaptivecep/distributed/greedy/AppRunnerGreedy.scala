@@ -5,7 +5,7 @@ import java.io.File
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.{Query3, Query4, X}
 import adaptivecep.distributed.centralized.AppRunnerCentralized._
-import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
+import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._
@@ -13,7 +13,7 @@ import akka.actor.{ActorRef, ActorSystem, Address, Deploy, Props}
 import akka.remote.RemoteScope
 import com.typesafe.config.ConfigFactory
 
-/*
+
 object AppRunnerGreedy extends App{
 
   val file = new File("application.conf")
@@ -126,17 +126,17 @@ object AppRunnerGreedy extends App{
   val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11,
     host12, host13, host14, host15, host16, host17, host18, host19, host20)
 
-  hosts.foreach(host => host ! Neighbors(hosts, hosts))
+  hosts.foreach(host => host ! Hosts(hosts))
 
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
   val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
   val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
   val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
 
-  val operatorA = ActiveOperator(NodeHost(host1), null, Seq.empty[Operator])
-  val operatorB = ActiveOperator(NodeHost(host2), null, Seq.empty[Operator])
-  val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
-  val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
+  val operatorA = ActiveOperator(null, Seq.empty[Operator])
+  val operatorB = ActiveOperator(null, Seq.empty[Operator])
+  val operatorC = ActiveOperator(null, Seq.empty[Operator])
+  val operatorD = ActiveOperator(null, Seq.empty[Operator])
 
   //val delayableHosts: Seq[ActorRef] = Seq(host4, host5, host6, host7, host8, host9, host10/*, host11, host12, host13, host14, host15*/)
 
@@ -146,11 +146,11 @@ object AppRunnerGreedy extends App{
     "C" -> publisherC,
     "D" -> publisherD)
 
-  val publisherOperators: Map[String, Operator] = Map(
-    "A" -> operatorA,
-    "B" -> operatorB,
-    "C" -> operatorC,
-    "D" -> operatorD)
+  val publisherHosts: Map[String, Host] = Map(
+    "A" -> NodeHost(host1),
+    "B" -> NodeHost(host2),
+    "C" -> NodeHost(host3),
+    "D" -> NodeHost(host4))
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
@@ -158,7 +158,7 @@ object AppRunnerGreedy extends App{
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorGreedy(actorSystem,
     query3,
-    publishers, publisherOperators,
+    publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
     PathBandwidthMonitorFactory(interval = 1000, logging = false),NodeHost(host20), hosts, optimizeFor)), "Placement")
@@ -168,4 +168,3 @@ object AppRunnerGreedy extends App{
   placement ! Start
 }
 
-*/

@@ -9,17 +9,15 @@ import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
-import rescala.default.Signal
-import rescala.default.Var
-
+import rescala.default._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.ExecutionContext.Implicits.global
 
-/*
+
 case class PlacementActorGreedy (actorSystem: ActorSystem,
                                  query: Query,
                                  publishers: Map[String, ActorRef],
-                                 publisherOperators: Map[String, Operator],
+                                 publisherHosts: Map[String, Host],
                                  frequencyMonitorFactory: MonitorFactory,
                                  latencyMonitorFactory: MonitorFactory,
                                  bandwidthMonitorFactory: MonitorFactory,
@@ -63,22 +61,17 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
         }
       }
     })
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(60, TimeUnit.SECONDS),
-      () => {
-        consumers.foreach(consumer => consumer.host.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Seq.empty[ActorRef]))
-      })
-    previousPlacement = map
+    placement.set(map)
   }
 
   def place(operator: Operator, host: Host): Unit = {
     if(host != NoHost && operator.props != null){
-      val moved = previousPlacement.contains(operator) && previousPlacement(operator) != host
+      val moved = placement.now.contains(operator) && placement.now.apply(operator) != host
       if(moved) {
         propsActors(operator.props) ! Kill
         //println("killing old actor", propsActors(operator.props))
       }
-      if (moved || previousPlacement.isEmpty){
+      if (moved || placement.now.size < operators.now.size){
         val hostActor = host.asInstanceOf[NodeHost].actorRef
         val ref = actorSystem.actorOf(operator.props.withDeploy(Deploy(scope = RemoteScope(hostActor.path.address))))
         hostActor ! SetActiveOperator(operator.props)
@@ -90,4 +83,3 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
     }
   }
 }
-*/

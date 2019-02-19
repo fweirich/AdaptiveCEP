@@ -212,7 +212,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     result
   }
 
-  def resetAllData(deleteEverything: Boolean): Unit ={
+  /*def resetAllData(deleteEverything: Boolean): Unit ={
     if(deleteEverything){
       if(node.isDefined){
         node.get ! Kill
@@ -243,6 +243,6 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     ready = false
 
     operators = Map.empty[ActorRef, Option[Operator]]
-  }
+  }*/
 }
 */

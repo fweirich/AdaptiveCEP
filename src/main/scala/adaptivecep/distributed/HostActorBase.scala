@@ -8,7 +8,7 @@ import adaptivecep.data.Cost.Cost
 import adaptivecep.data.Events._
 import adaptivecep.distributed.operator.{Host, NoHost, NodeHost}
 import adaptivecep.simulation.ContinuousBoundedValue
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
@@ -26,14 +26,14 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   val cluster: Cluster = Cluster(context.system)
   val interval = 3
   var optimizeFor: String = "latency"
+  val random: Random = new Random(clock.millis())
 
-  //the node currently running on this host
+  var measurementTask: Cancellable = _
   var node: Option[ActorRef] = Some(self)
-
 
   val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[NodeHost, scala.concurrent.duration.Duration] = Map.empty[NodeHost, scala.concurrent.duration.Duration]
-  val random: Random = new Random(clock.millis())
+
 
   var hostProps: HostPropsSimulator = HostPropsSimulator(simulatedCosts)
   var hostToNodeMap: Map[NodeHost, ActorRef] = Map.empty[NodeHost, ActorRef]
@@ -42,6 +42,9 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   var costs: Map[Host, Cost] = Map.empty[Host, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
 
   var hostMap: Map[ActorRef, NodeHost] = Map.empty[ActorRef, NodeHost]
+
+  val hosts: Var[Set[NodeHost]] = Var(Set.empty[NodeHost])(ReSerializable.doNotSerialize, "consumers")
+  val tick: Evt[Unit] = Evt[Unit]()
 
   var simulatedCosts: Map[NodeHost, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])] =
     Map.empty[NodeHost, (ContinuousBoundedValue[Duration], ContinuousBoundedValue[Double])]
@@ -54,9 +57,6 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     def advanceBandwidth = HostPropsSimulator(
       costs map { case (host, (latency, bandwidth)) => (host, (latency, bandwidth.advance)) })
   }
-
-  val hosts: Var[Set[NodeHost]] = Var(Set.empty[NodeHost])(ReSerializable.doNotSerialize, "consumers")
-  val tick: Evt[Unit] = Evt[Unit]()
 
   def reportCostsToNode(): Unit = {
     var result = Map.empty[ActorRef, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100))
@@ -153,12 +153,13 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     tick.fire()
   }
 
-  def startCostMeasurement(): Unit = context.system.scheduler.schedule(
-    initialDelay = FiniteDuration((random.nextDouble * 3000).toLong, TimeUnit.MILLISECONDS),
-    interval = FiniteDuration(interval, TimeUnit.SECONDS),
-    runnable = () => {
-      tick.fire()
-    })
+  def startCostMeasurement(): Unit ={
+    measurementTask = context.system.scheduler.schedule(
+      initialDelay = FiniteDuration((random.nextDouble * 3000).toLong, TimeUnit.MILLISECONDS),
+      interval = FiniteDuration(interval, TimeUnit.SECONDS),
+      runnable = () => {
+        tick.fire()
+    })}
 
   def receive = {
     case MemberUp(member) =>
@@ -170,7 +171,8 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       log.info("Member is Removed: {} after {}",
         member.address, previousStatus)
     case Hosts(h)=>
-      hosts.set(h.map(host => NodeHost(host)))
+      h.foreach(host => hostMap = hostMap + (host -> NodeHost(host)))
+      hosts.set(hostMap.values.toSet)
       hosts.now.foreach(host => simulatedCosts += host -> (latency(), bandwidth()))
       hostProps = HostPropsSimulator(simulatedCosts)
     case Node(actorRef) =>{
