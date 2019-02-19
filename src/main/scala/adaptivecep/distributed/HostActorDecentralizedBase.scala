@@ -190,7 +190,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
     case gPE: PlacementEvent => processEvent(gPE, hostMap(sender()))
-    case HostPropsRequest => send(hostMap(sender()), HostPropsResponse(hostPropsToMap))
+    case HostPropsRequest => sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>
   }
 
