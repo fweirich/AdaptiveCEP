@@ -26,12 +26,12 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
   val cluster: Cluster = Cluster(context.system)
   val interval = 3
   var optimizeFor: String = "latency"
+  val clock: Clock = Clock.systemDefaultZone
   val random: Random = new Random(clock.millis())
 
   var measurementTask: Cancellable = _
   var node: Option[ActorRef] = Some(self)
 
-  val clock: Clock = Clock.systemDefaultZone
   var latencies: Map[NodeHost, scala.concurrent.duration.Duration] = Map.empty[NodeHost, scala.concurrent.duration.Duration]
 
   var hostToNodeMap: Map[NodeHost, ActorRef] = Map.empty[NodeHost, ActorRef]
