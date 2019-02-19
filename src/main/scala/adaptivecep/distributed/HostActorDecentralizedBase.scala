@@ -298,7 +298,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     operatorResponses += sender.actorRef
     if (ao.isDefined) {
       placement.transform(_ + (ao.get -> sender))
-    } else {
+    } else if(to.isDefined) {
       placement.transform(_ + (to.get -> sender))
     }
     if (operatorResponses.size == hosts.now.size) {
@@ -328,7 +328,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         var chosen: Boolean = false
         while (tentativeHosts.size < degree && timeout < 1000 && !chosen){
           val randomNeighbor =  hosts.now.toVector(random.nextInt(hosts.now.size))
-          if(reversePlacement.now.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
+          if(!reversePlacement.now.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(activeOperator.get.props, activeOperator.get.dependencies)
             send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0))
             chosen = true
