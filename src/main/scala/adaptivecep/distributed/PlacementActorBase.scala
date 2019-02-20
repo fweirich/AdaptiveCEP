@@ -55,7 +55,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   //var hostProps: Map[Host, HostProps] = Map.empty[Host, HostProps].withDefaultValue(HostProps(Seq.empty, Seq.empty))
   var consumers1: Seq[Operator] = Seq.empty[Operator]
-  var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]]
+  var costsMap: Map[Host, Map[Host, Cost]] = Map.empty[Host, Map[Host, Cost]].withDefaultValue(Map.empty[Host, Cost].withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), 100)))
   var hostMap: Map[ActorRef, NodeHost] = Map(here.actorRef -> here)
   var hostToNodeMap: Map[NodeHost, ActorRef] = Map.empty[NodeHost, ActorRef]
 
