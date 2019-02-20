@@ -70,7 +70,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     * Required to Calculate new Placement
     */
   val stage: Var[Stage] = Var(Stage.TentativeOperatorSelection)(ReSerializable.doNotSerialize, "cost")
-  val optimumHosts: Var[Seq[NodeHost]] = Var(Seq.empty[NodeHost])(ReSerializable.doNotSerialize, "cost")
+  //val optimumHosts: Var[Seq[NodeHost]] = Var(Seq.empty[NodeHost])(ReSerializable.doNotSerialize, "cost")
 
   val children: Var[Map[NodeHost, Set[NodeHost]]] = Var(Map.empty[NodeHost, Set[NodeHost]])(ReSerializable.doNotSerialize, "cost")
   val numberOfChildren: Signal[Int] = Signal{children().keys.size + children().values.foldLeft(0){(x,y) => x + y.size}}
@@ -434,11 +434,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         //println(optimumHosts)
         var bottleNeckNode = thisHost
         if (optimizeFor == "latency") {
-          bottleNeckNode = minmaxBy(Maximizing, optimumHosts.now)(accumulatedCost.now.apply(_).duration)
+          bottleNeckNode = minmaxBy(Maximizing, adaptation.latest().now)(accumulatedCost.now.apply(_).duration)
         } else if (optimizeFor == "bandwidth") {
-          bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(accumulatedCost.now.apply(_).bandwidth)
+          bottleNeckNode = minmaxBy(Minimizing, adaptation.latest().now)(accumulatedCost.now.apply(_).bandwidth)
         } else {
-          bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+          bottleNeckNode = minmaxBy(Minimizing, adaptation.latest().now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
         }
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
           mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
@@ -488,7 +488,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
-          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
+          broadcastMessage(StateTransferMessage(adaptation.latest().now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -499,7 +499,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
-          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
+          broadcastMessage(StateTransferMessage(adaptation.latest().now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -547,7 +547,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
     parentHosts = Set.empty[NodeHost]
 
-    optimumHosts.set(Seq.empty[NodeHost])
+    //optimumHosts.set(Seq.empty[NodeHost])
     tentativeHosts = Set.empty[NodeHost]
 
     placement.set(Map.empty[Operator, Host])
@@ -644,7 +644,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   def updateChildren(): Unit = {
     children.set(Map.empty[NodeHost, Set[NodeHost]])
-    optimumHosts.now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
+    adaptation.latest().now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
   }
 
   def isOperator: Boolean ={
