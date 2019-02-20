@@ -501,7 +501,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          updateChildren()
+          updateChildren(adaptation.now)
         } else {
           send(parent.get, MigrationComplete)
         }
@@ -512,7 +512,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          updateChildren()
+          updateChildren(adaptation.now)
         } else {
           send(parent.get, MigrationComplete)
         }
@@ -654,9 +654,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     latency1.+(latency2)
   }
 
-  def updateChildren(): Unit = {
+  def updateChildren(optimumHosts: Seq[NodeHost]): Unit = {
     children.set(Map.empty[NodeHost, Set[NodeHost]])
-    adaptation.now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
+    optimumHosts.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
   }
 
   def isOperator: Boolean ={
