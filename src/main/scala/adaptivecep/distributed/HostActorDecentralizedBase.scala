@@ -492,7 +492,6 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   def processStateTransferMessage(oHosts: Seq[NodeHost], p: ActorRef): Unit ={
     println("PROCESSING STATE TRANSFER....")
-    stage.set(Stage.Migration)
     hostToNodeMap += hostMap(sender) -> p
     parent = Some(hostMap(sender))
     parentNode = Some(p)
@@ -529,6 +528,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       stage.set(Stage.TentativeOperatorSelection)
       resetAllData(true)
     }
+    stage.set(Stage.Migration)
   }
 
   def activate() : Unit = {
