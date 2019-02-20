@@ -230,9 +230,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       case FinishedChoosing(tChildren) => childFinishedChoosingTentatives(hostMap(sender), tChildren)
 
       /**Phase 2: Measurement*/
-      case m: CostMessage =>
-        //println(hostMap)
-        processCostMessage(m, hostMap(sender))
+      case m: CostMessage => processCostMessage(m, hostMap(sender))
       case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
 
       /**Phase 3: Migration*/
@@ -438,6 +436,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def sendOutCostMessages() : Unit = {
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement) {
+      println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
