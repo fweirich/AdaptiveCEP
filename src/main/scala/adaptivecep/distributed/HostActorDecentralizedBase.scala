@@ -438,7 +438,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   def sendOutCostMessages() : Unit = {
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
-    if(stage.now == Stage.Measurement) {
+    if(stage.now == Stage.Measurement && adaptation.now.nonEmpty) {
       println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
