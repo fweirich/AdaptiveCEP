@@ -457,7 +457,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       println("ERROR: Cost Message arrived at Host without Operator")
     }
     processedCostMessages += sender.actorRef
-    //sendOutCostMessages()
+    sendOutCostMessages()
   }
 
   /**
@@ -607,9 +607,10 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   private def isChild(host: NodeHost): Boolean ={
     var isChild = false
     children.now.foreach(child =>
-      if(child._1.equals(host) || child._2.contains(host)){
+      if(child._1 == host || child._2.contains(host)){
         isChild = true
       })
+    println("isChild" + isChild)
     isChild
   }
 
