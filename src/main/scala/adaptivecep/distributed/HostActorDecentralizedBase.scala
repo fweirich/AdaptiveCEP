@@ -411,7 +411,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   override def measureCosts(hosts: Set[NodeHost]):Unit = {
     val now = clock.instant()
-    for (p <- parentHosts) {
+    for (p <- hosts) {
       if (hostPropsToMap.contains(p)) {
         p.actorRef ! StartThroughPutMeasurement(now)
         context.system.scheduler.scheduleOnce(
