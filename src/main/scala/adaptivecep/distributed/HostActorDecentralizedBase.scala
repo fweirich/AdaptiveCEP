@@ -236,10 +236,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       /**Phase 3: Migration*/
       case StateTransferMessage(o, p) => processStateTransferMessage(o, p)
       case MigrationComplete => completeMigration(hostMap(sender))
+      case ChildResponse(c) => processChildResponse(hostMap(sender), c)
       case _ =>
 
       //case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
-      case ChildResponse(c) => processChildResponse(hostMap(sender), c)
+
     }
   }
 
