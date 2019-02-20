@@ -26,7 +26,7 @@ object helper {
       )
       costsMap.foreach(host =>{
         if(!host._2.contains(h)){
-          dataRates = dataRates :+ (host._1, 10000)
+          dataRates = dataRates :+ (host._1, 10000.0)
         }
         if(host._1 != host._2(h)){
           dataRates = dataRates :+ (host._1, host._2(h).bandwidth)
