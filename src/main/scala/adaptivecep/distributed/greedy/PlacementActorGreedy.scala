@@ -27,8 +27,6 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
                                  optimizeFor: String)
   extends PlacementActorBase {
 
-  override val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}
-
   def placeAll(map: Map[Operator, Host]): Unit ={
     map.foreach(pair => place(pair._1, pair._2))
     map.keys.foreach(operator => {
