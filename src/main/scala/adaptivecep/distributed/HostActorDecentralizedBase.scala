@@ -482,7 +482,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   def applyAdaptation(optimumHosts: Seq[NodeHost]): Unit = {
     childHost1 = Option(optimumHosts.head)
-    childHost2 = Option(optimumHosts.apply(1))
+    if(optimumHosts.size == 2){
+      childHost2 = Option(optimumHosts.apply(1))
+    }
     stage.set(Stage.Migration)
     if (consumer) {
       broadcastMessage(StateTransferMessage(optimumHosts, node.get))
