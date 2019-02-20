@@ -176,6 +176,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
       costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
       costSignal.set(Map(thisHost -> costs))
+      sendOutCostMessages()
     case StartThroughPutMeasurement(instant) =>
       throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
       throughputMeasureMap += hostMap(sender()) -> 0
@@ -192,6 +193,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
+      sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(hostPropsToMap)
     case _ =>
