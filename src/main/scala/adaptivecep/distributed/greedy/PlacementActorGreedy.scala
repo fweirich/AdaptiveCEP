@@ -5,11 +5,12 @@ import java.util.concurrent.TimeUnit
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Query
 import adaptivecep.distributed._
-import adaptivecep.distributed.operator.{Host, NoHost, NodeHost, Operator}
+import adaptivecep.distributed.operator._
 import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
 import rescala.default._
+
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -26,6 +27,7 @@ case class PlacementActorGreedy (actorSystem: ActorSystem,
                                  optimizeFor: String)
   extends PlacementActorBase {
 
+  override val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}
 
   def placeAll(map: Map[Operator, Host]): Unit ={
     map.foreach(pair => place(pair._1, pair._2))
