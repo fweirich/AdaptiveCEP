@@ -178,7 +178,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
       costSignal.set(Map(thisHost -> costs))
       if(stage.now == Stage.Measurement){
-        sendOutCostMessages()
+        //sendOutCostMessages()
       }
     case StartThroughPutMeasurement(instant) =>
       throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
@@ -197,7 +197,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
       if(stage.now == Stage.Measurement){
-        sendOutCostMessages()
+        //sendOutCostMessages()
       }
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(costs)
