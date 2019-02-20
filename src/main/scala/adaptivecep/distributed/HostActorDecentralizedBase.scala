@@ -239,7 +239,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       case _ =>
 
       //case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
-      //case ChildResponse(c) => processChildResponse(sender, c)
+      case ChildResponse(c) => processChildResponse(sender, c)
     }
   }
 
@@ -439,7 +439,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def sendOutCostMessages() : Unit = {
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
-      println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
+      //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
@@ -501,8 +501,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          updateChildren(adaptation.now)
-          stage.set(Stage.Migration)
+          applyAdaptation(adaptation.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -514,8 +513,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          updateChildren(adaptation.now)
-          stage.set(Stage.Migration)
+          applyAdaptation(adaptation.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -529,6 +527,25 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       println("DEACTIVATING....")
       stage.set(Stage.TentativeOperatorSelection)
       resetAllData(true)
+    }
+  }
+
+  def processChildResponse(sender: NodeHost, c: ActorRef): Unit = {
+    if (childHost1.isDefined && sender.equals(childHost1.get)) {
+      childNode1 = Some(c)
+    } else if (childHost2.isDefined && sender.equals(childHost2.get)) {
+      childNode2 = Some(c)
+    } else {
+      println("ERROR: Got Child Response from non child")
+    }
+    if (childNodes.size == children.now.size) {
+      childNodes.size match {
+        case 1 => node.get ! Child1(childNode1.get)
+        case 2 => node.get ! Child2(childNode1.get, childNode2.get)
+        case _ => println("ERROR: Got a Child Response but Node has no children")
+      }
+      childNode1 = None
+      childNode2 = None
     }
   }
 
@@ -696,27 +713,5 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     else
       operators += sender -> tentativeOperator
   }*/
-  /*
-  def processChildResponse(sender: NodeHost, c: ActorRef) = {
-    if (childHost1.isDefined && sender.equals(childHost1.get)) {
-      childNode1 = Some(c)
-    } else if (childHost2.isDefined && sender.equals(childHost2.get)) {
-      childNode2 = Some(c)
-    } else {
-      println("ERROR: Got Child Response from non child")
-    }
-    if (childNodes.size == children.size) {
-      childNodes.size match {
-        case 1 => node.get ! Child1(childNode1.get)
-        case 2 => node.get ! Child2(childNode1.get, childNode2.get)
-        case _ => println("ERROR: Got a Child Response but Node has no children")
-      }
-      childNode1 = None
-      childNode2 = None
-    }
-  }
-  */
-
-
 
 }
