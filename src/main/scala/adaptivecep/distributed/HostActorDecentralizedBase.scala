@@ -222,7 +222,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       case FinishedChoosing(tChildren) => childFinishedChoosingTentatives(hostMap(sender), tChildren)
 
       /**Phase 2: Measurement*/
-      case m: CostMessage => processCostMessage(m, hostMap(sender))
+      case m: CostMessage =>
+        println(hostMap)
+        processCostMessage(m, hostMap(sender))
       case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
 
       /**Phase 3: Migration*/
