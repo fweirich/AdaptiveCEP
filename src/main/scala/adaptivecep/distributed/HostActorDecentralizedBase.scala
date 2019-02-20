@@ -466,12 +466,12 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
     if(isOperator && isChild(sender)){
       accumulatedCost.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
+      processedCostMessages += sender.actorRef
       //println(m.latency, m.bandwidth)
     }
     else {
       println("ERROR: Cost Message arrived at Host without Operator")
     }
-    processedCostMessages += sender.actorRef
     //sendOutCostMessages()
   }
 
