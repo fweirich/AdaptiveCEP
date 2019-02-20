@@ -426,26 +426,28 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def sendOutCostMessages() : Unit = {
-    if(children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size){
-      parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
-    }
-    else if (processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
-      //println(optimumHosts)
-      var bottleNeckNode = thisHost
-      if(optimizeFor == "latency"){
-        bottleNeckNode = minmaxBy(Maximizing, optimumHosts.now)(accumulatedCost.now.apply(_).duration)
-      }else if(optimizeFor == "bandwidth"){
-        bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(accumulatedCost.now.apply(_).bandwidth)
-      }else{
-        bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+    if(stage.now == Stage.Measurement) {
+      if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
+        parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
-      parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
-        mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
-      /*if (consumer) {
+      else if (processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
+        //println(optimumHosts)
+        var bottleNeckNode = thisHost
+        if (optimizeFor == "latency") {
+          bottleNeckNode = minmaxBy(Maximizing, optimumHosts.now)(accumulatedCost.now.apply(_).duration)
+        } else if (optimizeFor == "bandwidth") {
+          bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(accumulatedCost.now.apply(_).bandwidth)
+        } else {
+          bottleNeckNode = minmaxBy(Minimizing, optimumHosts.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+        }
+        parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
+          mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
+        /*if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }*/
+      }
+      println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     }
-    println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
   }
 
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
