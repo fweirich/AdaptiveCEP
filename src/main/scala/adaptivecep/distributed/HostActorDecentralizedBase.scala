@@ -486,6 +486,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     stage.set(Stage.Migration)
     if (consumer) {
       broadcastMessage(StateTransferMessage(optimumHosts, node.get))
+      updateChildren(optimumHosts)
     }
   }
 
@@ -584,7 +585,6 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       }
     } else if (consumer) {
       if (childrenMigrated.size == children.now.size) {
-        updateChildren()
         resetAllData(false)
         send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
       }
