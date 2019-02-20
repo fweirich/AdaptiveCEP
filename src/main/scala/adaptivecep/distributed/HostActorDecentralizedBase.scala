@@ -124,7 +124,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   override def preStart(): Unit = {
     tick += {_ => {measureCosts(parentHosts)}}
     demandViolated observe {_ =>
-      println(ready.now)
+      println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){applyAdaptation(adaptation.latest().now)}}
 
 
@@ -378,7 +378,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def childFinishedChoosingTentatives(sender: NodeHost, tChildren: Set[NodeHost]): Unit = {
     children.transform(_ + (sender -> tChildren))
     childrenCompletedChoosingTentatives += sender.actorRef
-    println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives, "/", children.now.size)
+    println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
     if (activeOperator.isDefined) {
       if (childrenCompletedChoosingTentatives.size == children.now.size) {
         stage.set(Stage.Measurement)
