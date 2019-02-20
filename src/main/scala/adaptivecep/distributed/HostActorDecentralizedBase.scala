@@ -485,10 +485,10 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     if(optimumHosts.size == 2){
       childHost2 = Option(optimumHosts.apply(1))
     }
+    updateChildren(optimumHosts)
     stage.set(Stage.Migration)
     if (consumer) {
       broadcastMessage(StateTransferMessage(optimumHosts, node.get))
-      updateChildren(optimumHosts)
     }
   }
 
