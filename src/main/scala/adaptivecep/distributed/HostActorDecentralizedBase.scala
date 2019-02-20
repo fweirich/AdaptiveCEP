@@ -461,7 +461,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       println("ERROR: Cost Message arrived at Host without Operator")
     }
     processedCostMessages += sender.actorRef
-    sendOutCostMessages()
+    //sendOutCostMessages()
   }
 
   /**
