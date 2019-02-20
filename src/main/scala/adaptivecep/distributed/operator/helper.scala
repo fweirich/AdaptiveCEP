@@ -16,15 +16,21 @@ object helper {
     for(h <-hosts){
       var latencies: Seq[(Host, Duration)] = Seq.empty[(Host, Duration)]
       var dataRates: Seq[(Host, Double)] = Seq.empty[(Host, Double)]
-      costsMap.foreach(host =>
-        if(host._1 != host._2(h)){
-          latencies = latencies :+ (host._1, host._2(h).duration)
+      costsMap.foreach(host => {
+        if(!host._2.contains(h)){
+          latencies = latencies :+ (host._1, Duration.Zero)
         }
+        else if(host._1 != host._2(h)){
+          latencies = latencies :+ (host._1, host._2(h).duration)
+        }}
       )
-      costsMap.foreach(host =>
+      costsMap.foreach(host =>{
+        if(!host._2.contains(h)){
+          dataRates = dataRates :+ (host._1, 10000)
+        }
         if(host._1 != host._2(h)){
           dataRates = dataRates :+ (host._1, host._2(h).bandwidth)
-        }
+        }}
       )
       result += h -> HostProps(latencies, dataRates)
     }
