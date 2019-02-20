@@ -498,7 +498,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
-          broadcastMessage(StateTransferMessage(adaptation.latest().now, node.get))
+          broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -509,7 +509,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
-          broadcastMessage(StateTransferMessage(adaptation.latest().now, node.get))
+          broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren()
         } else {
           send(parent.get, MigrationComplete)
@@ -654,7 +654,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   def updateChildren(): Unit = {
     children.set(Map.empty[NodeHost, Set[NodeHost]])
-    adaptation.latest().now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
+    adaptation.now.foreach(host => children.transform(_ + (host -> Set.empty[NodeHost])))
   }
 
   def isOperator: Boolean ={
