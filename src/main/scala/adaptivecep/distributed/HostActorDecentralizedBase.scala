@@ -239,7 +239,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       case _ =>
 
       //case ParentResponse(p) => if(p.isDefined) parent = Some(hostMap(p.get)) else parent = None
-      case ChildResponse(c) => processChildResponse(sender, c)
+      case ChildResponse(c) => processChildResponse(hostMap(sender), c)
     }
   }
 
