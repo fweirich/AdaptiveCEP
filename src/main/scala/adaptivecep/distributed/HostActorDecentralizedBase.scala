@@ -123,6 +123,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   override def preStart(): Unit = {
     tick += {_ => {measureCosts(parentHosts)}}
+    adaptation += {println(_)}
     demandViolated observe {_ =>
       println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){applyAdaptation(adaptation.latest().now)}}
@@ -176,7 +177,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
       costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
       costSignal.set(Map(thisHost -> costs))
-      sendOutCostMessages()
+      if(stage.now == Stage.Measurement){
+        sendOutCostMessages()
+      }
     case StartThroughPutMeasurement(instant) =>
       throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
       throughputMeasureMap += hostMap(sender()) -> 0
@@ -193,7 +196,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
-      sendOutCostMessages()
+      if(stage.now == Stage.Measurement){
+        sendOutCostMessages()
+      }
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(costs)
     case _ =>
