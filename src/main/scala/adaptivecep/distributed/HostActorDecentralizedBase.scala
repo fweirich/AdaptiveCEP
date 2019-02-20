@@ -606,10 +606,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   private def isChild(host: NodeHost): Boolean ={
     var isChild = false
-    children.now.foreach(child =>
+    children.now.foreach(child =>{
+      println(child._1.actorRef, host)
       if(child._1 == host || child._2.contains(host)){
         isChild = true
-      })
+      }})
     println("isChild" + isChild)
     isChild
   }
