@@ -128,7 +128,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     tick += {_ => {measureCosts(parentHosts)}}
     //adaptation += {println(_)}
     demandViolated observe {_ =>
-      println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
+      println(ready.now)
       if(ready.now){applyAdaptation(adaptation.now)}}
 
 
@@ -231,7 +231,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
       /**Phase 2: Measurement*/
       case m: CostMessage =>
-        println(hostMap)
+        //println(hostMap)
         processCostMessage(m, hostMap(sender))
       case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
 
@@ -436,7 +436,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def sendOutCostMessages() : Unit = {
-    println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
+    //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement) {
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
@@ -619,12 +619,12 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   private def isChild(host: NodeHost): Boolean ={
     var isChild = false
     children.now.foreach(child =>{
-      println(child._1.actorRef, host.actorRef)
-      println(child._2)
+      //println(child._1.actorRef, host.actorRef)
+      //println(child._2)
       if(child._1 == host || child._2.contains(host)){
         isChild = true
       }})
-    println("isChild" + isChild)
+    //println("isChild" + isChild)
     isChild
   }
 
