@@ -391,7 +391,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
     if (activeOperator.isDefined) {
       if (childrenCompletedChoosingTentatives.size == children.now.size) {
-        stage.set(Stage.Measurement)
+
         if (consumer) {
           //ready = true
           println("READY TO CALCULATE NEW PLACEMENT!")
@@ -401,6 +401,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       } else if (childrenCompletedChoosingTentatives.size < children.now.size) {
         children.now.toSeq(childrenCompletedChoosingTentatives.size)._1.actorRef ! ChooseTentativeOperators(tentativeHosts + thisHost)
       }
+    }
+    if (childrenCompletedChoosingTentatives.size == children.now.size) {
+      stage.set(Stage.Measurement)
     }
   }
 
