@@ -504,6 +504,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren(adaptation.now)
         } else {
+          stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
         }
       }
@@ -515,6 +516,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren(adaptation.now)
         } else {
+          stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
         }
       }
@@ -523,7 +525,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         send(parent.get, ChildResponse(node.get))
       }
     } else {
-      //println("DEACTIVATING....")
+      println("DEACTIVATING....")
+      stage.set(Stage.TentativeOperatorSelection)
       resetAllData(true)
     }
   }
@@ -581,10 +584,12 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     childrenMigrated += sender.actorRef
     if (parent.isDefined) {
       if (childrenMigrated.size == children.now.size) {
+        stage.set(Stage.TentativeOperatorSelection)
         send(parent.get, MigrationComplete)
       }
     } else if (consumer) {
       if (childrenMigrated.size == children.now.size) {
+        stage.set(Stage.TentativeOperatorSelection)
         resetAllData(false)
         send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
       }
