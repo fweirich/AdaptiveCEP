@@ -502,6 +502,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         if(children.now.nonEmpty){
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren(adaptation.now)
+          stage.set(Stage.Migration)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -514,6 +515,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         if(children.now.nonEmpty) {
           broadcastMessage(StateTransferMessage(adaptation.now, node.get))
           updateChildren(adaptation.now)
+          stage.set(Stage.Migration)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -528,7 +530,6 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       stage.set(Stage.TentativeOperatorSelection)
       resetAllData(true)
     }
-    stage.set(Stage.Migration)
   }
 
   def activate() : Unit = {
