@@ -432,7 +432,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
-      else if (processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
+      else if (children.now.nonEmpty && processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         //println(optimumHosts)
         var bottleNeckNode = thisHost
         if (optimizeFor == "latency") {
