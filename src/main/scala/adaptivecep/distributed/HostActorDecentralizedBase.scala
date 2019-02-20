@@ -123,7 +123,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   override def preStart(): Unit = {
     tick += {_ => {measureCosts(parentHosts)}}
-    demandViolated observe {_ => if(ready.now){applyAdaptation(adaptation.latest().now)}}
+    demandViolated observe {_ =>
+      println(ready.now)
+      if(ready.now){applyAdaptation(adaptation.latest().now)}}
 
 
 
