@@ -176,7 +176,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
       costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
       costSignal.set(Map(thisHost -> costs))
-      sendOutCostMessages()
+      //sendOutCostMessages()
     case StartThroughPutMeasurement(instant) =>
       throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
       throughputMeasureMap += hostMap(sender()) -> 0
@@ -193,7 +193,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
-      sendOutCostMessages()
+      //sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
     case HostPropsRequest => sender() ! HostPropsResponse(costs)
     case _ =>
@@ -445,7 +445,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }*/
     }
-    println(children.now.isEmpty, processedCostMessages, numberOfChildren, costs.size, parentHosts.size)
+    println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
   }
 
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
