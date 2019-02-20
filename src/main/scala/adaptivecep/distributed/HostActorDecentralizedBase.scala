@@ -128,7 +128,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     tick += {_ => {measureCosts(parentHosts)}}
     //adaptation += {println(_)}
     demandViolated observe {_ =>
-      println(ready.now)
+      println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){applyAdaptation(adaptation.now)}}
 
 
