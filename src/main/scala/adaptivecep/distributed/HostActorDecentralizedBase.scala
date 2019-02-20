@@ -195,7 +195,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       bandwidthResponses += sender()
       sendOutCostMessages()
     case gPE: PlacementEvent => processEvent(gPE, sender())
-    case HostPropsRequest => sender() ! HostPropsResponse(Map(NoHost.asInstanceOf[Host] -> Cost(Duration.apply(3, TimeUnit.DAYS), 0)).withDefaultValue(Cost(Duration.Zero, bandwidth.template.max)))
+    case HostPropsRequest => sender() ! HostPropsResponse(Map(NoHost.asInstanceOf[Host] -> Cost(FiniteDuration(3, TimeUnit.DAYS), 0)).withDefaultValue(Cost(FiniteDuration(0, TimeUnit.SECONDS), bandwidth.template.max)))
     case _ =>
   }
 
