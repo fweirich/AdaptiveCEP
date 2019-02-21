@@ -415,6 +415,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     * */
 
   override def measureCosts(hosts: Set[NodeHost]):Unit = {
+    println("measuring", hosts)
     val now = clock.instant()
     for (p <- hosts) {
       if (hostPropsToMap.contains(p)) {
