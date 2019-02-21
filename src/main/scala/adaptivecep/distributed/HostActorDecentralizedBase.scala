@@ -199,6 +199,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
       costSignal.set(Map(thisHost -> costs))
       bandwidthResponses += sender()
+      println("received response. Current Stage " + stage.now)
       if(stage.now == Stage.Measurement){
         sendOutCostMessages()
       }
@@ -439,7 +440,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def sendOutCostMessages() : Unit = {
-    println("tring to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
+    println("trying to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
       //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
