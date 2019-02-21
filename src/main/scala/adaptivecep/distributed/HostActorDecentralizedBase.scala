@@ -442,6 +442,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
       //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
+        println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
       else if (children.now.nonEmpty && processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
@@ -454,6 +455,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         } else {
           bottleNeckNode = minmaxBy(Minimizing, adaptation.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
         }
+        println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
           mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
         /*if (consumer) {
@@ -464,7 +466,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
-    println(sender, children)
+    println(sender, children.now)
     if(isOperator && isChild(sender)){
       accumulatedCost.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
       processedCostMessages += sender.actorRef
