@@ -1,7 +1,5 @@
 package adaptivecep.distributed.greedy
 
-import java.util.concurrent.TimeUnit
-
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.Query
 import adaptivecep.distributed._
@@ -10,9 +8,6 @@ import adaptivecep.graph.qos.MonitorFactory
 import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
 import rescala.default._
-
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.ExecutionContext.Implicits.global
 
 
 case class PlacementActorGreedy (actorSystem: ActorSystem,

@@ -1,26 +1,13 @@
 package adaptivecep.distributed.annealing
 
-import java.util.concurrent.TimeUnit
-
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.{Operator => _, _}
-import adaptivecep.distributed
 import adaptivecep.distributed._
 import adaptivecep.distributed.operator._
-import adaptivecep.graph.nodes._
 import adaptivecep.graph.qos.MonitorFactory
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Address, Deploy, PoisonPill, Props}
-import akka.cluster.Cluster
-import akka.cluster.ClusterEvent._
+import akka.actor.{ActorRef, ActorSystem, Deploy}
 import akka.remote.RemoteScope
 import rescala.default._
-
-import scala.annotation.tailrec
-import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.math.Ordering.Implicits.infixOrderingOps
-import scala.util.Random
 
 
 case class PlacementActorAnnealing(actorSystem: ActorSystem,
@@ -69,7 +56,7 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
         }
       }
     })
-    consumers.now.foreach(consumer => consumer.asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Set.empty[NodeHost]))
+    consumers.now.foreach(consumer => map(consumer).asInstanceOf[NodeHost].actorRef ! ChooseTentativeOperators(Set.empty[NodeHost]))
     placement.set(map)
   }
 
@@ -77,7 +64,7 @@ case class PlacementActorAnnealing(actorSystem: ActorSystem,
     if(host != NoHost && operator.props != null){
       val moved = placement.now.contains(operator) && placement.now.apply(operator) != host
       if(moved) {
-        propsActors(operator.props) ! PoisonPill
+        propsActors(operator.props) ! Kill
         //println("killing old actor", propsActors(operator.props))
       }
       if (moved || placement.now.size < operators.now.size){
