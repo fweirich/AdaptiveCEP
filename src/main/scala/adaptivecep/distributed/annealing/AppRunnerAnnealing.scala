@@ -4,7 +4,7 @@ import java.io.File
 
 import adaptivecep.data.Events._
 import adaptivecep.data.Queries.{Query3, Query4, X}
-import adaptivecep.distributed.operator.{ActiveOperator, NodeHost, Operator}
+import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers._
@@ -12,7 +12,7 @@ import akka.actor.{ActorRef, ActorSystem, Address, Deploy, Props}
 import akka.remote.RemoteScope
 import com.typesafe.config.ConfigFactory
 
-/*
+
 object AppRunnerAnnealing extends App {
 
   val file = new File("application.conf")
@@ -150,7 +150,7 @@ object AppRunnerAnnealing extends App {
   val hosts: Set[ActorRef] = Set(host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11,
     host12, host13, host14, host15, host16, host17, host18, host19, host20)
 
-  hosts.foreach(host => host ! Neighbors(hosts, hosts))
+  hosts.foreach(host => host ! Hosts(hosts))
 /*
   val neighborsOfHost1: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host12, host16*/)
   val neighborsOfHost2: Set[ActorRef] = Set(host5, host6, host7, host8, host9, host11/*, host16*/)
@@ -175,22 +175,17 @@ object AppRunnerAnnealing extends App {
   val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
   val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
 
-  val operatorA = ActiveOperator(NodeHost(host1), null, Seq.empty[Operator])
-  val operatorB = ActiveOperator(NodeHost(host2), null, Seq.empty[Operator])
-  val operatorC = ActiveOperator(NodeHost(host3), null, Seq.empty[Operator])
-  val operatorD = ActiveOperator(NodeHost(host4), null, Seq.empty[Operator])
-
   val publishers: Map[String, ActorRef] = Map(
     "A" -> publisherA,
     "B" -> publisherB,
     "C" -> publisherC,
     "D" -> publisherD)
 
-  val publisherOperators: Map[String, Operator] = Map(
-    "A" -> operatorA,
-    "B" -> operatorB,
-    "C" -> operatorC,
-    "D" -> operatorD)
+  val publisherHosts: Map[String, Host] = Map(
+    "A" -> NodeHost(host1),
+    "B" -> NodeHost(host2),
+    "C" -> NodeHost(host3),
+    "D" -> NodeHost(host4))
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
@@ -198,7 +193,7 @@ object AppRunnerAnnealing extends App {
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorAnnealing(actorSystem,
     query3,
-    publishers, publisherOperators,
+    publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
     PathBandwidthMonitorFactory(interval = 1000, logging = false), NodeHost(host20), hosts, optimizeFor)), "Placement")
@@ -207,5 +202,3 @@ object AppRunnerAnnealing extends App {
   Thread.sleep(10000)
   placement ! Start
 }
-
-*/
