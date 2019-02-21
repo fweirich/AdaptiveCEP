@@ -176,11 +176,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     case LatencyRequest(t)=>
       sender() ! LatencyResponse(t)
     case LatencyResponse(t) =>
-      latencyResponses += sender()
-      val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
-      costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
-      costSignal.set(Map(thisHost -> costs))
       if(stage.now == Stage.Measurement){
+        latencyResponses += sender()
+        val latency = FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS)
+        costs += hostMap(sender()) -> Cost(latency, costs(hostMap(sender())).bandwidth)
+        costSignal.set(Map(thisHost -> costs))
         sendOutCostMessages()
       }
     case StartThroughPutMeasurement(instant) =>
@@ -196,11 +196,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       //println(bandwidth, actual)
       throughputMeasureMap += hostMap(sender()) -> 0
     case ThroughPutResponse(r) =>
-      costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
-      costSignal.set(Map(thisHost -> costs))
-      bandwidthResponses += sender()
-      println("received response. Current Stage " + stage.now)
       if(stage.now == Stage.Measurement){
+        costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
+        costSignal.set(Map(thisHost -> costs))
+        bandwidthResponses += sender()
+        println("received response. Current Stage " + stage.now)
         sendOutCostMessages()
       }
     case gPE: PlacementEvent => processEvent(gPE, sender())
@@ -470,7 +470,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
-    println(sender, children.now)
+    //println(sender, children.now)
     if(isOperator && isChild(sender)){
       accumulatedCost.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
       processedCostMessages += sender.actorRef
