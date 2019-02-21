@@ -443,6 +443,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     println("trying to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
+      println(children.now.nonEmpty , processedCostMessages.size , numberOfChildren.now , latencyResponses.size , bandwidthResponses.size , parentHosts.size)
       //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         println("sending")
