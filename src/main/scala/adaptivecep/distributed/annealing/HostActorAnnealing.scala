@@ -133,7 +133,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Maximizing, getChildAndTentatives(child._1, children))(x => (accumulatedCost(x).duration, accumulatedCost(x).bandwidth)))
       }
 
-      result.foreach(host =>
+      optimum.foreach(host =>
         if(childHost1.isDefined && getPreviousChild(host, children) == childHost1.get){
           result = result :+ host
          // println(optimumChildHost1)
@@ -147,6 +147,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         }
       )
     }
+    println(result)
     result
   }
 
