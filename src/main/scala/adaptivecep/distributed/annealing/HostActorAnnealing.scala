@@ -147,7 +147,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         }
       )
     }
-    println(result)
+    //println(result)
     result
   }
 

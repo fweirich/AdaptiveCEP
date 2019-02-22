@@ -128,7 +128,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     tick += {_ => {measureCosts(parentHosts)}}
     //adaptation += {println(_)}
     demandViolated observe {_ =>
-      println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
+      //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){applyAdaptation(adaptation.now)}}
 
 
@@ -200,7 +200,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
         costSignal.set(Map(thisHost -> costs))
         bandwidthResponses += sender()
-        println("received response. Current Stage " + stage.now)
+        //println("received response. Current Stage " + stage.now)
         sendOutCostMessages()
       }
     case gPE: PlacementEvent => processEvent(gPE, sender())
@@ -335,7 +335,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def chooseTentativeOperators() : Unit = {
-    println("CHOOSING TENTATIVE OPERATORS")
+    //println("CHOOSING TENTATIVE OPERATORS")
     if (children.now.nonEmpty || parent.isDefined){
       if(activeOperator.isDefined){
         var timeout = 0
@@ -390,13 +390,13 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def childFinishedChoosingTentatives(sender: NodeHost, tChildren: Set[NodeHost]): Unit = {
     children.transform(_ + (sender -> tChildren))
     childrenCompletedChoosingTentatives += sender.actorRef
-    println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
+    //println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
     if (activeOperator.isDefined) {
       if (childrenCompletedChoosingTentatives.size == children.now.size) {
 
         if (consumer) {
           //ready = true
-          println("READY TO CALCULATE NEW PLACEMENT!")
+          //println("READY TO CALCULATE NEW PLACEMENT!")
         } else {
           parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
         }
@@ -416,7 +416,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     * */
 
   override def measureCosts(hosts: Set[NodeHost]):Unit = {
-    println("measuring", hosts)
+    //println("measuring", hosts)
     val now = clock.instant()
     for (p <- hosts) {
       if (hostPropsToMap.contains(p)) {
@@ -440,13 +440,13 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def sendOutCostMessages() : Unit = {
-    println("trying to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
+    //println("trying to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
-      println(children.now.nonEmpty , processedCostMessages.size , numberOfChildren.now , latencyResponses.size , bandwidthResponses.size , parentHosts.size)
+      //println(children.now.nonEmpty , processedCostMessages.size , numberOfChildren.now , latencyResponses.size , bandwidthResponses.size , parentHosts.size)
       //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
-        println("sending")
+        //println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
       }
       else if (children.now.nonEmpty && processedCostMessages.size == numberOfChildren.now && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
@@ -459,7 +459,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         } else {
           bottleNeckNode = minmaxBy(Minimizing, adaptation.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
         }
-        println("sending")
+        //println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
           mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
         /*if (consumer) {
@@ -477,7 +477,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       //println(m.latency, m.bandwidth)
     }
     else {
-      println("ERROR: Cost Message arrived at Host without Operator")
+      //println("ERROR: Cost Message arrived at Host without Operator")
     }
     //sendOutCostMessages()
   }
@@ -501,7 +501,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def processStateTransferMessage(oHosts: Seq[NodeHost], p: ActorRef): Unit ={
-    println("PROCESSING STATE TRANSFER....")
+    //println("PROCESSING STATE TRANSFER....")
     hostToNodeMap += hostMap(sender) -> p
     parent = Some(hostMap(sender))
     parentNode = Some(p)
@@ -534,7 +534,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         send(parent.get, ChildResponse(node.get))
       }
     } else {
-      println("DEACTIVATING....")
+      //println("DEACTIVATING....")
       stage.set(Stage.TentativeOperatorSelection)
       resetAllData(true)
     }
@@ -560,7 +560,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def activate() : Unit = {
-    println("ACTIVATING...")
+    //println("ACTIVATING...")
     if(tentativeOperator.isDefined){
       activeOperator = Some(ActiveOperator(tentativeOperator.get.props, tentativeOperator.get.dependencies))
       val temp = system.actorOf(activeOperator.get.props.withDeploy(Deploy(scope = remote.RemoteScope(self.path.address))))
