@@ -17,6 +17,24 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
   var temperatureCounter = 0
 
 
+  setTemperature observe(temp => temperature = temp)
+  demandViolated observe{_ =>
+    temperatureCounter = 0
+  if(temperature > minTemperature) {
+    temperature = temperature * temperatureReductionFactor
+  }}
+  demandNotViolated observe{_ =>  temperatureCounter += 1
+    if(consumer && temperature != 1.0 && temperatureCounter > 2){
+      temperature = 1.0
+      broadcastMessage(ResetTemperature)
+    }
+  }
+  resetTemperature observe{_ =>  temperature = 1.0
+    if(activeOperator.isDefined){
+      broadcastMessage(ResetTemperature)
+    }}
+  makeTentativeOperator observe{host => send(host, temperature)}
+/*
   override def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
     event match {
       case BecomeTentativeOperator(operator, p, pHosts, c1, c2, t) =>
@@ -45,7 +63,9 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     }
     super.processEvent(event, sender)
   }
+  */
 
+  /*
   override def chooseTentativeOperators() : Unit = {
     println("CHOOSING TENTATIVE OPERATORS")
     if (children.now.nonEmpty || parent.isDefined){
@@ -56,7 +76,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
           val randomNeighbor =  hosts.now.toVector(random.nextInt(hosts.now.size))
           if(!reversePlacement.now.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
             val tenOp = TentativeOperator(activeOperator.get.props, activeOperator.get.dependencies)
-            send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, 0))
+            send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, temperature))
             chosen = true
           }
           timeout += 1
@@ -76,7 +96,8 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     }
   }
 
-
+*/
+  
   def calculateOptimumHosts(children: Map[NodeHost, Set[NodeHost]],
                             accumulatedCost: Map[NodeHost, Cost],
                             childHost1: Option[NodeHost],

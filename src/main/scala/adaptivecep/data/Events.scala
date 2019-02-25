@@ -34,7 +34,8 @@ object Events {
 
   case class BecomeTentativeOperator(operator: TentativeOperator, parentNode: ActorRef,
                                      parentHosts: Set[NodeHost], childHost1: Option[NodeHost],
-                                     childHost2: Option[NodeHost], temperature: Double) extends PlacementEvent
+                                     childHost2: Option[NodeHost]) extends PlacementEvent
+
 
   case class ChooseTentativeOperators(tentativeParents: Set[NodeHost]) extends PlacementEvent
 
@@ -62,6 +63,7 @@ object Events {
   case object ContinueSearching extends PlacementEvent
 
   case object ResetTemperature extends PlacementEvent
+  case class SetTemperature(temp: Double) extends PlacementEvent
 
   case object CentralizedCreated
 
