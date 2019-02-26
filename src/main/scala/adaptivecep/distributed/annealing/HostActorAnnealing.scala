@@ -97,7 +97,7 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
   }
 
 */
-  
+
   def calculateOptimumHosts(children: Map[NodeHost, Set[NodeHost]],
                             accumulatedCost: Map[NodeHost, Cost],
                             childHost1: Option[NodeHost],
