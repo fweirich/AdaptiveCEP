@@ -94,7 +94,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   /*val adaptation: Signal[Seq[NodeHost]] = Signal{if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}// Var(Seq.empty[NodeHost])*/
-  
+
   val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}
 
@@ -531,8 +531,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
-          broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          applyAdaptation(adaptation.now)
+          broadcastMessage(StateTransferMessage(adaptation.latest.now, node.get))
+          applyAdaptation(adaptation.latest.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -543,8 +543,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
-          broadcastMessage(StateTransferMessage(adaptation.now, node.get))
-          applyAdaptation(adaptation.now)
+          broadcastMessage(StateTransferMessage(adaptation.latest.now, node.get))
+          applyAdaptation(adaptation.latest.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
