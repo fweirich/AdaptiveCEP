@@ -92,8 +92,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost") //information is unavailable due to decentralized nature
   val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}//Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
 
-  val adaptation: Signal[Seq[NodeHost]] = Signal{if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
-    calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}// Var(Seq.empty[NodeHost])
+  /*val adaptation: Signal[Seq[NodeHost]] = Signal{if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
+    calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}// Var(Seq.empty[NodeHost])*/
+  
+  val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
+    calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}
 
   /*= accumulatedCost.changed map { _ =>
     if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
@@ -133,11 +136,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   override def preStart(): Unit = {
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
-    newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages()}
+    adaptation observe {a => if(stage.now == Stage.Measurement) sendOutCostMessages(a)}
     //adaptation += {println(_)}
     demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
-      if(ready.now){applyAdaptation(adaptation.now)}}
+      if(ready.now){applyAdaptation(adaptation.latest.now)}}
 
 
 
@@ -457,10 +460,10 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     }
   }
 
-  def sendOutCostMessages() : Unit = {
-    println("trying to send", stage.now, adaptation.now.nonEmpty, children.now.isEmpty)
+  def sendOutCostMessages(adaptation: Seq[NodeHost]) : Unit = {
+    println("trying to send", stage.now, adaptation.nonEmpty, children.now.isEmpty)
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
-    if(stage.now == Stage.Measurement && (adaptation.now.nonEmpty || children.now.isEmpty)) {
+    if(stage.now == Stage.Measurement && (adaptation.nonEmpty || children.now.isEmpty)) {
       //println(children.now.nonEmpty , processedCostMessages.size , numberOfChildren.now , latencyResponses.size , bandwidthResponses.size , parentHosts.size)
       println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
@@ -471,11 +474,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         //println(optimumHosts)
         var bottleNeckNode = thisHost
         if (optimizeFor == "latency") {
-          bottleNeckNode = minmaxBy(Maximizing, adaptation.now)(accumulatedCost.now.apply(_).duration)
+          bottleNeckNode = minmaxBy(Maximizing, adaptation)(accumulatedCost.now.apply(_).duration)
         } else if (optimizeFor == "bandwidth") {
-          bottleNeckNode = minmaxBy(Minimizing, adaptation.now)(accumulatedCost.now.apply(_).bandwidth)
+          bottleNeckNode = minmaxBy(Minimizing, adaptation)(accumulatedCost.now.apply(_).bandwidth)
         } else {
-          bottleNeckNode = minmaxBy(Minimizing, adaptation.now)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+          bottleNeckNode = minmaxBy(Minimizing, adaptation)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
         }
         //println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
