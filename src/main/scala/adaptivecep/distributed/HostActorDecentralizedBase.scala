@@ -151,7 +151,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
     newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.now)}
-    adaptation += {list => println(list)}
+    //adaptation += {list => println(list)}
     /*demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){adapt(optimumHosts.latest.now)}}*/
@@ -369,7 +369,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def chooseTentativeOperators() : Unit = {
-    println("CHOOSING TENTATIVE OPERATORS")
+    //println("CHOOSING TENTATIVE OPERATORS")
     if (children.now.nonEmpty || parent.isDefined){
       if(activeOperator.isDefined){
         var timeout = 0
@@ -425,13 +425,13 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def childFinishedChoosingTentatives(sender: NodeHost, tChildren: Set[NodeHost]): Unit = {
     children.transform(_ + (sender -> tChildren))
     childrenCompletedChoosingTentatives += sender.actorRef
-    println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
+    //println("A child finished choosing tentative operators", childrenCompletedChoosingTentatives.size, "/", children.now.size)
     if (activeOperator.isDefined) {
       if (childrenCompletedChoosingTentatives.size == children.now.size) {
 
         if (consumer) {
           //ready = true
-          println("READY TO CALCULATE NEW PLACEMENT!")
+          //println("READY TO CALCULATE NEW PLACEMENT!")
         } else {
           parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
         }
@@ -475,11 +475,11 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   }
 
   def sendOutCostMessages(adaptation: Seq[NodeHost]) : Unit = {
-    println("trying to send", stage.now, adaptation.nonEmpty, children.now.isEmpty)
+    //println("trying to send", stage.now, adaptation.nonEmpty, children.now.isEmpty)
     //println(children.now.isEmpty, processedCostMessages.size, numberOfChildren.now, costs.size, parentHosts.size)
     if(stage.now == Stage.Measurement && (adaptation.nonEmpty || children.now.isEmpty)) {
       //println(children.now.nonEmpty , processedCostMessages.size , numberOfChildren.now , latencyResponses.size , bandwidthResponses.size , parentHosts.size)
-      println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
+      //println(children.now.isEmpty + " " + latencyResponses.size + " == " + parentHosts.size + " == " + bandwidthResponses.size + "     " + processedCostMessages.size)
       if (children.now.isEmpty && latencyResponses.size == parentHosts.size && bandwidthResponses.size == parentHosts.size) {
         //println("sending")
         parentHosts.foreach(parent => parent.actorRef ! CostMessage(costs(parent).duration, costs(parent).bandwidth))
