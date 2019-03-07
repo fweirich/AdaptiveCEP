@@ -102,10 +102,10 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   val ready: Signal[Boolean] = Signal{qosInternal().size == numberOfChildren() && stage() == Stage.Measurement}
 
-  val optimumHosts =  qosInternal.changed map { _ => if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
+  val optimumHosts =  Signal{if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), qosInternal(), childHost1, childHost2) else Seq.empty[NodeHost]}
 
-  val adaptation = demandViolated map {_ => optimumHosts.latest()}
+  val adaptation = demandViolated map {_ => optimumHosts.now}
 
   adaptation observe{_ => if(ready.now) adapt(_)}
 
@@ -150,7 +150,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   override def preStart(): Unit = {
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
-    newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.latest.now)}
+    newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.now)}
     //adaptation += {println(_)}
     /*demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
@@ -545,8 +545,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
-          broadcastMessage(StateTransferMessage(optimumHosts.latest.now, node.get))
-          adapt(optimumHosts.latest.now)
+          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
+          adapt(optimumHosts.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -557,8 +557,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
-          broadcastMessage(StateTransferMessage(optimumHosts.latest.now, node.get))
-          adapt(optimumHosts.latest.now)
+          broadcastMessage(StateTransferMessage(optimumHosts.now, node.get))
+          adapt(optimumHosts.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
