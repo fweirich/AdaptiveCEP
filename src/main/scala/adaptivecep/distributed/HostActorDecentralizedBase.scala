@@ -105,9 +105,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   val optimumHosts =  qosInternal.changed map { _ => if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), qosInternal(), childHost1, childHost2) else Seq.empty[NodeHost]}
 
-  val adaptation = demandViolated map {_ => optimumHosts.latest().now}
+  val adaptation = demandViolated map {_ => optimumHosts.latest()}
 
-  adaptation observe{_ => if(ready()) adapt(_)}
+  adaptation observe{_ => if(ready.now) adapt(_)}
 
   /*val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}*/
