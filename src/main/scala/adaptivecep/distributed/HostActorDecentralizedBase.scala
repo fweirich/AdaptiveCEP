@@ -51,8 +51,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   var latencyResponses: Set[ActorRef] = Set.empty[ActorRef]
   var bandwidthResponses: Set[ActorRef] = Set.empty[ActorRef]
 
-  var childHost1: Option[NodeHost] = None
-  var childHost2: Option[NodeHost] = None
+
   var childNode1: Option[ActorRef] = None //these 2 need to remain actoref since they are not hostactors
   var childNode2: Option[ActorRef] = None
   //var optimumChildHost1: Var[Option[NodeHost]] = Var(None)
@@ -74,7 +73,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   val children: Var[Map[NodeHost, Set[NodeHost]]] = Var(Map.empty[NodeHost, Set[NodeHost]])(ReSerializable.doNotSerialize, "cost")
   val numberOfChildren: Signal[Int] = Signal{children().keys.size + children().values.foldLeft(0){(x,y) => x + y.size}}
-  val accumulatedCost: Var[Map[NodeHost, Cost]] = Var(Map.empty[NodeHost, Cost])(ReSerializable.doNotSerialize, "cost")
+  val qosInternal: Var[Map[NodeHost, Cost]] = Var(Map.empty[NodeHost, Cost])(ReSerializable.doNotSerialize, "cost")
+  val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}
 
   val placement: Var[Map[Operator, Host]] = Var(Map.empty[Operator, Host])(ReSerializable.doNotSerialize, "cost")
   val reversePlacement: Signal[Map[Host, Operator]] = Signal{placement().map(_.swap)}
@@ -88,14 +88,26 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   val newCostInformation: default.Evt[Unit] = Evt[Unit]()
   val makeTentativeOperator: default.Evt[NodeHost] = Evt[NodeHost]()
 
+  var childHost1: Option[NodeHost] = None
+  var childHost2: Option[NodeHost] = None
 
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost") //information is unavailable due to decentralized nature
-  val qos: Signal[Map[Host, HostProps]] = Signal{Map.empty[Host, HostProps]}//Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
+  val parentCosts: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
+  //TODO: Debug this
+  //Signal{Map.empty[Host, HostProps]}//Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
 
-  val adaptationSignal: Signal[Seq[NodeHost]] = Signal{if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
-    calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}// Var(Seq.empty[NodeHost])
+  /*val adaptationSignal: Signal[Seq[NodeHost]] = Signal{if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
+    calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}// Var(Seq.empty[NodeHost])*/
 
-  val adaptation = adaptationSignal.changed
+
+  val ready: Signal[Boolean] = Signal{qosInternal().size == numberOfChildren() && stage() == Stage.Measurement}
+
+  val optimumHosts =  qosInternal.changed map { _ => if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
+    calculateOptimumHosts(children(), qosInternal(), childHost1, childHost2) else Seq.empty[NodeHost]}
+
+  val adaptation = demandViolated map {_ => optimumHosts.latest().now}
+
+  adaptation observe{_ => if(ready()) adapt(_)}
 
   /*val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}*/
@@ -108,7 +120,6 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     } : Seq[NodeHost]
   }*/
 
-  val ready: Signal[Boolean] = Signal{accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement}
 
   /**
     * Unused
@@ -132,17 +143,18 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def calculateOptimumHosts(children: Map[NodeHost, Set[NodeHost]],
                             accumulatedCost: Map[NodeHost, Cost],
                             childHost1: Option[NodeHost],
-                            childHost2: Option[NodeHost]): Seq[NodeHost]
+                            childHost2: Option[NodeHost]
+                            /*violatedDemands: Set[Requirement]*/): Seq[NodeHost]
   //def applyAdaptation(optimumHosts: Seq[NodeHost]): Unit
 
   override def preStart(): Unit = {
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
-    newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(adaptationSignal.now)}
+    newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.latest.now)}
     //adaptation += {println(_)}
-    demandViolated observe {_ =>
+    /*demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
-      if(ready.now){applyAdaptation(adaptationSignal.now)}}
+      if(ready.now){adapt(optimumHosts.latest.now)}}*/
 
 
 
@@ -476,15 +488,15 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         //println(optimumHosts)
         var bottleNeckNode = thisHost
         if (optimizeFor == "latency") {
-          bottleNeckNode = minmaxBy(Maximizing, adaptation)(accumulatedCost.now.apply(_).duration)
+          bottleNeckNode = minmaxBy(Maximizing, adaptation)(qosInternal.now.apply(_).duration)
         } else if (optimizeFor == "bandwidth") {
-          bottleNeckNode = minmaxBy(Minimizing, adaptation)(accumulatedCost.now.apply(_).bandwidth)
+          bottleNeckNode = minmaxBy(Minimizing, adaptation)(qosInternal.now.apply(_).bandwidth)
         } else {
-          bottleNeckNode = minmaxBy(Minimizing, adaptation)(x => (accumulatedCost.now.apply(x).duration, accumulatedCost.now.apply(x).bandwidth))
+          bottleNeckNode = minmaxBy(Minimizing, adaptation)(x => (qosInternal.now.apply(x).duration, qosInternal.now.apply(x).bandwidth))
         }
         //println("sending")
-        parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(accumulatedCost.now.apply(bottleNeckNode).duration, costs(parent).duration),
-          mergeBandwidth(accumulatedCost.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
+        parentHosts.foreach(parent => parent.actorRef ! CostMessage(mergeLatency(qosInternal.now.apply(bottleNeckNode).duration, costs(parent).duration),
+          mergeBandwidth(qosInternal.now.apply(bottleNeckNode).bandwidth, costs(parent).bandwidth)))
         /*if (consumer) {
         broadcastMessage(StateTransferMessage(optimumHosts, node.get))
       }*/
@@ -495,7 +507,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   def processCostMessage(m: CostMessage, sender: NodeHost): Unit = {
     //println(sender, children.now)
     if(isOperator && isChild(sender)){
-      accumulatedCost.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
+      qosInternal.transform(_.+(sender -> Cost(m.latency, m.bandwidth)))
       processedCostMessages += sender.actorRef
       //println(m.latency, m.bandwidth)
     }
@@ -511,7 +523,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     *
     */
 
-  def applyAdaptation(optimumHosts: Seq[NodeHost]): Unit = {
+  def adapt(optimumHosts: Seq[NodeHost]): Unit = {
     if (consumer) {
       broadcastMessage(StateTransferMessage(optimumHosts, node.get))
     }
@@ -533,8 +545,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty){
-          broadcastMessage(StateTransferMessage(adaptationSignal.now, node.get))
-          applyAdaptation(adaptationSignal.now)
+          broadcastMessage(StateTransferMessage(optimumHosts.latest.now, node.get))
+          adapt(optimumHosts.latest.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -545,8 +557,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
         reportCostsToNode()
         node.get ! Parent(parentNode.get)
         if(children.now.nonEmpty) {
-          broadcastMessage(StateTransferMessage(adaptationSignal.now, node.get))
-          applyAdaptation(adaptationSignal.now)
+          broadcastMessage(StateTransferMessage(optimumHosts.latest.now, node.get))
+          adapt(optimumHosts.latest.now)
         } else {
           stage.set(Stage.TentativeOperatorSelection)
           send(parent.get, MigrationComplete)
@@ -610,7 +622,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       childHost2 = None
     }
 
-    accumulatedCost.set(Map.empty[NodeHost, Cost])
+    qosInternal.set(Map.empty[NodeHost, Cost])
 
     parentHosts = Set.empty[NodeHost]
 

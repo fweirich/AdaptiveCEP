@@ -24,7 +24,7 @@ trait  CEPSystem {
 }
 
 trait QoSSystem{
-  val qos: Signal[Map[Host, HostProps]] //can be extracted from the query
+  val qos: Signal[Map[Host, HostProps]] //aggregierte kosten
   val demandViolated: Event[Set[Requirement]] // currently the node reports this via Requirements not met (could be changed to firing an event)
 }
 

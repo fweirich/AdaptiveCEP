@@ -34,79 +34,16 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
       broadcastMessage(ResetTemperature)
     }}
   makeTentativeOperator observe{host => send(host, temperature)}
-/*
-  override def processEvent(event: PlacementEvent, sender: ActorRef): Unit ={
-    event match {
-      case BecomeTentativeOperator(operator, p, pHosts, c1, c2, t) =>
-        temperature = t
-      case Start =>
-        if(temperature > minTemperature) {
-          temperature = temperature * temperatureReductionFactor
-        }
-      case RequirementsNotMet(_) =>
-        temperatureCounter = 0
-        if(temperature > minTemperature) {
-          temperature = temperature * temperatureReductionFactor
-        }
-      case RequirementsMet =>
-        temperatureCounter += 1
-        if(consumer && temperature != 1.0 && temperatureCounter > 2){
-          temperature = 1.0
-          broadcastMessage(ResetTemperature)
-        }
-      case ResetTemperature =>
-        temperature = 1.0
-        if(activeOperator.isDefined){
-          broadcastMessage(ResetTemperature)
-        }
-      case _ =>
-    }
-    super.processEvent(event, sender)
-  }
-  */
-
-  /*
-  override def chooseTentativeOperators() : Unit = {
-    println("CHOOSING TENTATIVE OPERATORS")
-    if (children.now.nonEmpty || parent.isDefined){
-      if(activeOperator.isDefined){
-        var timeout = 0
-        var chosen: Boolean = false
-        while (tentativeHosts.size < degree && timeout < 1000 && !chosen){
-          val randomNeighbor =  hosts.now.toVector(random.nextInt(hosts.now.size))
-          if(!reversePlacement.now.contains(randomNeighbor) && !tentativeHosts.contains(randomNeighbor)){
-            val tenOp = TentativeOperator(activeOperator.get.props, activeOperator.get.dependencies)
-            send(randomNeighbor, BecomeTentativeOperator(tenOp, parentNode.get, parentHosts, childHost1, childHost2, temperature))
-            chosen = true
-          }
-          timeout += 1
-        }
-        if(timeout >= 1000){
-          //println("Not enough hosts available as tentative Operators. Continuing without...")
-          send(children.now.toSeq.head._1, ChooseTentativeOperators(tentativeHosts + thisHost))
-        }
-        //children.toSeq.head._1 ! ChooseTentativeOperators(tentativeHosts :+ self)
-      } else {
-        println("ERROR: Only Active Operator can choose Tentative Operators")
-      }
-    }
-    else {
-      stage.set(Stage.Measurement)
-      parentHosts.foreach(send(_, FinishedChoosing(tentativeHosts)))
-    }
-  }
-
-*/
 
   def calculateOptimumHosts(children: Map[NodeHost, Set[NodeHost]],
-                            accumulatedCost: Map[NodeHost, Cost],
+                            qos: Map[NodeHost, Cost],
                             childHost1: Option[NodeHost],
                             childHost2: Option[NodeHost]): Seq[NodeHost] = {
 
     var result: Seq[NodeHost] = Seq.empty[NodeHost]
     var optimum: Seq[NodeHost] = Seq.empty[NodeHost]
     if(activeOperator.isDefined){
-      val worseSolution = findWorseAcceptableSolution(children, accumulatedCost)
+      val worseSolution = findWorseAcceptableSolution(children, qos)
       if(childHost1.isDefined){
         val worse1 = containsWorseSolutionFor(childHost1.get, worseSolution, children)
         if (worse1.isDefined){
@@ -116,11 +53,11 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         else {
           var opt1 = thisHost
           if(optimizeFor == "latency"){
-            opt1 = minmaxBy(Minimizing, getChildAndTentatives(childHost1.get, children))(accumulatedCost(_).duration)
+            opt1 = minmaxBy(Minimizing, getChildAndTentatives(childHost1.get, children))(qos(_).duration)
           }else if(optimizeFor == "bandwidth"){
-            opt1 = minmaxBy(Maximizing, getChildAndTentatives(childHost1.get, children))(accumulatedCost(_).bandwidth)
+            opt1 = minmaxBy(Maximizing, getChildAndTentatives(childHost1.get, children))(qos(_).bandwidth)
           }else{
-            opt1 = minmaxBy(Maximizing, getChildAndTentatives(childHost1.get, children))(x => (accumulatedCost(x).duration, accumulatedCost(x).bandwidth))
+            opt1 = minmaxBy(Maximizing, getChildAndTentatives(childHost1.get, children))(x => (qos(x).duration, qos(x).bandwidth))
           }
           //optimumChildHost1 = Some(opt1)
           result = result :+ opt1
@@ -134,11 +71,11 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
         else {
           var opt2 = thisHost
           if(optimizeFor == "latency"){
-            opt2 = minmaxBy(Minimizing, getChildAndTentatives(childHost2.get, children))(accumulatedCost(_).duration)
+            opt2 = minmaxBy(Minimizing, getChildAndTentatives(childHost2.get, children))(qos(_).duration)
           }else if(optimizeFor == "bandwidth"){
-            opt2 = minmaxBy(Maximizing, getChildAndTentatives(childHost2.get, children))(accumulatedCost(_).bandwidth)
+            opt2 = minmaxBy(Maximizing, getChildAndTentatives(childHost2.get, children))(qos(_).bandwidth)
           }else{
-            opt2 = minmaxBy(Maximizing, getChildAndTentatives(childHost2.get, children))(x => (accumulatedCost(x).duration, accumulatedCost(x).bandwidth))
+            opt2 = minmaxBy(Maximizing, getChildAndTentatives(childHost2.get, children))(x => (qos(x).duration, qos(x).bandwidth))
           }
           //optimumChildHost2 = Some(opt2)
           result = result :+ opt2
@@ -147,11 +84,11 @@ class HostActorAnnealing extends HostActorDecentralizedBase {
     }
     if(tentativeOperator.isDefined){
       if(optimizeFor == "latency"){
-        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Minimizing, getChildAndTentatives(child._1, children))(accumulatedCost(_).duration))
+        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Minimizing, getChildAndTentatives(child._1, children))(qos(_).duration))
       }else if(optimizeFor == "bandwidth"){
-        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Maximizing, getChildAndTentatives(child._1, children))(accumulatedCost(_).bandwidth))
+        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Maximizing, getChildAndTentatives(child._1, children))(qos(_).bandwidth))
       }else{
-        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Maximizing, getChildAndTentatives(child._1, children))(x => (accumulatedCost(x).duration, accumulatedCost(x).bandwidth)))
+        children.toSeq.foreach(child => optimum = optimum :+ minmaxBy(Maximizing, getChildAndTentatives(child._1, children))(x => (qos(x).duration, qos(x).bandwidth)))
       }
 
       optimum.foreach(host =>
