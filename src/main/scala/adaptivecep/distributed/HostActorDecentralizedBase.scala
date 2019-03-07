@@ -92,7 +92,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
   var childHost2: Option[NodeHost] = None
 
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(Map.empty[Host, Map[Host, Cost]])(ReSerializable.doNotSerialize, "cost") //information is unavailable due to decentralized nature
-  val parentCosts: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
+  //val parentCosts: Signal[Map[Host, HostProps]] = Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
   //TODO: Debug this
   //Signal{Map.empty[Host, HostProps]}//Signal{helper.hostProps(costSignal(),hosts().map(h => h.asInstanceOf[Host]))}
 
