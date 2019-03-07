@@ -102,12 +102,12 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   val ready: Signal[Boolean] = Signal{qosInternal().size == numberOfChildren() && stage() == Stage.Measurement}
 
-  val optimumHosts =  Signal{if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
+  val optimumHosts: default.Signal[Seq[NodeHost]] =  Signal{if(qosInternal().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), qosInternal(), childHost1, childHost2) else Seq.empty[NodeHost]}
 
-  val adaptation = demandViolated map {_ => optimumHosts()}
+  val adaptation: default.Event[Seq[NodeHost]] = demandViolated map { _ => optimumHosts()}
 
-  adaptation observe{_ => if(ready.now) adapt(_)}
+  adaptation observe{list => if(ready.now) adapt(list)}
 
   /*val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}*/
@@ -151,7 +151,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
     newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.now)}
-    adaptation += {println(_)}
+    adaptation += {list => println(list)}
     /*demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){adapt(optimumHosts.latest.now)}}*/
