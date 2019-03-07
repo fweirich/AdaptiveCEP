@@ -151,7 +151,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     demandViolated.fire(Set.empty[Requirement])
     tick += {_ => {measureCosts(parentHosts)}}
     newCostInformation observe {_ => if(stage.now == Stage.Measurement) sendOutCostMessages(optimumHosts.now)}
-    //adaptation += {println(_)}
+    adaptation += {println(_)}
     /*demandViolated observe {_ =>
       //println(ready.now, accumulatedCost.now.size, numberOfChildren.now, stage.now)
       if(ready.now){adapt(optimumHosts.latest.now)}}*/
