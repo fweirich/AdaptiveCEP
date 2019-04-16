@@ -114,7 +114,7 @@ case class SelfJoinNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
-    if (sender == childNode) {
+    //if (sender == childNode) {
       context.system.scheduler.scheduleOnce(
         FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
         () => {
@@ -130,8 +130,9 @@ case class SelfJoinNode(
               case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
             }
           }
-        })
-    }
+        }
+      )
+    //}
   }
 
   override def postStop(): Unit = {
