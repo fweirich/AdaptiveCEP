@@ -150,7 +150,9 @@ case class DropElemNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
+    println("processing")
     if (sender == childNode) {
+      println(event)
       event match {
         case Event1(_) => sys.error("Panic! Control flow should never reach this point!")
         case Event2(e1, e2) => handleEvent2(e1, e2)
