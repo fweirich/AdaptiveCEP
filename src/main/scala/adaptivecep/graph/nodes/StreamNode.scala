@@ -34,7 +34,10 @@ case class StreamNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription(ref) if sender() == publisher =>
       subscriptionAcknowledged = true
-      ref.getSource.to(Sink.foreach(a => parentNode ! a)).run(materializer)
+      ref.getSource.to(Sink.foreach(a =>{
+        parentNode ! a
+        println(a)
+      })).run(materializer)
       //if(parentReceived && !created) emitCreated()
     case Parent(p1) => {
       //println("Parent received", p1)

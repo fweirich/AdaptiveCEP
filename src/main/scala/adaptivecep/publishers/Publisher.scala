@@ -27,8 +27,8 @@ trait Publisher extends Actor {
   override def receive: Receive = {
     case Subscribe =>
       subscribers = subscribers + sender()
-      pipe(future).to(sender())
-      //Await.result(future, Duration.Inf)
+      //pipe(future).to(sender())
+      sender ! AcknowledgeSubscription(Await.result(future, Duration.Inf))
   }
 
 }
