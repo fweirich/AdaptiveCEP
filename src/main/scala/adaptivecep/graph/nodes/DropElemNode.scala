@@ -114,7 +114,7 @@ case class DropElemNode(
     case SourceResponse(ref) =>
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, sender())
-        println(e)
+        //println(e)
       })).run(materializer)
     case Child1(c) => {
       //println("Child received", c)
