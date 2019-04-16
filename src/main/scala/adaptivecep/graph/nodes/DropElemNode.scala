@@ -151,6 +151,7 @@ case class DropElemNode(
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
     println("processing")
+    println(sender, childNode)
     if (sender == childNode) {
       println(event)
       event match {
