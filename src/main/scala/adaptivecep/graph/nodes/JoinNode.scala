@@ -101,7 +101,10 @@ case class JoinNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
-      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
+      ref.getSource.to(Sink foreach(e =>{
+        processEvent(e, sender())
+        println(e)
+      })).run(materializer)
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
       childNode1 = c1
