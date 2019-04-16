@@ -112,8 +112,9 @@ case class DropElemNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
+      val sender = sender()
       ref.getSource.to(Sink foreach(e =>{
-        processEvent(e, sender())
+        processEvent(e, sender)
         //println(e)
       })).run(materializer)
     case Child1(c) => {
@@ -152,7 +153,7 @@ case class DropElemNode(
   def processEvent(event: Event, sender: ActorRef): Unit = {
     println("processing")
     println(sender, childNode)
-    //if (sender == childNode) {
+    if (sender == childNode) {
       println(event)
       event match {
         case Event1(_) => sys.error("Panic! Control flow should never reach this point!")
@@ -163,5 +164,5 @@ case class DropElemNode(
         case Event6(e1, e2, e3, e4, e5, e6) => handleEvent6(e1, e2, e3, e4, e5, e6)
       }
     }
-  //}
+  }
 }

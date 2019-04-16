@@ -72,9 +72,10 @@ case class SelfJoinNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
-      println("HELLO")
+      val sender = sender()
+      println("HELLO", sender)
       ref.getSource.to(Sink foreach(e =>{
-        processEvent(e, sender())
+        processEvent(e, sender)
         println(e)
       })).run(materializer)
     case Child1(c) => {
@@ -114,7 +115,7 @@ case class SelfJoinNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
-    //if (sender == childNode) {
+    if (sender == childNode) {
       context.system.scheduler.scheduleOnce(
         FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
         () => {
@@ -132,7 +133,7 @@ case class SelfJoinNode(
           }
         }
       )
-    //}
+    }
   }
 
   override def postStop(): Unit = {
