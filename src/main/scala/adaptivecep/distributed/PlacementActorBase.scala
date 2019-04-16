@@ -94,7 +94,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   }
 
   override def preStart(): Unit = {
-    //adaption observe placeAll
+    adaption observe placeAll
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
