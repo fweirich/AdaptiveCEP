@@ -112,7 +112,10 @@ case class DropElemNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
-      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
+      ref.getSource.to(Sink foreach(e =>{
+        processEvent(e, sender())
+        println(e)
+      })).run(materializer)
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
