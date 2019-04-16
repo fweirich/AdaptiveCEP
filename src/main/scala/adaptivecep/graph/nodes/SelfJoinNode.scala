@@ -145,7 +145,7 @@ case class SelfJoinNode(
   val epStatement: EPStatement = createEpStatement(
     s"select * from " +
     s"sq.${createWindowEplString(createWindow(windowType1, windowSize1))} as lhs, " +
-    s"sq.${createWindowEplString(createWindow(windowType1, windowSize1))} as rhs")
+    s"sq.${createWindowEplString(createWindow(windowType2, windowSize2))} as rhs")
 
   val updateListener: UpdateListener = (newEventBeans: Array[EventBean], _) => newEventBeans.foreach(eventBean => {
     val values: Array[Any] =
