@@ -88,9 +88,9 @@ case class ConjunctionNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
-      val sender = sender()
+      val s = sender()
       ref.getSource.to(Sink foreach(e =>{
-        processEvent(e, sender)
+        processEvent(e, s)
         println(e)
       })).run(materializer)
     case Child2(c1, c2) => {
