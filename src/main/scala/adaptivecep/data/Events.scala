@@ -7,6 +7,7 @@ import adaptivecep.data.Queries.Requirement
 import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, TentativeOperator}
 import akka.actor.{ActorRef, Props}
 import akka.dispatch.ControlMessage
+import akka.stream.SourceRef
 
 import scala.concurrent.duration.Duration
 
@@ -105,6 +106,9 @@ object Events {
 
   case object DependenciesRequest extends CEPControlMessage
   case class DependenciesResponse(dependencies: Seq[ActorRef]) extends CEPControlMessage
+
+  case object SourceRequest extends CEPControlMessage
+  case class SourceResponse(source: SourceRef[Event]) extends CEPControlMessage
 
   sealed trait Event
   case class Event1(e1: Any)                                              extends Event

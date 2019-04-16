@@ -7,6 +7,7 @@ import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
+import akka.stream.SourceRef
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -20,6 +21,7 @@ trait UnaryNode extends Node {
 
   //val childNode: ActorRef = createChildNode(1, query.sq)
   var childNode: ActorRef = self
+  var childSourceRef: SourceRef[Event] = null
   var parentNode: ActorRef = self
   val interval = 10
 
@@ -106,7 +108,7 @@ trait UnaryNode extends Node {
         lmonitor.childNode = childNode
         if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
           emittedEvents += 1
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
+          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
           latencyMonitor.onEventEmit(event, nodeData)
           bandwidthMonitor.onEventEmit(event, nodeData)

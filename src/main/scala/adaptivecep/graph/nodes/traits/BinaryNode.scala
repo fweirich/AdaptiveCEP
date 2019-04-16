@@ -7,6 +7,7 @@ import adaptivecep.data.Queries._
 import adaptivecep.dsl.Dsl.stream
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, Cancellable}
+import akka.stream.SourceRef
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -25,6 +26,8 @@ trait BinaryNode extends Node {
 
   var childNode1: ActorRef = self
   var childNode2: ActorRef = self
+  var childSourceRef1: SourceRef[Event] = null
+  var childSourceRef2: SourceRef[Event] = null
 
   var parentNode: ActorRef = self
 
@@ -110,7 +113,7 @@ trait BinaryNode extends Node {
           emittedEvents += 1
           //bmonitor.childNode1 = childNode1
           //bmonitor.childNode2 = childNode2
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
+          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
           latencyMonitor.onEventEmit(event, nodeData)
           bandwidthMonitor.onEventEmit(event, nodeData)

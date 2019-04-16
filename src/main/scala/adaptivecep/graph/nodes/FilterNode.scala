@@ -5,6 +5,7 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
+import akka.stream.scaladsl.Sink
 
 case class FilterNode(
     //query: FilterQuery,
@@ -42,9 +43,14 @@ case class FilterNode(
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       //if (childCreated && !created) emitCreated()
     }
+    case SourceRequest =>
+      sender() ! SourceResponse(sourceRef)
+    case SourceResponse(ref) =>
+      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
+      c ! SourceRequest
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       emitCreated()
     }
@@ -74,5 +80,11 @@ case class FilterNode(
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
+  }
+
+  def processEvent(event: Event, sender: ActorRef): Unit = {
+    if (sender == childNode) {
+      if (cond(event)) emitEvent(event)
+    }
   }
 }

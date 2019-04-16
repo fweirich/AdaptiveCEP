@@ -9,6 +9,7 @@ import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
+import akka.stream.scaladsl.Sink
 import com.espertech.esper.client._
 
 import scala.concurrent.duration.FiniteDuration
@@ -68,9 +69,14 @@ case class SelfJoinNode(
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       //if(childCreated && !created) emitCreated()
     }
+    case SourceRequest =>
+      sender() ! SourceResponse(sourceRef)
+    case SourceResponse(ref) =>
+      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
+      c ! SourceRequest
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       emitCreated()
     }
@@ -101,6 +107,27 @@ case class SelfJoinNode(
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
+  }
+
+  def processEvent(event: Event, sender: ActorRef): Unit = {
+    if (sender == childNode) {
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
+        () => {
+          if (parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+            frequencyMonitor.onEventEmit(event, nodeData)
+            emittedEvents += 1
+            event match {
+              case Event1(e1) => sendEvent("sq", Array(toAnyRef(e1)))
+              case Event2(e1, e2) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2)))
+              case Event3(e1, e2, e3) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3)))
+              case Event4(e1, e2, e3, e4) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4)))
+              case Event5(e1, e2, e3, e4, e5) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5)))
+              case Event6(e1, e2, e3, e4, e5, e6) => sendEvent("sq", Array(toAnyRef(e1), toAnyRef(e2), toAnyRef(e3), toAnyRef(e4), toAnyRef(e5), toAnyRef(e6)))
+            }
+          }
+        })
+    }
   }
 
   override def postStop(): Unit = {

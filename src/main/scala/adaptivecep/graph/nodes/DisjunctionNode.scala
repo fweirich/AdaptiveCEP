@@ -6,6 +6,7 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.remote.RemoteScope
+import akka.stream.scaladsl.Sink
 
 case class DisjunctionNode(
     //query: DisjunctionQuery,
@@ -118,10 +119,16 @@ case class DisjunctionNode(
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
+    case SourceRequest =>
+      sender() ! SourceResponse(sourceRef)
+    case SourceResponse(ref) =>
+      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
       childNode1 = c1
       childNode2 = c2
+      c1 ! SourceRequest
+      c2 ! SourceRequest
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       emitCreated()
     }
@@ -154,4 +161,26 @@ case class DisjunctionNode(
       bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
   }
 
+  def processEvent(event: Event, sender: ActorRef): Unit = {
+    if(sender == childNode1) {
+      event match {
+        case Event1(e1) => handleEvent(Array(Left(e1)))
+        case Event2(e1, e2) => handleEvent(Array(Left(e1), Left(e2)))
+        case Event3(e1, e2, e3) => handleEvent(Array(Left(e1), Left(e2), Left(e3)))
+        case Event4(e1, e2, e3, e4) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4)))
+        case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4), Left(e5)))
+        case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4), Left(e5), Left(e6)))
+      }
+    }
+    else if(sender == childNode2){
+     event match {
+      case Event1(e1) => handleEvent(Array(Right(e1)))
+      case Event2(e1, e2) => handleEvent(Array(Right(e1), Right(e2)))
+      case Event3(e1, e2, e3) => handleEvent(Array(Right(e1), Right(e2), Right(e3)))
+      case Event4(e1, e2, e3, e4) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4)))
+      case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5)))
+      case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5), Right(e6)))
+    }
+  }
+  }
 }

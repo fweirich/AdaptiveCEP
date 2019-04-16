@@ -56,7 +56,7 @@ trait LeafNode extends Node {
       () => {
         if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
           emittedEvents += 1
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else parentNode ! event
+          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
           frequencyMonitor.onEventEmit(event, nodeData)
           latencyMonitor.onEventEmit(event, nodeData)
           bandwidthMonitor.onEventEmit(event, nodeData)

@@ -79,7 +79,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     //case Event3(Left(i1), Left(i2), Left(f)) => println(s"COMPLEX EVENT:\tEvent3($i1,$i2,$f)")
     //case Event3(Right(s), _, _)              => println(s"COMPLEX EVENT:\tEvent1($s)")
     // Callback for `query2`:
-    //case Event4(i1, i2, f, s)             => println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")
+    case Event4(i1, i2, f, s)             => println(s"COMPLEX EVENT:\tEvent4($i1, $i2, $f,$s)")
     // This is necessary to avoid warnings about non-exhaustive `match`:
     case _                             => //println("what the hell")
   }
@@ -94,7 +94,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
   }
 
   override def preStart(): Unit = {
-    adaption observe placeAll
+    //adaption observe placeAll
     println(optimizeFor)
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])

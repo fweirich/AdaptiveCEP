@@ -2,6 +2,7 @@ package adaptivecep.publishers
 
 import adaptivecep.data.Events.Event
 import adaptivecep.publishers.Publisher._
+import akka.NotUsed
 import akka.actor.{Actor, ActorRef}
 import akka.remote.WireFormats.TimeUnit
 import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete, StreamRefs}
@@ -16,9 +17,9 @@ trait Publisher extends Actor {
 
   val materializer = ActorMaterializer()
 
-  val source: Source[Event, SourceQueueWithComplete[Event]] = Source.queue[Event](1000, OverflowStrategy.backpressure)
-  val queue = source.to(Sink.ignore).run()(materializer)
-  val future: Future[SourceRef[Event]] = source.runWith(StreamRefs.sourceRef())(materializer)
+  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](1000, OverflowStrategy.backpressure).preMaterialize()(materializer)
+  val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
+
 
   var subscribers: Set[ActorRef] =
     scala.collection.immutable.Set.empty[ActorRef]
@@ -26,9 +27,8 @@ trait Publisher extends Actor {
   override def receive: Receive = {
     case Subscribe =>
       subscribers = subscribers + sender()
-      //pipe(future).to(sender())
-      val result = Await.result(future, Duration.Inf)
-      sender() ! result
+      pipe(future).to(sender())
+      //Await.result(future, Duration.Inf)
   }
 
 }
@@ -36,7 +36,7 @@ trait Publisher extends Actor {
 object Publisher {
 
   case object Subscribe
-  case class AcknowledgeSubscription(sink: SourceRef[Event])
+  case class AcknowledgeSubscription(source: SourceRef[Event])
   case class Something(sourceRef: SourceRef[Event])
 
 }

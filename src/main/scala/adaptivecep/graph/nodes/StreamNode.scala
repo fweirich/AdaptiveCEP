@@ -1,11 +1,14 @@
 package adaptivecep.graph.nodes
 
-import adaptivecep.data.Events.{_}
+import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
+import akka.NotUsed
 import akka.actor.{ActorRef, PoisonPill}
+import akka.stream.KillSwitches
+import akka.stream.scaladsl.{Keep, Sink}
 
 case class StreamNode(
     //query: StreamQuery,
@@ -29,8 +32,9 @@ case class StreamNode(
   override def receive: Receive = {
     case DependenciesRequest =>
       sender ! DependenciesResponse(Seq.empty)
-    case AcknowledgeSubscription if sender() == publisher =>
+    case AcknowledgeSubscription(ref) if sender() == publisher =>
       subscriptionAcknowledged = true
+      ref.getSource.to(Sink.foreach(a => parentNode ! a)).run(materializer)
       //if(parentReceived && !created) emitCreated()
     case Parent(p1) => {
       //println("Parent received", p1)
@@ -46,6 +50,8 @@ case class StreamNode(
         created = true
         emitCreated()
       }
+    case SourceRequest =>
+      sender() ! SourceResponse(sourceRef)
     case KillMe => sender() ! PoisonPill
     case Kill =>
       self ! PoisonPill

@@ -6,6 +6,8 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.remote.RemoteScope
+import akka.stream.scaladsl.Sink
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class DropElemNode(
@@ -107,9 +109,14 @@ case class DropElemNode(
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       //if(childCreated && !created) emitCreated()
     }
+    case SourceRequest =>
+      sender() ! SourceResponse(sourceRef)
+    case SourceResponse(ref) =>
+      ref.getSource.to(Sink foreach(e => processEvent(e, sender()))).run(materializer)
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
+      c ! SourceRequest
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       emitCreated()
     }
@@ -139,4 +146,16 @@ case class DropElemNode(
       bandwidthMonitor.onMessageReceive(unhandledMessage, nodeData)
   }
 
+  def processEvent(event: Event, sender: ActorRef): Unit = {
+    if (sender == childNode) {
+      event match {
+        case Event1(_) => sys.error("Panic! Control flow should never reach this point!")
+        case Event2(e1, e2) => handleEvent2(e1, e2)
+        case Event3(e1, e2, e3) => handleEvent3(e1, e2, e3)
+        case Event4(e1, e2, e3, e4) => handleEvent4(e1, e2, e3, e4)
+        case Event5(e1, e2, e3, e4, e5) => handleEvent5(e1, e2, e3, e4, e5)
+        case Event6(e1, e2, e3, e4, e5, e6) => handleEvent6(e1, e2, e3, e4, e5, e6)
+      }
+    }
+  }
 }
