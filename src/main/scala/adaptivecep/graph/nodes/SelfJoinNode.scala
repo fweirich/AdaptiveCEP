@@ -72,6 +72,7 @@ case class SelfJoinNode(
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
+      println("HELLO")
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, sender())
         println(e)
