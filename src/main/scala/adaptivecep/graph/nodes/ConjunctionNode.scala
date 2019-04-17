@@ -108,6 +108,7 @@ case class ConjunctionNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
+    println(sender, childNode1, childNode2)
     if(sender == childNode1){
             event match {
               case Event1(e1) => sendEvent("sq1", Array(toAnyRef(e1)))
