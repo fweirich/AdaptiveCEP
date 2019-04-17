@@ -21,7 +21,7 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
     source._1.offer(event)
     //println(s"STREAM $publisherName:\t$event")
     context.system.scheduler.scheduleOnce(
-      delay = FiniteDuration(100, TimeUnit.MICROSECONDS),
+      delay = FiniteDuration(1000, TimeUnit.MICROSECONDS),
       runnable = () => publish(id + 1)
     )
   }
