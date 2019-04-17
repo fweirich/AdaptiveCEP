@@ -20,7 +20,10 @@ case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with Req
   }
   def receive: Receive = {
     //case AcknowledgeSubscription(ref) => ref.getSource.to(Sink foreach println).run(materializer)
-    case ref: SourceRef[Event] =>
-      ref.getSource.to(Sink foreach println).run(materializer)
+    case AcknowledgeSubscription(ref) =>
+      ref.getSource.to(Sink foreach(e => {
+        println(e)
+      })).run(materializer)
+
   }
 }

@@ -20,7 +20,6 @@ trait Publisher extends Actor {
   val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](1000, OverflowStrategy.dropNew).preMaterialize()(materializer)
   val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
 
-
   var subscribers: Set[ActorRef] =
     scala.collection.immutable.Set.empty[ActorRef]
 
