@@ -126,7 +126,7 @@ case class DisjunctionNode(
       println("OR", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
-        //println(e)
+        processedEvents += 1
       })).run(materializer)
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)

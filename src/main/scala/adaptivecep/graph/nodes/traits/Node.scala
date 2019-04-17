@@ -26,6 +26,7 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
   var delay: Boolean = false
   var costs: Map[ActorRef, Cost] = Map.empty[ActorRef, Cost].withDefaultValue(Cost(Duration.Zero, 100))
   var emittedEvents: Int = 0
+  var processedEvents: Int = 0
 
 
   val materializer = ActorMaterializer()

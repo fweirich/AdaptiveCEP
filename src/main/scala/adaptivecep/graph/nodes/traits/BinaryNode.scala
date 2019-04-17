@@ -51,7 +51,10 @@ trait BinaryNode extends Node {
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
         runnable = () => {
+          println(emittedEvents)
+          println(processedEvents)
           emittedEvents = 0
+          processedEvents = 0
         })
     }
     emitCreated()
@@ -104,7 +107,6 @@ trait BinaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    //println("emit " + event)
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {
