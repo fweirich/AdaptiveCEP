@@ -49,7 +49,7 @@ case class FilterNode(
       val s = sender()
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
-        println(e)
+        //println(e)
       })).run(materializer)
     case Child1(c) => {
       //println("Child received", c)

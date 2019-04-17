@@ -104,7 +104,7 @@ trait BinaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    println("emit " + event)
+    //println("emit " + event)
     context.system.scheduler.scheduleOnce(
       FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
       () => {

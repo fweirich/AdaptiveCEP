@@ -36,7 +36,7 @@ case class StreamNode(
       subscriptionAcknowledged = true
       ref.getSource.to(Sink.foreach(a =>{
         parentNode ! a
-        println(a)
+        //println(a)
       })).run(materializer)
       //if(parentReceived && !created) emitCreated()
     case Parent(p1) => {

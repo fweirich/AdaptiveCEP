@@ -125,7 +125,7 @@ case class DisjunctionNode(
       val s = sender()
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
-        println(e)
+        //println(e)
       })).run(materializer)
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
