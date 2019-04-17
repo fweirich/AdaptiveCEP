@@ -74,6 +74,7 @@ case class JoinNode(
       val s = sender()
       println("JOIN", s)
       ref.getSource.to(Sink foreach(e =>{
+        processedEvents += 1
         processEvent(e, s)
         //println(e)
       })).run(materializer)
