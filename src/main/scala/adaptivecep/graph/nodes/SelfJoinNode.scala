@@ -60,7 +60,6 @@ case class SelfJoinNode(
       val s = sender()
       println("SELFJOIN", s)
       ref.getSource.to(Sink foreach(e =>{
-        processedEvents += 1
         processEvent(e, s)
         //println(e)
       })).run(materializer)
@@ -101,6 +100,7 @@ case class SelfJoinNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
+    processedEvents += 1
     if (sender == childNode) {
             event match {
               case Event1(e1) => sendEvent("sq", Array(toAnyRef(e1)))
