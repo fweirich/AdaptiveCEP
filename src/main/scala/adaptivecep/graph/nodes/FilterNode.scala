@@ -28,9 +28,6 @@ case class FilterNode(
     case Created if sender() == childNode =>
       childCreated = true
       //if (parentReceived && !created) emitCreated()
-    case event: Event if sender() == childNode => {
-      if (cond(event)) emitEvent(event)
-    }
     case CentralizedCreated =>
       if(!created){
         created = true

@@ -89,14 +89,6 @@ case class DropElemNode(
     case Created if sender() == childNode =>
       childCreated = true
       //if(parentReceived && !created) emitCreated()
-    case event: Event if sender() == childNode => event match {
-      case Event1(_) => sys.error("Panic! Control flow should never reach this point!")
-      case Event2(e1, e2) => handleEvent2(e1, e2)
-      case Event3(e1, e2, e3) => handleEvent3(e1, e2, e3)
-      case Event4(e1, e2, e3, e4) => handleEvent4(e1, e2, e3, e4)
-      case Event5(e1, e2, e3, e4, e5) => handleEvent5(e1, e2, e3, e4, e5)
-      case Event6(e1, e2, e3, e4, e5, e6) => handleEvent6(e1, e2, e3, e4, e5, e6)
-    }
     case CentralizedCreated =>
       if(!created){
         created = true

@@ -35,7 +35,7 @@ case class StreamNode(
     case AcknowledgeSubscription(ref) if sender() == publisher =>
       subscriptionAcknowledged = true
       ref.getSource.to(Sink.foreach(a =>{
-        parentNode ! a
+        emitEvent(a)
         //println(a)
       })).run(materializer)
       //if(parentReceived && !created) emitCreated()
@@ -46,8 +46,6 @@ case class StreamNode(
       nodeData = LeafNodeData(name, requirements, context, parentNode)
       //if (subscriptionAcknowledged && !created) emitCreated()
     }
-    case event: Event if sender() == publisher =>
-      emitEvent(event)
     case CentralizedCreated =>
       if(!created){
         created = true

@@ -91,22 +91,6 @@ case class DisjunctionNode(
     case Created if sender() == childNode2 =>
       childNode2Created = true
       //if (childNode1Created && parentReceived && !created) emitCreated()
-    case event: Event if sender() == childNode1 => event match {
-      case Event1(e1) => handleEvent(Array(Left(e1)))
-      case Event2(e1, e2) => handleEvent(Array(Left(e1), Left(e2)))
-      case Event3(e1, e2, e3) => handleEvent(Array(Left(e1), Left(e2), Left(e3)))
-      case Event4(e1, e2, e3, e4) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4)))
-      case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4), Left(e5)))
-      case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Left(e1), Left(e2), Left(e3), Left(e4), Left(e5), Left(e6)))
-    }
-    case event: Event if sender() == childNode2 => event match {
-      case Event1(e1) => handleEvent(Array(Right(e1)))
-      case Event2(e1, e2) => handleEvent(Array(Right(e1), Right(e2)))
-      case Event3(e1, e2, e3) => handleEvent(Array(Right(e1), Right(e2), Right(e3)))
-      case Event4(e1, e2, e3, e4) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4)))
-      case Event5(e1, e2, e3, e4, e5) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5)))
-      case Event6(e1, e2, e3, e4, e5, e6) => handleEvent(Array(Right(e1), Right(e2), Right(e3), Right(e4), Right(e5), Right(e6)))
-    }
     case CentralizedCreated =>
       if(!created){
         created = true
