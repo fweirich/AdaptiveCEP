@@ -91,8 +91,8 @@ case class ConjunctionNode(
       val s = sender()
       println("AND", s)
       ref.getSource.to(Sink foreach(e =>{
-        processEvent(e, s)
         processedEvents += 1
+        processEvent(e, s)
         //println(e)
       })).run(materializer)
     case Child2(c1, c2) => {
