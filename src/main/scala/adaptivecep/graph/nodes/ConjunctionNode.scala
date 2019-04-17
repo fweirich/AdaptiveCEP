@@ -92,6 +92,7 @@ case class ConjunctionNode(
       println("AND", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
+        processedEvents += 1
         //println(e)
       })).run(materializer)
     case Child2(c1, c2) => {
