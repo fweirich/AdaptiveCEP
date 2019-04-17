@@ -73,7 +73,7 @@ case class SelfJoinNode(
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
-      println("HELLO", s)
+      println("SELFJOIN", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
         //println(e)

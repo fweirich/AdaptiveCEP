@@ -47,6 +47,7 @@ case class FilterNode(
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
+      println("FILTER", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
         //println(e)
