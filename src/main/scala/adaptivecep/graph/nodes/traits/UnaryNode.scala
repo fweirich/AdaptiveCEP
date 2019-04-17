@@ -54,7 +54,9 @@ trait UnaryNode extends Node {
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
         runnable = () => {
           println(emittedEvents)
+          println(processedEvents)
           emittedEvents = 0
+          processedEvents = 0
         })
     }
     emitCreated()

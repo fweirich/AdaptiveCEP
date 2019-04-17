@@ -60,6 +60,7 @@ case class SelfJoinNode(
       val s = sender()
       println("SELFJOIN", s)
       ref.getSource.to(Sink foreach(e =>{
+        processedEvents += 1
         processEvent(e, s)
         //println(e)
       })).run(materializer)
