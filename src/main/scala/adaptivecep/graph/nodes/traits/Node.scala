@@ -31,7 +31,7 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
 
   val materializer = ActorMaterializer()
 
-  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](1000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](100000, OverflowStrategy.dropNew).preMaterialize()(materializer)
   val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
   val sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
 
