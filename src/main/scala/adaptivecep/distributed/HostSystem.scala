@@ -15,7 +15,7 @@ object HostSystem{
   }
 
   def startup(args: Seq[String]): Unit = {
-      val file = new File("fixedHosts/" + args.head + ".conf")
+      val file = new File(/*"fixedHosts/" + */args.head + ".conf")
       val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
 
       val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
