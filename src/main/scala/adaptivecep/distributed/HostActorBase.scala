@@ -53,7 +53,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     def advance = HostPropsSimulator(
       costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth.advance)) })
     def advanceLatency = {
-      println(costs)
+      //println(costs)
       HostPropsSimulator(costs map { case (host, (latency, bandwidth)) => (host, (latency.advance, bandwidth)) })
     }
     def advanceBandwidth = HostPropsSimulator(
