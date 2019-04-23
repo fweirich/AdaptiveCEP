@@ -14,18 +14,27 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
 
   val publisherName: String = self.path.name
 
-
-  def publish(id: Integer): Unit = {
+  var id = 0
+  def publish(): Unit = {
     val event: Event = createEventFromId(id)
+    id += 1
+    source._1.offer(event)//subscribers.foreach(_ ! event)
+
     //subscribers.foreach(_ ! event)
-    source._1.offer(event)
     //println(s"STREAM $publisherName:\t$event")
-    context.system.scheduler.scheduleOnce(
+    /*context.system.scheduler.schedule(
       delay = FiniteDuration(1000, TimeUnit.MICROSECONDS),
       runnable = () => publish(id + 1)
-    )
+    )*/
+
   }
 
-  publish(0)
+  //publish(0)
 
+  context.system.scheduler.schedule(
+    initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
+    interval = FiniteDuration(1, TimeUnit.SECONDS),
+    runnable = () => {
+      (1 to 10000).foreach(_ => publish())
+    })
 }

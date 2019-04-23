@@ -24,6 +24,7 @@ case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with Req
       ref.getSource.to(Sink foreach(e => {
         println(e)
       })).run(materializer)
+    case event: Event => println(event + "direct")
 
   }
 }
