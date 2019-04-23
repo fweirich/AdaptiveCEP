@@ -48,6 +48,7 @@ trait BinaryNode extends Node {
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
         runnable = () => {
+          println(emittedEvents)
           emittedEvents = 0
         })
     }
