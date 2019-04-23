@@ -107,21 +107,16 @@ trait BinaryNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
-      () => {
-        lmonitor.childNode1 = childNode1
-        lmonitor.childNode2 = childNode2
-        if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
-          emittedEvents += 1
-          //bmonitor.childNode1 = childNode1
-          //bmonitor.childNode2 = childNode2
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
-          frequencyMonitor.onEventEmit(event, nodeData)
-          latencyMonitor.onEventEmit(event, nodeData)
-          bandwidthMonitor.onEventEmit(event, nodeData)
-        }
-      }
-    )
+    lmonitor.childNode1 = childNode1
+    lmonitor.childNode2 = childNode2
+    if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+      emittedEvents += 1
+      //bmonitor.childNode1 = childNode1
+      //bmonitor.childNode2 = childNode2
+      if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
+      frequencyMonitor.onEventEmit(event, nodeData)
+      latencyMonitor.onEventEmit(event, nodeData)
+      bandwidthMonitor.onEventEmit(event, nodeData)
+    }
   }
 }

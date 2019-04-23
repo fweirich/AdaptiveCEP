@@ -52,18 +52,13 @@ trait LeafNode extends Node {
   }
 
   def emitEvent(event: Event): Unit = {
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
-      () => {
-        if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
-          emittedEvents += 1
-          //println("sending to " + parentNode)
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
-          frequencyMonitor.onEventEmit(event, nodeData)
-          latencyMonitor.onEventEmit(event, nodeData)
-          bandwidthMonitor.onEventEmit(event, nodeData)
-        }
-      }
-    )
+    if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+      emittedEvents += 1
+      //println("sending to " + parentNode)
+      if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
+      frequencyMonitor.onEventEmit(event, nodeData)
+      latencyMonitor.onEventEmit(event, nodeData)
+      bandwidthMonitor.onEventEmit(event, nodeData)
+    }
   }
 }

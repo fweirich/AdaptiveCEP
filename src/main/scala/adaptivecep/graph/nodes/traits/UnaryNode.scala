@@ -106,17 +106,13 @@ trait UnaryNode extends Node {
 
   def emitEvent(event: Event): Unit = {
     //println("emit " + event)
-    context.system.scheduler.scheduleOnce(
-      FiniteDuration(costs(parentNode).duration.toMillis, TimeUnit.MILLISECONDS),
-      () => {
-        lmonitor.childNode = childNode
-        if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
-          emittedEvents += 1
-          if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
-          frequencyMonitor.onEventEmit(event, nodeData)
-          latencyMonitor.onEventEmit(event, nodeData)
-          bandwidthMonitor.onEventEmit(event, nodeData)
-      }}
-    )
+    lmonitor.childNode = childNode
+    if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
+      emittedEvents += 1
+      if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event) //parentNode ! event
+      frequencyMonitor.onEventEmit(event, nodeData)
+      latencyMonitor.onEventEmit(event, nodeData)
+      bandwidthMonitor.onEventEmit(event, nodeData)
+    }
   }
 }
