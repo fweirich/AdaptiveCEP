@@ -140,7 +140,7 @@ case class ConjunctionNode(
   addEventType("sq1", createArrayOfNames(query.sq1), createArrayOfClasses(query.sq1))
   addEventType("sq2", createArrayOfNames(query.sq2), createArrayOfClasses(query.sq2))
 */
-  val epStatement: EPStatement = createEpStatement("select * from pattern [every (sq1=sq1 -> sq2=sq2)]")
+  val epStatement: EPStatement = createEpStatement("select * from pattern [every (sq1=sq1 and sq2=sq2)]")
 
   val updateListener: UpdateListener = (newEventBeans: Array[EventBean], _) => newEventBeans.foreach(eventBean => {
     val values: Array[Any] =
