@@ -56,6 +56,7 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
   }
 
   def place(operator: Operator, host: Host): Unit = {
+    println(operator, host)
     if(host != NoHost && operator.props != null){
       //operator.host = host
       val moved = placement.now.contains(operator) && placement.now.apply(operator) != host
