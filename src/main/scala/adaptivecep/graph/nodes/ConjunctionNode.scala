@@ -153,7 +153,6 @@ case class ConjunctionNode(
       case 5 => Event5(values(0), values(1), values(2), values(3), values(4))
       case 6 => Event6(values(0), values(1), values(2), values(3), values(4), values(5))
     }
-    println(event)
     emitEvent(event)
   })
 
