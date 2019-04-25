@@ -80,10 +80,16 @@ case class ConjunctionNode(
       }
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
-      childNode1 = c1
-      childNode2 = c2
-      c1 ! SourceRequest
-      c2 ! SourceRequest
+      if(c1 != childNode1){
+        if(killSwitch.isDefined) killSwitch.get.shutdown()
+        childNode1 = c1
+        c1 ! SourceRequest
+      }
+      if(c2 != childNode2){
+        if(killSwitch2.isDefined) killSwitch2.get.shutdown()
+        childNode2 = c2
+        c2 ! SourceRequest
+      }
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       emitCreated()
     }

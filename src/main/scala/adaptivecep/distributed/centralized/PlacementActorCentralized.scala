@@ -61,7 +61,7 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
       val moved = placement.now.contains(operator) && placement.now.apply(operator) != host
       if(moved) {
         propsActors(operator.props) ! Kill
-        //println("killing old actor", propsActors(operator.props))
+        println("killing old actor", propsActors(operator.props))
       }
       if (moved || placement.now.size < operators.now.size){
         val hostActor = host.asInstanceOf[NodeHost].actorRef

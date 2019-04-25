@@ -72,8 +72,11 @@ case class SelfJoinNode(
       })).run()(materializer))
     case Child1(c) => {
       //println("Child received", c)
-      childNode = c
-      c ! SourceRequest
+      if (c != childNode){
+        if(killSwitch.isDefined) killSwitch.get.shutdown()
+        childNode = c
+        c ! SourceRequest
+      }
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
       emitCreated()
     }
