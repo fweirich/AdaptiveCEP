@@ -81,7 +81,6 @@ case class JoinNode(
         })).run()(materializer))}
       else{
         killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
-          println(e)
           processEvent(e, s)
         })).run()(materializer))
       }

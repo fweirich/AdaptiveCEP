@@ -65,12 +65,10 @@ case class ConjunctionNode(
       println("AND", s)
       if(sender() == childNode1){
       killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
-        println(e)
         processEvent(e, s)
       })).run()(materializer))}
       else{
         killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
-          println(e)
           processEvent(e, s)
         })).run()(materializer))
       }

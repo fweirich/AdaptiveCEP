@@ -47,7 +47,6 @@ case class FilterNode(
       val s = sender()
       println("FILTER", s)
       killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
-        println(e)
         processEvent(e, s)
       })).run()(materializer))
     case Child1(c) => {
