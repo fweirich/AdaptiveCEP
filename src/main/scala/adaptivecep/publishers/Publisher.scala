@@ -17,7 +17,7 @@ trait Publisher extends Actor {
 
   val materializer = ActorMaterializer()
 
-  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).preMaterialize()(materializer)
+  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
   var future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
 
   var subscribers: Set[ActorRef] =

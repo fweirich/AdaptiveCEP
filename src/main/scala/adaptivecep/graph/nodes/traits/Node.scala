@@ -33,7 +33,7 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
 
   val materializer = ActorMaterializer()
 
-  var queue: ((SourceQueueWithComplete[Event], UniqueKillSwitch), Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+  var queue: ((SourceQueueWithComplete[Event], UniqueKillSwitch), Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
   var future: Future[SourceRef[Event]] = queue._2.runWith(StreamRefs.sourceRef())(materializer)
   var sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
   var killSwitch: Option[UniqueKillSwitch] = None
