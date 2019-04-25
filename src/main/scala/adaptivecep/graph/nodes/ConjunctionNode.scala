@@ -119,7 +119,7 @@ case class ConjunctionNode(
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
-      parentNode ! KillMe
+      //parentNode ! KillMe
       //switch.shutdown()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()

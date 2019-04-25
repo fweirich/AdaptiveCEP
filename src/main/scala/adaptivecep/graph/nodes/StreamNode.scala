@@ -66,7 +66,7 @@ case class StreamNode(
       println("killed switch 1")
       killSwitch.get.shutdown()}
     case Kill =>
-      parentNode ! KillMe
+      //parentNode ! KillMe
       //self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")

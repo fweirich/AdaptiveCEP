@@ -29,8 +29,7 @@ case class Receiver(actorRef: ActorRef, actorRef2: ActorRef) extends Actor with 
     case event: Event => println(event + "direct")
     case Kill =>
       killSwitch.get.shutdown()
-      Thread.sleep(5000)
+      Thread.sleep(3000)
       actorRef ! Subscribe
-
   }
 }

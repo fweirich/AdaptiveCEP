@@ -142,7 +142,7 @@ case class DropElemNode(
       lmonitor.scheduledTask.cancel()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      parentNode ! KillMe
+      //parentNode ! KillMe
       //self ! PoisonPill
     case Controller(c) =>
       controller = c

@@ -25,8 +25,9 @@ object TestRunner extends App {
   Thread.sleep(2000)
   val receiverA: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA, publisherB)).withDeploy(Deploy(scope = RemoteScope(address2))),"R")
 
-
-  Thread.sleep(5000)
-  receiverA ! Kill
+  while(true){
+    Thread.sleep(5000)
+    receiverA ! Kill
+  }
 
 }

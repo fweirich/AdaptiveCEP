@@ -91,7 +91,7 @@ case class SelfJoinNode(
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
-      parentNode ! KillMe
+      //parentNode ! KillMe
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       //self ! PoisonPill
