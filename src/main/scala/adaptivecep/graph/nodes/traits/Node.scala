@@ -13,6 +13,8 @@ import akka.stream.scaladsl.{Keep, Source, SourceQueueWithComplete, StreamRefs}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]{
 
   val name: String = self.path.name
