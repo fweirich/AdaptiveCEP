@@ -2,7 +2,7 @@ package adaptivecep.streamstest
 
 import java.io.File
 
-import adaptivecep.data.Events.Event1
+import adaptivecep.data.Events.{Event1, Kill}
 import adaptivecep.distributed.annealing.AppRunnerAnnealing.config
 import adaptivecep.distributed.centralized.AppRunnerCentralized.{actorSystem, address1}
 import adaptivecep.publishers.RandomPublisher
@@ -20,8 +20,13 @@ object TestRunner extends App {
   val address1 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2551)
   val address2 = Address("akka.tcp", "ClusterSystem", "127.0.0.1", 2552)
 
+  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),"A")
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),"P")
   Thread.sleep(2000)
-  val receiverA: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA)).withDeploy(Deploy(scope = RemoteScope(address2))),"R")
+  val receiverA: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA, publisherB)).withDeploy(Deploy(scope = RemoteScope(address2))),"R")
+
+
+  Thread.sleep(5000)
+  receiverA ! Kill
 
 }

@@ -17,8 +17,8 @@ trait Publisher extends Actor {
 
   val materializer = ActorMaterializer()
 
-  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).preMaterialize()(materializer)
-  val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
+  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).preMaterialize()(materializer)
+  var future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
 
   var subscribers: Set[ActorRef] =
     scala.collection.immutable.Set.empty[ActorRef]
@@ -27,6 +27,8 @@ trait Publisher extends Actor {
     case Subscribe =>
       subscribers = subscribers + sender()
       //pipe(future).to(sender())
+      source = Source.queue[Event](20000, OverflowStrategy.backpressure).preMaterialize()(materializer)
+      future = source._2.runWith(StreamRefs.sourceRef())(materializer)
       sender ! AcknowledgeSubscription(Await.result(future, Duration.Inf))
   }
 

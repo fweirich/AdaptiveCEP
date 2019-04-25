@@ -7,8 +7,11 @@ import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.NotUsed
 import akka.remote.RemoteScope
-import akka.stream.{KillSwitches, UniqueKillSwitch}
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.{KillSwitches, OverflowStrategy, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 case class DisjunctionNode(
     //query: DisjunctionQuery,
@@ -106,15 +109,21 @@ case class DisjunctionNode(
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case SourceRequest =>
+      queue = Source.queue[Event](20000, OverflowStrategy.backpressure)
+        .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+      future = queue._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
       println("OR", s)
       if(sender() == childNode1){
+        println("generated switch 1")
         killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
           processEvent(e, s)
         })).run()(materializer))}
       else{
+        println("generated switch 2")
         killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
           processEvent(e, s)
         })).run()(materializer))
@@ -135,10 +144,15 @@ case class DisjunctionNode(
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
     case KillMe =>
-      if(sender() == childNode1 && killSwitch.isDefined)
-        killSwitch.get.shutdown()
-      else if(sender() == childNode2 && killSwitch2.isDefined)
-        killSwitch2.get.shutdown()
+      if(sender() == childNode1 && killSwitch.isDefined){
+      println("killed switch 1")
+      killSwitch.get.shutdown()
+    }
+    else if(sender() == childNode2 && killSwitch2.isDefined)
+    {
+      println("killed switch 2")
+      killSwitch2.get.shutdown()
+    }
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()

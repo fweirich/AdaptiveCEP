@@ -95,7 +95,7 @@ case class SequenceNode(
     }
     case KillMe => sender() ! PoisonPill
     case Kill =>
-      switch.shutdown()
+      //switch.shutdown()
       //self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")

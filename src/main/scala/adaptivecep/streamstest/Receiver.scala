@@ -3,15 +3,16 @@ package adaptivecep.streamstest
 import adaptivecep.publishers.Publisher.{AcknowledgeSubscription, Subscribe}
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
-import akka.stream.{ActorMaterializer, SourceRef}
-import akka.stream.scaladsl.Sink
-import adaptivecep.data.Events.Event
+import akka.stream.{ActorMaterializer, KillSwitches, SourceRef, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink}
+import adaptivecep.data.Events.{Event, Kill}
 
 object Receiver
 
-case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
+case class Receiver(actorRef: ActorRef, actorRef2: ActorRef) extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
 
   val materializer = ActorMaterializer()
+  var killSwitch: Option[UniqueKillSwitch] = None
 
   override def preStart(): Unit = {
     super.preStart()
@@ -21,10 +22,15 @@ case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with Req
   def receive: Receive = {
     //case AcknowledgeSubscription(ref) => ref.getSource.to(Sink foreach println).run(materializer)
     case AcknowledgeSubscription(ref) =>
-      ref.getSource.to(Sink foreach(e => {
+      println("Ack")
+      killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
         println(e)
-      })).run(materializer)
+      })).run()(materializer))
     case event: Event => println(event + "direct")
+    case Kill =>
+      killSwitch.get.shutdown()
+      Thread.sleep(5000)
+      actorRef ! Subscribe
 
   }
 }

@@ -7,10 +7,11 @@ import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
 import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.{KillSwitches, OverflowStrategy, SourceRef, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
 
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 case class StreamNode(
     //query: StreamQuery,
@@ -37,6 +38,7 @@ case class StreamNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription(ref) if sender() == publisher =>
       subscriptionAcknowledged = true
+      println("generated switch 1")
       killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
         emitEvent(e)
       })).run()(materializer))
@@ -54,8 +56,15 @@ case class StreamNode(
         emitCreated()
       }
     case SourceRequest =>
+      queue = Source.queue[Event](20000, OverflowStrategy.backpressure)
+        .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+      future = queue._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
-    case KillMe => if(killSwitch.isDefined) killSwitch.get.shutdown()
+    case KillMe =>
+      if(killSwitch.isDefined){
+      println("killed switch 1")
+      killSwitch.get.shutdown()}
     case Kill =>
       parentNode ! KillMe
       //self ! PoisonPill

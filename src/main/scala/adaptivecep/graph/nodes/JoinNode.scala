@@ -8,12 +8,14 @@ import adaptivecep.graph.nodes.JoinNode._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
+import akka.NotUsed
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.{KillSwitches, OverflowStrategy, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
 import com.espertech.esper.client._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class JoinNode(
@@ -70,16 +72,21 @@ case class JoinNode(
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case SourceRequest =>
+      queue = Source.queue[Event](20000, OverflowStrategy.backpressure)
+        .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+      future = queue._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
       println("JOIN", s)
       if(sender() == childNode1){
+        println("generated switch 1")
         killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
-          println(e)
           processEvent(e, s)
         })).run()(materializer))}
       else{
+        println("generated switch 2")
         killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
           processEvent(e, s)
         })).run()(materializer))
@@ -99,11 +106,15 @@ case class JoinNode(
       if(childNode2.eq(old)){childNode2 = a}
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
-    case KillMe =>
-      if(sender() == childNode1 && killSwitch.isDefined)
-        killSwitch.get.shutdown()
-      else if(sender() == childNode2 && killSwitch2.isDefined)
-        killSwitch2.get.shutdown()
+    case KillMe =>if(sender() == childNode1 && killSwitch.isDefined){
+      println("killed switch 1")
+      killSwitch.get.shutdown()
+    }
+    else if(sender() == childNode2 && killSwitch2.isDefined)
+    {
+      println("killed switch 2")
+      killSwitch2.get.shutdown()
+    }
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()

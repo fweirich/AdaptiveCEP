@@ -33,9 +33,9 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
 
   val materializer = ActorMaterializer()
 
-  val ((queue: SourceQueueWithComplete[Event], switch: UniqueKillSwitch), source: Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
-  val future: Future[SourceRef[Event]] = source.runWith(StreamRefs.sourceRef())(materializer)
-  val sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
+  var queue: ((SourceQueueWithComplete[Event], UniqueKillSwitch), Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+  var future: Future[SourceRef[Event]] = queue._2.runWith(StreamRefs.sourceRef())(materializer)
+  var sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
   var killSwitch: Option[UniqueKillSwitch] = None
   var killSwitch2: Option[UniqueKillSwitch] = None
 
@@ -49,7 +49,7 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
   }
   println(name)
 
-  queue.watchCompletion().map(_ => self ! PoisonPill)
+  queue._1._1.watchCompletion().map(_ => self ! PoisonPill)
 /*
   def createChildNode(
       id: Int,

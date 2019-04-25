@@ -8,12 +8,14 @@ import adaptivecep.graph.nodes.JoinNode._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
+import akka.NotUsed
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.{KillSwitches, OverflowStrategy, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
 import com.espertech.esper.client._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class SelfJoinNode(
@@ -56,10 +58,15 @@ case class SelfJoinNode(
       //if(childCreated && !created) emitCreated()
     }
     case SourceRequest =>
+      queue = Source.queue[Event](20000, OverflowStrategy.backpressure)
+        .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+      future = queue._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
       println("SELFJOIN", s)
+      println("generated switch 1")
       killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
         processEvent(e, s)
       })).run()(materializer))
@@ -75,7 +82,9 @@ case class SelfJoinNode(
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
-    case KillMe => if(killSwitch.isDefined) killSwitch.get.shutdown()
+    case KillMe =>  if(killSwitch.isDefined){
+      println("killed switch 1")
+      killSwitch.get.shutdown()}
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
