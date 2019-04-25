@@ -9,8 +9,11 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.qos._
+import akka.NotUsed
 import akka.remote.RemoteScope
-import akka.stream.scaladsl.Sink
+import akka.stream.{KillSwitches, UniqueKillSwitch}
+import akka.stream.javadsl.Source
+import akka.stream.scaladsl.{Keep, Sink}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
@@ -60,11 +63,17 @@ case class ConjunctionNode(
     case SourceResponse(ref) =>
       val s = sender()
       println("AND", s)
-      ref.getSource.to(Sink foreach(e =>{
+      if(sender() == childNode1){
+      killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
         println(e)
         processEvent(e, s)
-        //println(e)
-      })).run(materializer)
+      })).run()(materializer))}
+      else{
+        killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+          println(e)
+          processEvent(e, s)
+        })).run()(materializer))
+      }
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
       childNode1 = c1
@@ -87,11 +96,16 @@ case class ConjunctionNode(
     case Controller(c) =>
       controller = c
       //println("Got Controller", c)
-    case KillMe => sender() ! PoisonPill
+    case KillMe =>
+      if(sender() == childNode1 && killSwitch.isDefined)
+        killSwitch.get.shutdown()
+      else if(sender() == childNode2 && killSwitch2.isDefined)
+        killSwitch2.get.shutdown()
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
-      switch.shutdown()
+      parentNode ! KillMe
+      //switch.shutdown()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       //self ! PoisonPill

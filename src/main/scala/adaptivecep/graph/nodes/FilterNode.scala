@@ -5,7 +5,8 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.scaladsl.Sink
+import akka.stream.KillSwitches
+import akka.stream.scaladsl.{Keep, Sink}
 
 case class FilterNode(
     //query: FilterQuery,
@@ -45,10 +46,10 @@ case class FilterNode(
     case SourceResponse(ref) =>
       val s = sender()
       println("FILTER", s)
-      ref.getSource.to(Sink foreach(e =>{
+      killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+        println(e)
         processEvent(e, s)
-        //println(e)
-      })).run(materializer)
+      })).run()(materializer))
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
@@ -61,13 +62,13 @@ case class FilterNode(
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
-    case KillMe => sender() ! PoisonPill
+    case KillMe => if(killSwitch.isDefined) killSwitch.get.shutdown()
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      switch.shutdown()
+      parentNode ! KillMe
       //self ! PoisonPill
       //println("Shutting down....")
     case Controller(c) =>

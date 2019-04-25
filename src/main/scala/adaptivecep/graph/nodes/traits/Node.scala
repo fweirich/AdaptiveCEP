@@ -36,6 +36,8 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
   val ((queue: SourceQueueWithComplete[Event], switch: UniqueKillSwitch), source: Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
   val future: Future[SourceRef[Event]] = source.runWith(StreamRefs.sourceRef())(materializer)
   val sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
+  var killSwitch: Option[UniqueKillSwitch] = None
+  var killSwitch2: Option[UniqueKillSwitch] = None
 
   def createWindow(windowType: String, size: Int): Window ={
     windowType match {

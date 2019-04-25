@@ -9,7 +9,8 @@ import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.scaladsl.Sink
+import akka.stream.KillSwitches
+import akka.stream.scaladsl.{Keep, Sink}
 import com.espertech.esper.client._
 
 import scala.concurrent.duration.FiniteDuration
@@ -59,10 +60,10 @@ case class SelfJoinNode(
     case SourceResponse(ref) =>
       val s = sender()
       println("SELFJOIN", s)
-      ref.getSource.to(Sink foreach(e =>{
+      killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+        println(e)
         processEvent(e, s)
-        //println(e)
-      })).run(materializer)
+      })).run()(materializer))
     case Child1(c) => {
       //println("Child received", c)
       childNode = c
@@ -75,11 +76,11 @@ case class SelfJoinNode(
       childNode = a
       nodeData = UnaryNodeData(name, requirements, context, childNode, parentNode)
     }
-    case KillMe => sender() ! PoisonPill
+    case KillMe => if(killSwitch.isDefined) killSwitch.get.shutdown()
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
-      switch.shutdown()
+      parentNode ! KillMe
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       //self ! PoisonPill

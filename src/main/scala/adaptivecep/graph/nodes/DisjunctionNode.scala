@@ -7,7 +7,8 @@ import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.NotUsed
 import akka.remote.RemoteScope
-import akka.stream.scaladsl.Sink
+import akka.stream.{KillSwitches, UniqueKillSwitch}
+import akka.stream.scaladsl.{Keep, Sink}
 
 case class DisjunctionNode(
     //query: DisjunctionQuery,
@@ -109,10 +110,17 @@ case class DisjunctionNode(
     case SourceResponse(ref) =>
       val s = sender()
       println("OR", s)
-      ref.getSource.to(Sink foreach(e =>{
-        processEvent(e, s)
-        processedEvents += 1
-      })).run(materializer)
+      if(sender() == childNode1){
+        killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+          println(e)
+          processEvent(e, s)
+        })).run()(materializer))}
+      else{
+        killSwitch2 = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+          println(e)
+          processEvent(e, s)
+        })).run()(materializer))
+      }
     case Child2(c1, c2) => {
       //println("Children received", c1, c2)
       childNode1 = c1
@@ -128,11 +136,15 @@ case class DisjunctionNode(
       if(childNode2.eq(old)){childNode2 = a}
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
     }
-    case KillMe => sender() ! PoisonPill
+    case KillMe =>
+      if(sender() == childNode1 && killSwitch.isDefined)
+        killSwitch.get.shutdown()
+      else if(sender() == childNode2 && killSwitch2.isDefined)
+        killSwitch2.get.shutdown()
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
-      switch.shutdown()
+      parentNode ! KillMe
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       //self ! PoisonPill

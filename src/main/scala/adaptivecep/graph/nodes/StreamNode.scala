@@ -37,10 +37,9 @@ case class StreamNode(
       sender ! DependenciesResponse(Seq.empty)
     case AcknowledgeSubscription(ref) if sender() == publisher =>
       subscriptionAcknowledged = true
-      ref.getSource.to(Sink.foreach(a =>{
-        emitEvent(a)
-        //println(a)
-      })).run(materializer)
+      killSwitch = Some(ref.viaMat(KillSwitches.single)(Keep.right).to(Sink foreach(e =>{
+        emitEvent(e)
+      })).run()(materializer))
       //if(parentReceived && !created) emitCreated()
     case Parent(p1) => {
       //println("Parent received", p1)
@@ -56,9 +55,9 @@ case class StreamNode(
       }
     case SourceRequest =>
       sender() ! SourceResponse(sourceRef)
-    case KillMe => sender() ! PoisonPill
+    case KillMe => if(killSwitch.isDefined) killSwitch.get.shutdown()
     case Kill =>
-      switch.shutdown()
+      parentNode ! KillMe
       //self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
