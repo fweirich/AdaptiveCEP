@@ -67,7 +67,7 @@ object AppRunnerCentralized extends App {
       .or(stream[Float]("C").or(stream[String]("D")),
         /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },*/
         /*latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },*/
-        frequency > ratio(5000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
+        frequency > ratio(2500.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
 
 
