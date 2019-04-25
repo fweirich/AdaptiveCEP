@@ -5,10 +5,12 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, PoisonPill}
 import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.scaladsl.{Keep, Sink, Source}
+
+import scala.concurrent.Future
 
 case class StreamNode(
     //query: StreamQuery,
@@ -28,6 +30,7 @@ case class StreamNode(
 
   publisher ! Subscribe
   println("subscribing to publisher", publisher.path)
+
 
   override def receive: Receive = {
     case DependenciesRequest =>
@@ -56,7 +59,7 @@ case class StreamNode(
     case KillMe => sender() ! PoisonPill
     case Kill =>
       switch.shutdown()
-      self ! PoisonPill
+      //self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
     case Controller(c) =>

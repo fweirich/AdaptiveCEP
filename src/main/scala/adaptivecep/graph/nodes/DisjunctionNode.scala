@@ -135,7 +135,7 @@ case class DisjunctionNode(
       switch.shutdown()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      self ! PoisonPill
+      //self ! PoisonPill
       //println("Shutting down....")
     case Controller(c) =>
       controller = c

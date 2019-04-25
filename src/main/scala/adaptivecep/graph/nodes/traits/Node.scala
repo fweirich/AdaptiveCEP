@@ -5,7 +5,7 @@ import adaptivecep.data.Events.Event
 import adaptivecep.data.Queries._
 import adaptivecep.graph.qos._
 import akka.NotUsed
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, PoisonPill}
 import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
 import akka.stream._
 import akka.stream.scaladsl.{Keep, Source, SourceQueueWithComplete, StreamRefs}
@@ -45,6 +45,7 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
   }
   println(name)
 
+  queue.watchCompletion().map(_ => self ! PoisonPill)
 /*
   def createChildNode(
       id: Int,

@@ -94,7 +94,7 @@ case class ConjunctionNode(
       switch.shutdown()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      self ! PoisonPill
+      //self ! PoisonPill
       ///println("Shutting down....")
     case CostReport(c) =>
       costs = c

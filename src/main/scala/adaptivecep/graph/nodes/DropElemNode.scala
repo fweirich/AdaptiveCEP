@@ -129,7 +129,7 @@ case class DropElemNode(
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       switch.shutdown()
-      self ! PoisonPill
+      //self ! PoisonPill
     case Controller(c) =>
       controller = c
     case CostReport(c) =>
