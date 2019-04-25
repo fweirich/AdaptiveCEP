@@ -7,8 +7,8 @@ import adaptivecep.graph.qos._
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef}
 import akka.dispatch.{BoundedMessageQueueSemantics, RequiresMessageQueue}
-import akka.stream.{ActorMaterializer, OverflowStrategy, SourceRef}
-import akka.stream.scaladsl.{Source, SourceQueueWithComplete, StreamRefs}
+import akka.stream._
+import akka.stream.scaladsl.{Keep, Source, SourceQueueWithComplete, StreamRefs}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
@@ -31,8 +31,8 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
 
   val materializer = ActorMaterializer()
 
-  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
-  val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
+  val ((queue: SourceQueueWithComplete[Event], switch: UniqueKillSwitch), source: Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.backpressure).viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
+  val future: Future[SourceRef[Event]] = source.runWith(StreamRefs.sourceRef())(materializer)
   val sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
 
   def createWindow(windowType: String, size: Int): Window ={

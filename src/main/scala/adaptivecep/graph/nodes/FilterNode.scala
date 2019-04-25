@@ -67,6 +67,7 @@ case class FilterNode(
       lmonitor.scheduledTask.cancel()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
+      switch.shutdown()
       self ! PoisonPill
       //println("Shutting down....")
     case Controller(c) =>

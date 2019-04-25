@@ -109,7 +109,7 @@ trait UnaryNode extends Node {
     lmonitor.childNode = childNode
     if(parentNode == self || (parentNode != self && emittedEvents < costs(parentNode).bandwidth.toInt)) {
       emittedEvents += 1
-      if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event) //parentNode ! event
+      if (eventCallback.isDefined) eventCallback.get.apply(event) else queue.offer(event) //parentNode ! event
       frequencyMonitor.onEventEmit(event, nodeData)
       latencyMonitor.onEventEmit(event, nodeData)
       bandwidthMonitor.onEventEmit(event, nodeData)

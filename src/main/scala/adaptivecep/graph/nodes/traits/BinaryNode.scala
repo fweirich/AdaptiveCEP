@@ -113,7 +113,7 @@ trait BinaryNode extends Node {
       emittedEvents += 1
       //bmonitor.childNode1 = childNode1
       //bmonitor.childNode2 = childNode2
-      if (eventCallback.isDefined) eventCallback.get.apply(event) else source._1.offer(event)//parentNode ! event
+      if (eventCallback.isDefined) eventCallback.get.apply(event) else queue.offer(event)//parentNode ! event
       frequencyMonitor.onEventEmit(event, nodeData)
       latencyMonitor.onEventEmit(event, nodeData)
       bandwidthMonitor.onEventEmit(event, nodeData)

@@ -5,6 +5,7 @@ import adaptivecep.data.Events._
 import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
+import akka.NotUsed
 import akka.remote.RemoteScope
 import akka.stream.scaladsl.Sink
 
@@ -131,6 +132,7 @@ case class DisjunctionNode(
     case Kill =>
       scheduledTask.cancel()
       lmonitor.scheduledTask.cancel()
+      switch.shutdown()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
       self ! PoisonPill

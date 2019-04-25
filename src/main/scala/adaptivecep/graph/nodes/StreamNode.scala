@@ -55,6 +55,7 @@ case class StreamNode(
       sender() ! SourceResponse(sourceRef)
     case KillMe => sender() ! PoisonPill
     case Kill =>
+      switch.shutdown()
       self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
