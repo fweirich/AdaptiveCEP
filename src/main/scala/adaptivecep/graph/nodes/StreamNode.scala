@@ -72,7 +72,7 @@ case class StreamNode(
       frequencyMonitor.onMessageReceive(CostReport(c), nodeData)
       latencyMonitor.onMessageReceive(CostReport(c), nodeData)
       bandwidthMonitor.onMessageReceive(CostReport(c), nodeData)
-    case _: Event =>
+    case _: Event => emitEvent(_)
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)

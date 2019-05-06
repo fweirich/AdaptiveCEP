@@ -123,8 +123,8 @@ case class DisjunctionNode(
       //println("Children received", c1, c2)
       childNode1 = c1
       childNode2 = c2
-      c1 ! SourceRequest
-      c2 ! SourceRequest
+      //c1 ! SourceRequest
+      //c2 ! SourceRequest
       nodeData = BinaryNodeData(name, requirements, context, childNode1, childNode2, parentNode)
       emitCreated()
     }
@@ -150,7 +150,7 @@ case class DisjunctionNode(
       frequencyMonitor.onMessageReceive(CostReport(c), nodeData)
       latencyMonitor.onMessageReceive(CostReport(c), nodeData)
       bandwidthMonitor.onMessageReceive(CostReport(c), nodeData)
-    case _: Event =>
+    case _: Event => processEvent(_, sender())
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
