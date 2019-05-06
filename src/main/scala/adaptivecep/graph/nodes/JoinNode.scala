@@ -9,10 +9,12 @@ import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.qos._
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.scaladsl.Sink
+import akka.stream.OverflowStrategy
+import akka.stream.scaladsl.{Sink, Source, StreamRefs}
 import com.espertech.esper.client._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class JoinNode(
@@ -69,6 +71,9 @@ case class JoinNode(
       //if(childNode1Created && childNode2Created && !created) emitCreated()
     }
     case SourceRequest =>
+      source = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+      future = source._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
@@ -98,7 +103,7 @@ case class JoinNode(
       lmonitor.scheduledTask.cancel()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      self ! PoisonPill
+      //self ! PoisonPill
       //println("Shutting down....")
     case Controller(c) =>
       controller = c

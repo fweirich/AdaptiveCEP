@@ -9,11 +9,14 @@ import adaptivecep.data.Queries._
 import adaptivecep.graph.nodes.traits._
 import adaptivecep.graph.nodes.traits.EsperEngine._
 import adaptivecep.graph.qos._
+import akka.NotUsed
 import akka.remote.RemoteScope
-import akka.stream.scaladsl.Sink
+import akka.stream.{OverflowStrategy, SourceRef}
+import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete, StreamRefs}
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 case class ConjunctionNode(
     //query: ConjunctionQuery,
@@ -56,6 +59,10 @@ case class ConjunctionNode(
       //if (childNode1Created && childNode2Created && !created) emitCreated()
     }
     case SourceRequest =>
+      source = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+      future = source._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
+
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
@@ -93,7 +100,7 @@ case class ConjunctionNode(
       lmonitor.scheduledTask.cancel()
       //fMonitor.scheduledTask.cancel()
       //bmonitor.scheduledTask.cancel()
-      self ! PoisonPill
+      //self ! PoisonPill
       ///println("Shutting down....")
     case CostReport(c) =>
       costs = c

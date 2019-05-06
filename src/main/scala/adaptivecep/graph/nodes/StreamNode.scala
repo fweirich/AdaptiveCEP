@@ -7,8 +7,11 @@ import adaptivecep.graph.qos._
 import adaptivecep.publishers.Publisher._
 import akka.NotUsed
 import akka.actor.{ActorRef, PoisonPill}
-import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.{KillSwitches, OverflowStrategy}
+import akka.stream.scaladsl.{Keep, Sink, Source, StreamRefs}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 case class StreamNode(
     //query: StreamQuery,
@@ -52,10 +55,13 @@ case class StreamNode(
         emitCreated()
       }
     case SourceRequest =>
+      source = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+      future = source._2.runWith(StreamRefs.sourceRef())(materializer)
+      sourceRef = Await.result(future, Duration.Inf)
       sender() ! SourceResponse(sourceRef)
     case KillMe => sender() ! PoisonPill
     case Kill =>
-      self ! PoisonPill
+      //self ! PoisonPill
       //fMonitor.scheduledTask.cancel()
       //println("Shutting down....")
     case Controller(c) =>
