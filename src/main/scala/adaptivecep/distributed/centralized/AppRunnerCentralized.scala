@@ -69,6 +69,17 @@ object AppRunnerCentralized extends App {
         /*latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },*/
         frequency > ratio(3500.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
+  val query4: Query1[Either[Either[Int, Int], Either[Float, String]]] =
+    stream[Int]("A")
+      .or(
+        stream[Int]("B"))
+      /*frequency > ratio(3.instances, 5.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!") },*/
+      /*frequency < ratio(12.instances, 15.seconds) otherwise { nodeData => println(s"PROBLEM:\tNode `${nodeData.name}` emits too many events!") }*/
+      .or(stream[Float]("C").or(stream[String]("D")),
+      /*bandwidth > dataRate(70.mbPerSecond) otherwise { nodeData => },*/
+      /*latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },*/
+      frequency > ratio(3500.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
+
 
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
@@ -162,7 +173,7 @@ object AppRunnerCentralized extends App {
   Thread.sleep(3000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
-    query3,
+    query4,
     publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
