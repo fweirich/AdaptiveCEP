@@ -150,7 +150,7 @@ case class DisjunctionNode(
       frequencyMonitor.onMessageReceive(CostReport(c), nodeData)
       latencyMonitor.onMessageReceive(CostReport(c), nodeData)
       bandwidthMonitor.onMessageReceive(CostReport(c), nodeData)
-    case _: Event => processEvent(_, sender())
+    case event: Event => processEvent(event, sender())
     case unhandledMessage =>
       frequencyMonitor.onMessageReceive(unhandledMessage, nodeData)
       latencyMonitor.onMessageReceive(unhandledMessage, nodeData)
