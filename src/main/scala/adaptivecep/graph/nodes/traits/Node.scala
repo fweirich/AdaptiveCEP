@@ -31,9 +31,9 @@ trait Node extends Actor with RequiresMessageQueue[BoundedMessageQueueSemantics]
 
   val materializer = ActorMaterializer()
 
-  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed])// = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
-  var future: Future[SourceRef[Event]]// = source._2.runWith(StreamRefs.sourceRef())(materializer)
-  var sourceRef: SourceRef[Event]// = Await.result(future, Duration.Inf)
+  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+  var future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
+  var sourceRef: SourceRef[Event] = Await.result(future, Duration.Inf)
 
   def createWindow(windowType: String, size: Int): Window ={
     windowType match {
