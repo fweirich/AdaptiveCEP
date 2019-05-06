@@ -106,7 +106,7 @@ case class DropElemNode(
       //if(childCreated && !created) emitCreated()
     }
     case SourceRequest =>
-      queue = Source.queue[Event](20000, OverflowStrategy.backpressure)
+      queue = Source.queue[Event](20000, OverflowStrategy.dropNew)
         .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
       future = queue._2.runWith(StreamRefs.sourceRef())(materializer)
       sourceRef = Await.result(future, Duration.Inf)

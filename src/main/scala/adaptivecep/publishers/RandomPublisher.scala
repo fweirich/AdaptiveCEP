@@ -18,7 +18,7 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
   def publish(): Unit = {
     val event: Event = createEventFromId(id)
     id += 1
-    source._1.offer(event)//subscribers.foreach(_ ! event)
+    source._1._1.offer(event)//subscribers.foreach(_ ! event)
 
     //subscribers.foreach(_ ! event)
     //println(s"STREAM $publisherName:\t$event")

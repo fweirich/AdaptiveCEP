@@ -5,8 +5,8 @@ import adaptivecep.publishers.Publisher._
 import akka.NotUsed
 import akka.actor.{Actor, ActorRef}
 import akka.remote.WireFormats.TimeUnit
-import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete, StreamRefs}
-import akka.stream.{ActorMaterializer, OverflowStrategy, SourceRef}
+import akka.stream.scaladsl.{Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
+import akka.stream._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -17,7 +17,8 @@ trait Publisher extends Actor {
 
   val materializer = ActorMaterializer()
 
-  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+  var source: ((SourceQueueWithComplete[Event], UniqueKillSwitch), Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew)
+    .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
   var future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
 
   var subscribers: Set[ActorRef] =
@@ -27,7 +28,8 @@ trait Publisher extends Actor {
     case Subscribe =>
       subscribers = subscribers + sender()
       //pipe(future).to(sender())
-      source = Source.queue[Event](20000, OverflowStrategy.backpressure).preMaterialize()(materializer)
+      source = Source.queue[Event](20000, OverflowStrategy.dropNew)
+        .viaMat(KillSwitches.single)(Keep.both).preMaterialize()(materializer)
       future = source._2.runWith(StreamRefs.sourceRef())(materializer)
       sender ! AcknowledgeSubscription(Await.result(future, Duration.Inf))
   }

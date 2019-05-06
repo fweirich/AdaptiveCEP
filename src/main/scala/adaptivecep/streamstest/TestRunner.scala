@@ -24,6 +24,7 @@ object TestRunner extends App {
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),"P")
   Thread.sleep(2000)
   val receiverA: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA, publisherB)).withDeploy(Deploy(scope = RemoteScope(address2))),"R")
+  val receiverB: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA, publisherB)).withDeploy(Deploy(scope = RemoteScope(address2))),"R2")
 
   while(true){
     Thread.sleep(5000)
