@@ -15,9 +15,8 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
   val publisherName: String = self.path.name
 
   var id = 0
-  def publish(): Unit = {
+  def publish(id: Int): Unit = {
     val event: Event = createEventFromId(id)
-    id += 1
     source._1.offer(event)//subscribers.foreach(_ ! event)
 
     //subscribers.foreach(_ ! event)
@@ -35,7 +34,7 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
     initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(1, TimeUnit.SECONDS),
     runnable = () => {
-      (1 to 10000).foreach(_ => publish())
+      (1 to 10000).foreach(n => publish(n))
       //publish()
     })
 }
