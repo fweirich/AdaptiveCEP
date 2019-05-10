@@ -19,7 +19,7 @@ object TestRunnerRemote extends App {
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
   val address2 = Address("akka.tcp", "ClusterSystem", "3.16.193.175", 8000)
-
+  Thread.sleep(4000)
   val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),"P")
   Thread.sleep(2000)
   val receiverA: ActorRef = actorSystem.actorOf(Props(Receiver(publisherA)).withDeploy(Deploy(scope = RemoteScope(address2))),"R")
