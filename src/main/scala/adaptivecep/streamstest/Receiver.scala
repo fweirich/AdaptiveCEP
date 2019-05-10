@@ -26,6 +26,7 @@ case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with Req
         count += 1
         if(count == 1000){
           println(1000)
+          count = 0
         }
       })).run(materializer)
     case event: Event => println(event + "direct")
