@@ -12,6 +12,7 @@ object Receiver
 case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with RequiresMessageQueue[BoundedMessageQueueSemantics]{
 
   val materializer = ActorMaterializer()
+  var count = 0
 
   override def preStart(): Unit = {
     super.preStart()
@@ -22,7 +23,10 @@ case class Receiver(actorRef: ActorRef) extends Actor with ActorLogging with Req
     //case AcknowledgeSubscription(ref) => ref.getSource.to(Sink foreach println).run(materializer)
     case AcknowledgeSubscription(ref) =>
       ref.getSource.to(Sink foreach(e => {
-        println(e)
+        count += 1
+        if(count == 1000){
+          println(1000)
+        }
       })).run(materializer)
     case event: Event => println(event + "direct")
 
