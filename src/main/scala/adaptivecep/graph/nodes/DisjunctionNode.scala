@@ -158,6 +158,7 @@ case class DisjunctionNode(
   }
 
   def processEvent(event: Event, sender: ActorRef): Unit = {
+    processedEvents += 1
     if(sender == childNode1) {
       event match {
         case Event1(e1) => handleEvent(Array(Left(e1)))

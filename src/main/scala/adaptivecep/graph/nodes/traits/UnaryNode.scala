@@ -53,8 +53,8 @@ trait UnaryNode extends Node {
         initialDelay = FiniteDuration(0, TimeUnit.SECONDS),
         interval = FiniteDuration(1000, TimeUnit.MILLISECONDS),
         runnable = () => {
-          //println("emitted " + emittedEvents)
-          //println("processed " + processedEvents)
+          println("emitted " + emittedEvents)
+          println("processed " + processedEvents)
           emittedEvents = 0
           processedEvents = 0
         })
