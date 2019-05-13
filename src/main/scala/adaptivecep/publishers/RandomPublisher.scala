@@ -35,7 +35,7 @@ case class RandomPublisher(createEventFromId: Integer => Event) extends Publishe
     initialDelay = FiniteDuration(0, TimeUnit.MILLISECONDS),
     interval = FiniteDuration(1, TimeUnit.SECONDS),
     runnable = () => {
-      (1 to 1000).foreach(n => publish(n))
+      (1 to 10000).foreach(n => publish(n))
       //publish()
     })
 }
