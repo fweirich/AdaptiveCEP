@@ -87,6 +87,7 @@ object AppRunnerCentralized extends App {
       .where(_.fold(identity, identity) > 0)
       .where(_.fold(identity, identity) > 0)
       .where(_.fold(identity, identity) > 0)
+      .where(_.fold(identity, identity) > 0)
 
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
