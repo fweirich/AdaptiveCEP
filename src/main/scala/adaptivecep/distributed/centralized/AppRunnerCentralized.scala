@@ -80,6 +80,13 @@ object AppRunnerCentralized extends App {
       /*latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },*/
       frequency > ratio(2000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
+  val query5: Query1[Either[Int, Int]] =
+    stream[Int]("A")
+      .or(
+        stream[Int]("B"))
+      .where(_.fold(identity, identity) > 0)
+      .where(_.fold(identity, identity) > 0)
+      .where(_.fold(identity, identity) > 0)
 
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
