@@ -170,7 +170,7 @@ object AppRunnerCentralized extends App {
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
-  Thread.sleep(3000)
+  Thread.sleep(5000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
     query4,
