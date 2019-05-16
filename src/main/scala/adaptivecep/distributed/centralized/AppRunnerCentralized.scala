@@ -81,13 +81,13 @@ object AppRunnerCentralized extends App {
       frequency > ratio(2000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
   val query5: Query1[Either[Int, Int]] =
-    stream[Int]("A")
+    stream[Int,Int,Int,Int]("A")
       .or(
-        stream[Int]("B"))
-      .where(_.fold(identity, identity) > 0)
-      .where(_.fold(identity, identity) > 1)
-      .where(_.fold(identity, identity) > 2)
-      .where(_.fold(identity, identity) > 3)
+        stream[Int,Int,Int,Int]("B"))
+      .dropElem1()
+      .dropElem1()
+      .dropElem1()
+
 
 
   val address1 = Address("akka.tcp", "ClusterSystem", "18.219.222.126", 8000)
@@ -153,8 +153,8 @@ object AppRunnerCentralized extends App {
   hosts.foreach(host => host ! Hosts(hosts))
 
 
-  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
-  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
+  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event4(id,id,id,id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
+  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event4(id * 2,id * 2,id * 2,id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
   val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
   val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
 
@@ -181,7 +181,7 @@ object AppRunnerCentralized extends App {
   Thread.sleep(5000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorCentralized(actorSystem,
-    query4,
+    query5,
     publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
