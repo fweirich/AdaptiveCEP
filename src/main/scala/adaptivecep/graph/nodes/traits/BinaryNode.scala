@@ -75,6 +75,7 @@ trait BinaryNode extends Node {
               controller ! RequirementsMet
             }
             println(lmonitor.latency.get.toNanos / 1000000.0 + ", " + fMonitor.averageOutput.get /*bmonitor.bandwidthForMonitoring.get*/)
+            println(costs(parentNode))
             previousLatency = FiniteDuration(lmonitor.latency.get.toMillis, TimeUnit.MILLISECONDS)
             previousBandwidth = fMonitor.averageOutput.get
             lmonitor.latency = None
