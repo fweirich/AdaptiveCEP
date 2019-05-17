@@ -190,21 +190,30 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       costs += hostMap(sender()) -> Cost(FiniteDuration(java.time.Duration.between(t, clock.instant()).dividedBy(2).toMillis, TimeUnit.MILLISECONDS), costs(hostMap(sender())).bandwidth)
       //println(costs(sender()), hostPropsToMap(sender()))
     case StartThroughPutMeasurement(instant) =>
-      throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
-      throughputMeasureMap += hostMap(sender()) -> 0
+      if(hostMap.contains(sender())){
+        throughputStartMap += hostMap(sender()) -> (instant, clock.instant())
+        throughputMeasureMap += hostMap(sender()) -> 0
+      }
     case TestEvent =>
-      throughputMeasureMap += hostMap(sender()) -> (throughputMeasureMap(hostMap(sender())) + 1)
+      if(hostMap.contains(sender())){
+        throughputMeasureMap += hostMap(sender()) -> (throughputMeasureMap(hostMap(sender())) + 1)
+      }
     case EndThroughPutMeasurement(instant, actual) =>
-      val senderDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._1, instant)
-      val receiverDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._2, clock.instant())
-      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
-      //println("(" + senderDiff.toMillis + "/" + receiverDiff.toMillis +") * (( 1000" +  "/" + senderDiff.toMillis + ") * " + throughputMeasureMap(sender()) + "))")
-      //println(bandwidth, actual)
-      sender() ! ThroughPutResponse(bandwidth.toInt)
-      throughputMeasureMap += hostMap(sender()) -> 0
+
+      if(hostMap.contains(sender()) && throughputStartMap.contains(hostMap(sender()))){
+        val senderDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._1, instant)
+        val receiverDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._2, clock.instant())
+        val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
+        //println("(" + senderDiff.toMillis + "/" + receiverDiff.toMillis +") * (( 1000" +  "/" + senderDiff.toMillis + ") * " + throughputMeasureMap(sender()) + "))")
+        //println(bandwidth, actual)
+        sender() ! ThroughPutResponse(bandwidth.toInt)
+        throughputMeasureMap += hostMap(sender()) -> 0
+      }
     case ThroughPutResponse(r) =>
       //println("response", r)
-      costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r*10)
+      if(hostMap.contains(sender())){
+        costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r*10)
+      }
       //println(costs(sender()), hostPropsToMap(sender()))
     case _ =>
   }
