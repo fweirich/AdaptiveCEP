@@ -86,7 +86,7 @@ object AppRunnerCentralized extends App {
         stream[Int,Int,Int,Int]("B"))
       .dropElem1()
       .dropElem1()
-      .dropElem1()
+      .dropElem1(frequency > ratio(3000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
 
 
