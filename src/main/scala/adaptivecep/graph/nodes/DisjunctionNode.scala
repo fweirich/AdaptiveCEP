@@ -114,7 +114,7 @@ case class DisjunctionNode(
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
-      println("OR", s)
+      //println("OR", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
       })).run(materializer)

@@ -77,7 +77,7 @@ case class JoinNode(
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
-      println("JOIN", s)
+      //println("JOIN", s)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
         //println(e)
