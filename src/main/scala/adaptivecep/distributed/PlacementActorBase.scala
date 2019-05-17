@@ -61,6 +61,8 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
 
   val interval = 500
 
+  var justAdapted = false
+
   val costSignal: Var[Map[Host, Map[Host, Cost]]] = Var(costsMap)(ReSerializable.doNotSerialize, "cost")
   val hosts: Var[Set[NodeHost]] = Var(Set.empty[NodeHost])(ReSerializable.doNotSerialize, "hosts")
   val qos: Signal[Map[Host, HostProps]] = Signal{hostProps(costSignal(), hosts().map(h => h.asInstanceOf[Host]))}
@@ -150,8 +152,14 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet(requirements) =>
-      demandViolated.fire(requirements)
-      println("test")
+      if justAdapted{
+        justAdapted = false
+      } else {
+        demandViolated.fire(requirements)
+        justAdapted = true
+      }
+
+     // println("test")
     case Start =>
       println("PLACEMENT ACTOR: starting")
       demandViolated.fire(null)
