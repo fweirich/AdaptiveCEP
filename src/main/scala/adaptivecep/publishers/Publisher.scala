@@ -17,14 +17,16 @@ trait Publisher extends Actor {
 
   val materializer = ActorMaterializer()
 
-  val source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
-  val future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
+  var source: (SourceQueueWithComplete[Event], Source[Event, NotUsed]) = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+  var future: Future[SourceRef[Event]] = source._2.runWith(StreamRefs.sourceRef())(materializer)
 
   var subscribers: Set[ActorRef] =
     scala.collection.immutable.Set.empty[ActorRef]
 
   override def receive: Receive = {
     case Subscribe =>
+      source = Source.queue[Event](20000, OverflowStrategy.dropNew).preMaterialize()(materializer)
+      future = source._2.runWith(StreamRefs.sourceRef())(materializer)
       subscribers = subscribers + sender()
       //pipe(future).to(sender())
       sender ! AcknowledgeSubscription(Await.result(future, Duration.Inf))
