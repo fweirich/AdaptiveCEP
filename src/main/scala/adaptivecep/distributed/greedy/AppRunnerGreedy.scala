@@ -3,8 +3,8 @@ package adaptivecep.distributed.greedy
 import java.io.File
 
 import adaptivecep.data.Events._
-import adaptivecep.data.Queries.{Query3, Query4, X}
-import adaptivecep.distributed.centralized.AppRunnerCentralized._
+import adaptivecep.data.Queries.{Query1, Query3, Query4, X}
+import adaptivecep.distributed.centralized.AppRunnerCentralized.{actorSystem, address1, address2, _}
 import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
@@ -72,6 +72,15 @@ object AppRunnerGreedy extends App{
         latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ },
         frequency > ratio(2000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
 
+  val query5: Query1[Either[Int, Int]] =
+    stream[Int,Int,Int,Int]("A")
+      .or(
+        stream[Int,Int,Int,Int]("B"))
+      .dropElem1()
+      .dropElem1()
+      .dropElem1(frequency > ratio(3000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
+
+
   override def main(args: Array[String]): Unit = {
     if (args.nonEmpty) {
       optimizeFor = args(0)
@@ -127,8 +136,8 @@ object AppRunnerGreedy extends App{
 
   hosts.foreach(host => host ! Hosts(hosts))
 
-  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
-  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
+  val publisherA: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event4(id,id,id,id))).withDeploy(Deploy(scope = RemoteScope(address1))),             "A")
+  val publisherB: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event4(id * 2,id * 2,id * 2,id * 2))).withDeploy(Deploy(scope = RemoteScope(address2))),         "B")
   val publisherC: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(id.toFloat))).withDeploy(Deploy(scope = RemoteScope(address3))),     "C")
   val publisherD: ActorRef = actorSystem.actorOf(Props(RandomPublisher(id => Event1(s"String($id)"))).withDeploy(Deploy(scope = RemoteScope(address4))), "D")
 
@@ -153,10 +162,10 @@ object AppRunnerGreedy extends App{
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
-  Thread.sleep(3000)
+  Thread.sleep(5000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorGreedy(actorSystem,
-    query3,
+    query5,
     publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
