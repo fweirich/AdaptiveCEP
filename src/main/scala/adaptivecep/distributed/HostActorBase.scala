@@ -88,7 +88,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
     val template = ContinuousBoundedValue[Double](
       0,
       min = 250, max = 5000,
-      () => (60 - 180 * random.nextDouble, 1 + random.nextInt(10)))
+      () => (100 - 200 * random.nextDouble, 1 + random.nextInt(10)))
 
     def apply() =
       template copy (value = 1000 + 4000 * random.nextDouble)
