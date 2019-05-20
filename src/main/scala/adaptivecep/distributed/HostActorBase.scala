@@ -203,14 +203,14 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
       if(hostMap.contains(sender()) && throughputStartMap.contains(hostMap(sender()))){
         val senderDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._1, instant)
         val receiverDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._2, clock.instant())
-        val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
+        val calcBandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((bandwidth.template.max / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
         //println("(" + senderDiff.toMillis + "/" + receiverDiff.toMillis +") * (( 1000" +  "/" + senderDiff.toMillis + ") * " + throughputMeasureMap(sender()) + "))")
         //println(bandwidth, actual)
-        sender() ! ThroughPutResponse(bandwidth.toInt)
+        sender() ! ThroughPutResponse(calcBandwidth.toInt)
         throughputMeasureMap += hostMap(sender()) -> 0
       }
     case ThroughPutResponse(r) =>
-      println("response", r)
+      println("response", r, sender())
       if(hostMap.contains(sender())){
         costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r*10)
       }
