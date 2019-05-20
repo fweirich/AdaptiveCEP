@@ -216,8 +216,8 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
     case EndThroughPutMeasurement(instant, _) =>
       val senderDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._1, instant)
       val receiverDiff = java.time.Duration.between(throughputStartMap(hostMap(sender()))._2, clock.instant())
-      val bandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((1000 / senderDiff.toMillis) * 1000/*throughputMeasureMap(sender())*/)
-      sender() ! ThroughPutResponse(bandwidth.toInt)
+      val calcBandwidth = (senderDiff.toMillis.toDouble / receiverDiff.toMillis.toDouble) * ((bandwidth.template.max / senderDiff.toMillis) * 100/*throughputMeasureMap(sender())*/)
+      sender() ! ThroughPutResponse(calcBandwidth.toInt)
       //println(bandwidth, actual)
       throughputMeasureMap += hostMap(sender()) -> 0
     case ThroughPutResponse(r) =>
