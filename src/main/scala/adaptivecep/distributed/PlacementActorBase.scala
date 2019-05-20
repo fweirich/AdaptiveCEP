@@ -152,7 +152,7 @@ trait PlacementActorBase extends Actor with ActorLogging with System{
     case MemberExited(member) =>
       log.info("Member exiting: {}", member)
     case RequirementsNotMet(requirements) =>
-        demandViolated.fire(requirements)
+      demandViolated.fire(requirements)
      // println("test")
     case Start =>
       println("PLACEMENT ACTOR: starting")

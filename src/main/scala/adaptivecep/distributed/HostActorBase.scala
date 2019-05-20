@@ -210,7 +210,7 @@ trait HostActorBase extends Actor with ActorLogging with RequiresMessageQueue[Bo
         throughputMeasureMap += hostMap(sender()) -> 0
       }
     case ThroughPutResponse(r) =>
-      //println("response", r)
+      println("response", r)
       if(hostMap.contains(sender())){
         costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r*10)
       }
