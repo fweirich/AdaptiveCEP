@@ -260,7 +260,9 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
       /**Phase 2: Measurement*/
       case m: CostMessage => processCostMessage(m, hostMap(sender))
-      case RequirementsNotMet(requirements) => demandViolated.fire(requirements)
+      case RequirementsNotMet(requirements) => {demandViolated.fire(requirements)
+        println("adapt")
+        }
       case RequirementsMet => demandNotViolated.fire()
 
       /**Phase 3: Migration*/
