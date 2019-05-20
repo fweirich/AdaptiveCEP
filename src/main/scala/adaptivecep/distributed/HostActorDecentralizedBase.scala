@@ -107,7 +107,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   val adaptation: default.Event[Seq[NodeHost]] = demandViolated map { _ => optimumHosts()}
 
-  adaptation observe{list => if(ready.now) adapt(list)}
+  adaptation observe{list => if(ready.now) adapt(list) else println("Not Ready")}
 
   /*val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}*/
