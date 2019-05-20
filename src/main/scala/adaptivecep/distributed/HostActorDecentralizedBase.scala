@@ -107,7 +107,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
 
   val adaptation: default.Event[Seq[NodeHost]] = demandViolated map { _ => optimumHosts()}
 
-  adaptation observe{list => if(ready.now) adapt(list) else println("Not Ready")}
+  adaptation observe{list => if(ready.now) adapt(list)}
 
   /*val adaptation = newCostInformation map { _ => if(accumulatedCost().size == numberOfChildren() && stage() == Stage.Measurement)
     calculateOptimumHosts(children(), accumulatedCost(), childHost1, childHost2) else Seq.empty[NodeHost]}*/
@@ -222,7 +222,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       throughputMeasureMap += hostMap(sender()) -> 0
     case ThroughPutResponse(r) =>
       if(stage.now == Stage.Measurement){
-        costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, r)
+        costs += hostMap(sender()) -> Cost(costs(hostMap(sender())).duration, hostPropsToMap(hostMap(sender())).bandwidth)
         costSignal.set(Map(thisHost -> costs))
         bandwidthResponses += sender()
         //println("received response. Current Stage " + stage.now)
@@ -261,7 +261,7 @@ trait HostActorDecentralizedBase extends HostActorBase with System{
       /**Phase 2: Measurement*/
       case m: CostMessage => processCostMessage(m, hostMap(sender))
       case RequirementsNotMet(requirements) => {demandViolated.fire(requirements)
-        println("adapt")
+       // println("adapt")
         }
       case RequirementsMet => demandNotViolated.fire()
 
