@@ -111,7 +111,7 @@ case class DropElemNode(
       sender() ! SourceResponse(sourceRef)
     case SourceResponse(ref) =>
       val s = sender()
-      println("DROP", nodeData)
+      //println("DROP", nodeData)
       ref.getSource.to(Sink foreach(e =>{
         processEvent(e, s)
         //println(e)
