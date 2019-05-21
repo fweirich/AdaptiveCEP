@@ -28,6 +28,11 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
       if (operator.props != null) {
         val actorRef = propsActors(operator.props)
         val children = operator.dependencies
+        val parent = parents(operator)
+        if (parent.isDefined) {
+          actorRef ! Parent(propsActors(parent.get.props))
+          //println("setting Parent of", actorRef, propsActors(parent.get.props))
+        }
         children.length match {
           case 0 =>
           case 1 =>
@@ -44,11 +49,6 @@ case class PlacementActorCentralized(actorSystem: ActorSystem,
               actorRef ! CentralizedCreated
 
             }
-        }
-        val parent = parents(operator)
-        if (parent.isDefined) {
-          actorRef ! Parent(propsActors(parent.get.props))
-          //println("setting Parent of", actorRef, propsActors(parent.get.props))
         }
       }
     })
