@@ -3,7 +3,7 @@ package adaptivecep.distributed.annealing
 import java.io.File
 
 import adaptivecep.data.Events._
-import adaptivecep.data.Queries.{Query3, Query4, X}
+import adaptivecep.data.Queries.{Query1, Query3, Query4, X}
 import adaptivecep.distributed.operator.{ActiveOperator, Host, NodeHost, Operator}
 import adaptivecep.dsl.Dsl._
 import adaptivecep.graph.qos._
@@ -19,7 +19,7 @@ object AppRunnerAnnealing extends App {
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
   val r = scala.util.Random
-  var optimizeFor: String = "latencybandwidth"
+  var optimizeFor: String = "bandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 
@@ -86,6 +86,15 @@ object AppRunnerAnnealing extends App {
       .and(stream[Float]("C"),
         latency < timespan(100.milliseconds) otherwise
           {nodeData => println("Custom Error Message")})
+
+  val query5: Query1[Either[Int, Int]] =
+    stream[Int,Int,Int,Int]("A")
+      .or(
+        stream[Int,Int,Int,Int]("B"))
+      .dropElem1()
+      .dropElem1()
+      .dropElem1(frequency > ratio(3000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ })
+
 
 
   //AWS Setup
@@ -189,10 +198,10 @@ object AppRunnerAnnealing extends App {
 
   hosts.foreach(host => host ! OptimizeFor(optimizeFor))
 
-  Thread.sleep(3000)
+  Thread.sleep(5000)
 
   val placement: ActorRef = actorSystem.actorOf(Props(PlacementActorAnnealing(actorSystem,
-    query3,
+    query5,
     publishers, publisherHosts,
     AverageFrequencyMonitorFactory(interval = 3000, logging = false),
     PathLatencyMonitorFactory(interval =  1000, logging = false),
