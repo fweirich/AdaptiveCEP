@@ -19,7 +19,7 @@ object AppRunnerCentralized extends App {
   val file = new File("application.conf")
   val config = ConfigFactory.parseFile(file).withFallback(ConfigFactory.load()).resolve()
   var producers: Seq[Operator] = Seq.empty[Operator]
-  var optimizeFor: String = "latency"
+  var optimizeFor: String = "latencybandwidth"
 
   val actorSystem: ActorSystem = ActorSystem("ClusterSystem", config)
 
@@ -86,8 +86,8 @@ object AppRunnerCentralized extends App {
         stream[Int,Int,Int,Int]("B"))
       .dropElem1()
       .dropElem1()
-      .dropElem1(/*frequency > ratio(3000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ }*/
-        latency < timespan(150.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
+      .dropElem1(frequency > ratio(2000.instances, 1.seconds) otherwise { nodeData => /*println(s"PROBLEM:\tNode `${nodeData.name}` emits too few events!")*/ },
+        latency < timespan(200.milliseconds) otherwise { (nodeData) => /*println(s"PROBLEM:\tEvents reach node `${nodeData.name}` too slowly!")*/ })
 
 
 
